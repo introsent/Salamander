@@ -108,6 +108,12 @@ private:
 
         createSwapChain();
         createImageViews();
+
+        createGraphicsPipeline();
+    }
+
+    void createGraphicsPipeline() {
+
     }
 
     void createImageViews() {
