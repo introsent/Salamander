@@ -100,13 +100,15 @@ struct Vertex {
 };
 
 const std::vector<Vertex> vertices = {
-    {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},  // Bottom-left (red)
+    {{0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},  // Bottom-right (green)
+    {{0.5f,  0.5f},  {0.0f, 0.0f, 1.0f}},  // Top-right (blue)
+    {{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}}   // Top-left (white)
 };
 
-
-
+const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+};
 
 class HelloTriangleApplication {
 public:
@@ -162,10 +164,14 @@ private:
     VkBuffer stagingBuffer;
     VmaAllocation stagingBufferAllocation;
 
+    VkBuffer indexBuffer;
+    VmaAllocation indexBufferAllocation;
+
 
     void cleanup() {
         cleanupSwapChain();
 
+        vmaDestroyBuffer(allocator, indexBuffer, indexBufferAllocation);
         // Destroy the vertex buffer and free its memory using VMA
         vmaDestroyBuffer(allocator, vertexBuffer, vertexBufferAllocation);
 
@@ -237,6 +243,7 @@ private:
 
         createCommandPool();
         createVertexBuffer();
+        createIndexBuffer();
         createCommandBuffer();
 
         createSyncObjects();
@@ -257,6 +264,32 @@ private:
         }
     }
 
+
+    void createIndexBuffer() {
+        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+        VkBuffer stagingBuffer;
+        VmaAllocation stagingBufferAllocation;
+        // Create a staging buffer in CPU-visible memory for the indices
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation);
+
+        // Copy the index data to the staging buffer
+        void* data;
+        vmaMapMemory(allocator, stagingBufferAllocation, &data);
+        memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+        vmaUnmapMemory(allocator, stagingBufferAllocation);
+
+        // Create the device-local index buffer
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY, indexBuffer, indexBufferAllocation);
+
+        // Copy data from the staging buffer to the device-local index buffer
+        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+        // Clean up the staging buffer
+        vmaDestroyBuffer(allocator, stagingBuffer, stagingBufferAllocation);
+    }
 
     void createVertexBuffer() {
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -386,8 +419,8 @@ private:
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = (float)swapChainExtent.width;
-        viewport.height = (float)swapChainExtent.height;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -397,13 +430,16 @@ private:
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        // Bind the vertex buffer that was created with VMA
+        // Bind the vertex buffer
         VkBuffer vertexBuffers[] = { vertexBuffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        // Use the vertex count from the vertices vector
-        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+        // Bind the index buffer with the correct index type
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+        // Issue an indexed draw call
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
