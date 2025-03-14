@@ -44,7 +44,7 @@ FetchContent_Declare(
 # Fetch all dependencies
 FetchContent_MakeAvailable(glfw glm vma)
 
-# Set the output directory
+# Set the project source files
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
     "src/vma_impl.cpp"  # Added implementation file for VMA
@@ -59,15 +59,61 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw glm)
 # Include VMA headers
 target_include_directories(${PROJECT_NAME} PRIVATE ${vma_SOURCE_DIR}/include)
 
-# Copy resources to output folder
+#
+# Shader compilation via glslc
+#
+
+# Ensure VULKAN_SDK is set, as it provides glslc
+if(NOT DEFINED ENV{VULKAN_SDK})
+    message(FATAL_ERROR "VULKAN_SDK environment variable is not set!")
+endif()
+
+# Define path to glslc
+set(GLSLC "$ENV{VULKAN_SDK}/Bin/glslc.exe")
+
+# Set the shader source directory and SPIR-V output directory
 set(SHADERS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
-file(GLOB_RECURSE RESOURCE_FILES "${SHADERS_SOURCE_DIR}/*.spv")
+set(SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+file(MAKE_DIRECTORY ${SPIRV_DIR})
 
-set(RESOURCES_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders/")
-file(MAKE_DIRECTORY ${RESOURCES_OUT_DIR})
+# Glob all shader source files (.vert and .frag)
+file(GLOB SHADER_FILES "${SHADERS_SOURCE_DIR}/*.vert" "${SHADERS_SOURCE_DIR}/*.frag")
 
+# List to hold compiled shader outputs
+set(COMPILED_SHADERS)
+
+# Loop over each shader and add a custom command for compilation
+foreach(SHADER ${SHADER_FILES})
+    get_filename_component(SHADER_NAME ${SHADER} NAME_WE)
+    get_filename_component(SHADER_EXT ${SHADER} EXT)  # e.g., ".vert" or ".frag"
+    # Remove the leading '.' from the extension for the output file
+    string(LENGTH ${SHADER_EXT} EXT_LENGTH)
+    math(EXPR SUBSTRING_LENGTH "${EXT_LENGTH} - 1")
+    string(SUBSTRING ${SHADER_EXT} 1 ${SUBSTRING_LENGTH} SHADER_TYPE)
+    set(SPIRV_OUTPUT "${SPIRV_DIR}/${SHADER_NAME}_${SHADER_TYPE}.spv")
+
+    add_custom_command(
+        OUTPUT ${SPIRV_OUTPUT}
+        COMMAND ${GLSLC} ${SHADER} -o ${SPIRV_OUTPUT}
+        DEPENDS ${SHADER}
+        COMMENT "Compiling shader ${SHADER_NAME}${SHADER_EXT} -> ${SHADER_NAME}_${SHADER_TYPE}.spv"
+        VERBATIM
+    )
+
+    list(APPEND COMPILED_SHADERS ${SPIRV_OUTPUT})
+endforeach()
+
+# Create a custom target to compile all shaders
+add_custom_target(CompileShaders ALL DEPENDS ${COMPILED_SHADERS})
+
+# Ensure shaders are compiled before building the executable
+add_dependencies(${PROJECT_NAME} CompileShaders)
+
+# Copy additional SPIR-V resource files if needed (optional)
+set(SHADERS_SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+file(GLOB_RECURSE RESOURCE_FILES "${SHADERS_SPIRV_DIR}/*.spv")
 foreach(RESOURCE ${RESOURCE_FILES})
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${RESOURCE} ${RESOURCES_OUT_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${RESOURCE} ${SHADERS_SPIRV_DIR}
     )
 endforeach()
