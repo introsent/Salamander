@@ -47,6 +47,7 @@ FetchContent_MakeAvailable(glfw glm vma)
 # Set the output directory
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
+    "src/vma_impl.cpp"  # Added implementation file for VMA
 )
 
 # Add the project executable
