@@ -1,6 +1,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>  
+#include <glm/glm.hpp>
+
+#include "vk_mem_alloc.h" // Include the VMA header
+
 
 #include <iostream>
 #include <stdexcept>
@@ -149,9 +152,19 @@ private:
 
     bool framebufferResized = false;
 
+    // VMA Allocator
+    VmaAllocator allocator;
+
+    // Vertex buffer and its allocation handle managed by VMA
+    VkBuffer vertexBuffer;
+    VmaAllocation vertexBufferAllocation;
+
 
     void cleanup() {
         cleanupSwapChain();
+
+        // Destroy the vertex buffer and free its memory using VMA
+        vmaDestroyBuffer(allocator, vertexBuffer, vertexBufferAllocation);
 
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -165,6 +178,9 @@ private:
         }
 
         vkDestroyCommandPool(device, commandPool, nullptr);
+
+        // Destroy the VMA allocator
+        vmaDestroyAllocator(allocator);
 
         vkDestroyDevice(device, nullptr);
 
@@ -206,6 +222,8 @@ private:
         pickPhysicalDevice();
         createLogicalDevice();
 
+        createAllocator();
+
         createSwapChain();
         createImageViews();
 
@@ -215,10 +233,46 @@ private:
         createFramebuffers();
 
         createCommandPool();
+        createVertexBuffer();
         createCommandBuffer();
 
         createSyncObjects();
     }
+
+    void createVertexBuffer() {
+        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = bufferSize;
+        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        // Set up allocation info for VMA
+        VmaAllocationCreateInfo allocInfo{};
+        allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+        if (vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &vertexBuffer, &vertexBufferAllocation, nullptr) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create vertex buffer!");
+        }
+
+        void* data;
+        vmaMapMemory(allocator, vertexBufferAllocation, &data);
+        memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+        vmaUnmapMemory(allocator, vertexBufferAllocation);
+    }
+
+    void createAllocator() {
+        VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.physicalDevice = physicalDevice;
+        allocatorInfo.device = device;
+        allocatorInfo.instance = instance;
+
+        if (vmaCreateAllocator(&allocatorInfo, &allocator) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create VMA allocator!");
+        }
+    }
+
 
     void createSyncObjects() {
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -293,7 +347,13 @@ private:
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        // Bind the vertex buffer that was created with VMA
+        VkBuffer vertexBuffers[] = { vertexBuffer };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        // Use the vertex count from the vertices vector
+        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
