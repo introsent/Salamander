@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.27)
 
 # Project Name
-project(GP2_Vulkan)
+project(VulkanAPI)
 
 # Use C++20
 set(CMAKE_CXX_STANDARD 20)
