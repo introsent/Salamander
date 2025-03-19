@@ -51,7 +51,8 @@ set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path 
 # Set the project source files
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
-    "src/vma_impl.cpp"  # Added implementation file for VMA
+    "src/vma_impl.cpp" # Added implementation file for VMA
+    "src/stb_image.h"
 )
 
 # Add the project executable
