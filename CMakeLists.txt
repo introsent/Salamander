@@ -44,6 +44,10 @@ FetchContent_Declare(
 # Fetch all dependencies
 FetchContent_MakeAvailable(glfw glm vma)
 
+# Define the path to your stb headers.
+# Adjust the path below if your stb_image.h is in a different location.
+set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path to stb headers")
+
 # Set the project source files
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
@@ -53,11 +57,13 @@ set(${PROJECT_NAME}_SOURCES
 # Add the project executable
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 
-# Link libraries
+# Link libraries and include directories
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw glm)
 
-# Include VMA headers
-target_include_directories(${PROJECT_NAME} PRIVATE ${vma_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE 
+    ${vma_SOURCE_DIR}/include
+    ${STB_INCLUDE_DIR}    # Add stb include directory
+)
 
 #
 # Shader compilation via glslc
