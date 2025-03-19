@@ -124,3 +124,11 @@ foreach(RESOURCE ${RESOURCE_FILES})
         COMMAND ${CMAKE_COMMAND} -E copy ${RESOURCE} ${SHADERS_SPIRV_DIR}
     )
 endforeach()
+
+# Ensure the textures directory exists in the build directory
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/textures)
+
+# Copy the texture file from the source to the build directory
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/texture.jpg 
+               ${CMAKE_CURRENT_BINARY_DIR}/textures/texture.jpg 
+               COPYONLY)
