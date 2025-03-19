@@ -1,28 +1,27 @@
-#include <chrono>  
-#define GLM_FORCE_RADIANS 
-#include <glm/gtc/matrix_transform.hpp>
-
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "vk_mem_alloc.h" // Include the VMA header
-
-
 #include <iostream>
-#include <stdexcept>
-#include <cstdlib>
-#include <vector>
-#include <set>
-#include <optional>
-#include <cstdint> // Necessary for uint32_t
-#include <limits> // Necessary for std::numeric_limits
-#include <algorithm> // Necessary for std::clamp
 #include <fstream>
+#include <stdexcept>
+#include <algorithm>
+#include <chrono>
+#include <vector>
+#include <cstring>
+#include <cstdlib>
+#include <cstdint>
+#include <limits>
 #include <array>
+#include <optional>
+#include <set>
 
 
 
