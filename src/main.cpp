@@ -63,6 +63,12 @@ struct QueueFamilyIndices {
     }
 };
 
+struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
@@ -136,6 +142,9 @@ private:
     VkExtent2D swapChainExtent;
 
     VkRenderPass renderPass;
+
+    VkDescriptorSetLayout descriptorSetLayout;
+
     VkPipelineLayout pipelineLayout;
 
     VkPipeline graphicsPipeline;
@@ -167,9 +176,15 @@ private:
     VkBuffer indexBuffer;
     VmaAllocation indexBufferAllocation;
 
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector< VmaAllocation> uniformBufferAllocations;
+    std::vector<void*> uniformBuffersMapped;
+
 
     void cleanup() {
         cleanupSwapChain();
+
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
         vmaDestroyBuffer(allocator, indexBuffer, indexBufferAllocation);
         // Destroy the vertex buffer and free its memory using VMA
@@ -237,6 +252,9 @@ private:
         createImageViews();
 
         createRenderPass();
+
+        createDescriptorSetLayout();
+
         createGraphicsPipeline();
 
         createFramebuffers();
@@ -247,6 +265,30 @@ private:
         createCommandBuffer();
 
         createSyncObjects();
+    }
+
+    void createDescriptorSetLayout()
+    {
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboLayoutBinding.descriptorCount = 1;
+
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+        uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &uboLayoutBinding;
+
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
+
+
+
     }
 
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& allocation) {
@@ -586,8 +628,8 @@ private:
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 0; // Optional
-        pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+        pipelineLayoutInfo.setLayoutCount = 1; // Optional
+        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
         pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
         pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
@@ -788,6 +830,8 @@ private:
         vkDeviceWaitIdle(device);
 
         cleanupSwapChain();
+
+
 
         createSwapChain();
         createImageViews();
