@@ -213,12 +213,16 @@ private:
 
     VkSampler textureSampler;
 
-    VkImage depthImage;
+    VkImage depthImage = VK_NULL_HANDLE;
     VmaAllocation depthImageAllocation;
-    VkImageView depthImageView;
+    VkImageView depthImageView = VK_NULL_HANDLE;
+
+
 
 
     void cleanup() {
+        vkDeviceWaitIdle(device);
+
         cleanupSwapChain();
 
         vkDestroyImageView(device, depthImageView, nullptr);
@@ -233,8 +237,12 @@ private:
 
         vkDestroyRenderPass(device, renderPass, nullptr);
 
+        // Unmap and destroy uniform buffers
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vmaUnmapMemory(allocator, uniformBufferAllocations[i]);
+            if (uniformBuffersMapped[i] != nullptr) {
+                vmaUnmapMemory(allocator, uniformBufferAllocations[i]);
+                uniformBuffersMapped[i] = nullptr;
+            }
             vmaDestroyBuffer(allocator, uniformBuffers[i], uniformBufferAllocations[i]);
         }
 
@@ -242,10 +250,7 @@ private:
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
         vmaDestroyBuffer(allocator, indexBuffer, indexBufferAllocation);
-        // Destroy the vertex buffer and free its memory using VMA
         vmaDestroyBuffer(allocator, vertexBuffer, vertexBufferAllocation);
-
-        
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -255,7 +260,7 @@ private:
 
         vkDestroyCommandPool(device, commandPool, nullptr);
 
-        // Destroy the VMA allocator
+        // Finally, destroy the VMA allocator before destroying the device
         vmaDestroyAllocator(allocator);
 
         vkDestroyDevice(device, nullptr);
@@ -268,9 +273,9 @@ private:
         vkDestroyInstance(instance, nullptr);
 
         glfwDestroyWindow(window);
-
         glfwTerminate();
     }
+
 
     void initWindow() {
         glfwInit();
@@ -318,7 +323,14 @@ private:
 
     void createDepthResources() {
         VkFormat depthFormat = findDepthFormat();
-
+        if (depthImage)
+        {
+            vmaDestroyImage(allocator, depthImage, depthImageAllocation);
+        }
+        if (depthImageView)
+        {
+            vkDestroyImageView(device, depthImageView, nullptr);
+        }
         createImage(swapChainExtent.width, swapChainExtent.height, depthFormat,
             VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1188,7 +1200,6 @@ private:
 
     void recreateSwapChain() {
         int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
         while (width == 0 || height == 0) {
             glfwGetFramebufferSize(window, &width, &height);
             glfwWaitEvents();
@@ -1198,10 +1209,9 @@ private:
 
         cleanupSwapChain();
 
-
-
         createSwapChain();
         createImageViews();
+        createDepthResources();
         createFramebuffers();
     }
 
