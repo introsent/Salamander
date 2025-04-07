@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.27)
 
 # Project Name
-project(VulkanAPI)
+project(Salamander)
 
 # Use C++20
 set(CMAKE_CXX_STANDARD 20)
@@ -53,6 +53,8 @@ set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
     "src/vma_impl.cpp" # Added implementation file for VMA
     "src/stb_image.h"
+    "src/tiny_obj_loader.h"
+
 )
 
 # Add the project executable
@@ -131,4 +133,8 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/textures)
 # Copy the texture file from the source to the build directory
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/texture.jpg 
                ${CMAKE_CURRENT_BINARY_DIR}/textures/texture.jpg 
+               COPYONLY)
+
+# Copy the obj file from the source to the build directory
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/viking_room.obj 
                COPYONLY)
