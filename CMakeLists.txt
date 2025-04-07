@@ -129,12 +129,15 @@ endforeach()
 
 # Ensure the textures directory exists in the build directory
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/textures)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/models)
 
 # Copy the texture file from the source to the build directory
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/texture.jpg 
-               ${CMAKE_CURRENT_BINARY_DIR}/textures/texture.jpg 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/viking_room.png 
+               ${CMAKE_CURRENT_BINARY_DIR}/textures/viking_room.png 
                COPYONLY)
 
-# Copy the obj file from the source to the build directory
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/viking_room.obj 
+               
+# Copy the model file
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/viking_room.obj
+               ${CMAKE_CURRENT_BINARY_DIR}/models/viking_room.obj
                COPYONLY)
