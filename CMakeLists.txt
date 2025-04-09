@@ -54,11 +54,11 @@ set(${PROJECT_NAME}_SOURCES
     "src/vma_impl.cpp" # Added implementation file for VMA
     "src/stb_image.h"
     "src/tiny_obj_loader.h"
-
-)
+    "src/core/window.h"
+    "src/core/window.cpp")
 
 # Add the project executable
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES} "Source/core/window.h")
 
 # Link libraries and include directories
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw glm)
