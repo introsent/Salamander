@@ -48,7 +48,7 @@ VkSurfaceKHR Window::createSurface(VkInstance instance) const
 {
     VkSurfaceKHR surface;
 
-	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+	if (glfwCreateWindowSurface(instance, m_window, nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create window surface!");
 	}
 	return surface;
@@ -61,7 +61,20 @@ GLFWwindow* Window::handle() const
 
 VkExtent2D Window::extent() const
 {
-	return { m_width, m_height };
+    int width, height;
+    glfwGetFramebufferSize(m_window, &width, &height);
+    
+    return {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+}
+
+VkExtent2D Window::getValidExtent() const
+{
+    int width = 0, height = 0;
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(m_window, &width, &height);
+        glfwWaitEvents();
+    }
+    return { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 }
 
 void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)

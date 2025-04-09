@@ -29,6 +29,8 @@
 #include <set>
 #include <unordered_map>
 
+#include "core/window.h"
+
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
@@ -144,7 +146,7 @@ namespace std {
 class HelloTriangleApplication {
 public:
     void run() {
-        initWindow();
+        m_window = new Window(WIDTH, HEIGHT, "Salamander");
         initVulkan();
         mainLoop();
         cleanup();
@@ -155,7 +157,8 @@ private:
     VkDebugUtilsMessengerEXT debugMessenger;
     VkSurfaceKHR surface;
 
-    GLFWwindow* window;
+    Window* m_window;
+    //GLFWwindow* window;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
     VkQueue graphicsQueue;
@@ -277,21 +280,22 @@ private:
         vkDestroySurfaceKHR(instance, surface, nullptr);
         vkDestroyInstance(instance, nullptr);
 
-        glfwDestroyWindow(window);
-        glfwTerminate();
+        delete m_window;
+        //glfwDestroyWindow(window);
+        //glfwTerminate();
     }
 
 
-    void initWindow() {
-        glfwInit();
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Salamander", nullptr, nullptr);
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    }
+    //void initWindow() {
+    //    glfwInit();
+    //
+    //    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    //    //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    //
+    //    window = glfwCreateWindow(WIDTH, HEIGHT, "Salamander", nullptr, nullptr);
+    //    glfwSetWindowUserPointer(window, this);
+    //    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    //}
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
         auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
@@ -302,7 +306,8 @@ private:
     void initVulkan() {
         createInstance();
         setupDebugMessenger();
-        createSurface();
+        surface = m_window->createSurface(instance);
+        //createSurface();
         pickPhysicalDevice();
         createLogicalDevice();
         createAllocator();
@@ -1246,11 +1251,13 @@ private:
 
 
     void recreateSwapChain() {
-        int width = 0, height = 0;
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();
-        }
+        //int width = 0, height = 0;
+        //while (width == 0 || height == 0) {
+        //    glfwGetFramebufferSize(window, &width, &height);
+        //    glfwWaitEvents();
+        //}
+
+        VkExtent2D validExtent = m_window->getValidExtent();
 
         vkDeviceWaitIdle(device);
 
@@ -1263,11 +1270,11 @@ private:
     }
 
 
-    void createSurface() {
-        if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create window surface!");
-        }
-    }
+    //void createSurface() {
+    //    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+    //        throw std::runtime_error("failed to create window surface!");
+    //    }
+    //}
 
     void createLogicalDevice() {
         QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
@@ -1520,13 +1527,14 @@ private:
             return capabilities.currentExtent;
         }
         else {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-
-            VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height)
-            };
+            //int width, height;
+            //glfwGetFramebufferSize(window, &width, &height);
+            //
+            //VkExtent2D actualExtent = {
+            //    static_cast<uint32_t>(width),
+            //    static_cast<uint32_t>(height)
+            //};
+            VkExtent2D actualExtent = m_window->extent();
 
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
             actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
@@ -1580,8 +1588,8 @@ private:
 
 
     void mainLoop() {
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
+        while (!m_window->shouldClose()) {
+            m_window->pollEvents();
             drawFrame();
         }
         vkDeviceWaitIdle(device);
