@@ -158,7 +158,6 @@ private:
     VkSurfaceKHR surface;
 
     Window* m_window;
-    //GLFWwindow* window;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
     VkQueue graphicsQueue;
@@ -281,8 +280,6 @@ private:
         vkDestroyInstance(instance, nullptr);
 
         delete m_window;
-        //glfwDestroyWindow(window);
-        //glfwTerminate();
     }
 
 
@@ -307,7 +304,6 @@ private:
         createInstance();
         setupDebugMessenger();
         surface = m_window->createSurface(instance);
-        //createSurface();
         pickPhysicalDevice();
         createLogicalDevice();
         createAllocator();
@@ -1251,12 +1247,6 @@ private:
 
 
     void recreateSwapChain() {
-        //int width = 0, height = 0;
-        //while (width == 0 || height == 0) {
-        //    glfwGetFramebufferSize(window, &width, &height);
-        //    glfwWaitEvents();
-        //}
-
         VkExtent2D validExtent = m_window->getValidExtent();
 
         vkDeviceWaitIdle(device);
@@ -1268,13 +1258,6 @@ private:
         createDepthResources();
         createFramebuffers();
     }
-
-
-    //void createSurface() {
-    //    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
-    //        throw std::runtime_error("failed to create window surface!");
-    //    }
-    //}
 
     void createLogicalDevice() {
         QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
@@ -1527,13 +1510,6 @@ private:
             return capabilities.currentExtent;
         }
         else {
-            //int width, height;
-            //glfwGetFramebufferSize(window, &width, &height);
-            //
-            //VkExtent2D actualExtent = {
-            //    static_cast<uint32_t>(width),
-            //    static_cast<uint32_t>(height)
-            //};
             VkExtent2D actualExtent = m_window->extent();
 
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
