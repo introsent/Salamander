@@ -58,7 +58,7 @@ set(${PROJECT_NAME}_SOURCES
     "src/core/window.cpp")
 
 # Add the project executable
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES} "Source/core/window.h")
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 
 # Link libraries and include directories
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw glm)
