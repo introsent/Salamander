@@ -4,7 +4,7 @@
 #include <set>
 #include <cstring>
 
-static bool checkValidationLayerSupport(const std::vector<const char*>& validationLayers) {
+bool Context::checkValidationLayerSupport(const std::vector<const char*>& validationLayers) {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -26,7 +26,7 @@ static bool checkValidationLayerSupport(const std::vector<const char*>& validati
     return true;
 }
 
-static std::vector<const char*> getRequiredExtensions(bool enableValidation) {
+std::vector<const char*> Context::getRequiredExtensions(bool enableValidation) {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = nullptr;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -38,10 +38,11 @@ static std::vector<const char*> getRequiredExtensions(bool enableValidation) {
     return extensions;
 }
 
-Context::Context(bool enableValidation)
+Context::Context(Window* window, bool enableValidation)
     : m_enableValidation(enableValidation)
 {
     createInstance();
+    createSurface(window);
     selectPhysicalDevice();
     createLogicalDevice();
 }
@@ -49,6 +50,9 @@ Context::Context(bool enableValidation)
 Context::~Context() {
     if (m_device != VK_NULL_HANDLE) {
         vkDestroyDevice(m_device, nullptr);
+    }
+    if (m_surface != VK_NULL_HANDLE) {
+        vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     }
     if (m_instance != VK_NULL_HANDLE) {
         vkDestroyInstance(m_instance, nullptr);
@@ -89,6 +93,15 @@ void Context::createInstance() {
     }
 }
 
+void Context::createSurface(Window* window)
+{
+    // Use the window to create the surface with the already-created instance.
+    m_surface = window->createSurface(m_instance);
+    if (m_surface == VK_NULL_HANDLE) {
+        throw std::runtime_error("Failed to create window surface!");
+    }
+}
+
 void Context::selectPhysicalDevice() {
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(m_instance, &deviceCount, nullptr);
@@ -111,13 +124,15 @@ void Context::selectPhysicalDevice() {
         for (const auto& queueFamily : queueFamilies) {
             if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
                 indices.graphicsFamily = i;
-                // if require presentation support, add:
-                // if (/* presentation support check */) { indices.presentFamily = i; } 
+                VkBool32 presentSupport = VK_FALSE;
+                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_surface, &presentSupport);
+                if (presentSupport) {
+                    indices.presentFamily = i;
+                }
             }
             i++;
         }
 
-        // check that the device supports required extensions
         bool extensionsSupported = false;
         {
             uint32_t extensionCount;
@@ -131,7 +146,6 @@ void Context::selectPhysicalDevice() {
             extensionsSupported = requiredExtensions.empty();
         }
 
-        // device is suitable if it has the required queue families and supports the required extensions
         if (indices.isComplete() && extensionsSupported) {
             m_physicalDevice = device;
             m_queueFamilies = indices;
@@ -145,11 +159,13 @@ void Context::selectPhysicalDevice() {
 }
 
 void Context::createLogicalDevice() {
-    std::set<uint32_t> uniqueQueueFamilies = { m_queueFamilies.graphicsFamily.value() };
-    // if using presentation queues separately, add m_queueFamilies.presentFamily if different.
+
+    QueueFamilyIndices indices = findQueueFamilies(m_physicalDevice);
+
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     float queuePriority = 1.0f;
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     for (auto queueFamily : uniqueQueueFamilies) {
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -181,4 +197,40 @@ void Context::createLogicalDevice() {
     if (vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create logical device!");
     }
+
+    vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
+    vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &m_presentQueue);
+
+}
+
+QueueFamilyIndices Context::findQueueFamilies(VkPhysicalDevice device) const
+{
+    QueueFamilyIndices indices;
+
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    int i = 0;
+    for (const auto& queueFamily : queueFamilies) {
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_surface, &presentSupport);
+        if (presentSupport) {
+            indices.presentFamily = i;
+        }
+
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            indices.graphicsFamily = i;
+        }
+
+        if (indices.isComplete()) {
+            break;
+        }
+
+        i++;
+    }
+
+    return indices;
 }
