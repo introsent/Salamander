@@ -4,6 +4,7 @@
 #include <set>
 #include <cstring>
 
+// Checks if all the requested validation layers are available on the system
 bool Context::checkValidationLayerSupport(const std::vector<const char*>& validationLayers) {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -26,6 +27,8 @@ bool Context::checkValidationLayerSupport(const std::vector<const char*>& valida
     return true;
 }
 
+/* Retrieves the required instance extensions.
+   If validation is enabled, adds the debug utils extension so that debug messages can be reported. */
 std::vector<const char*> Context::getRequiredExtensions(bool enableValidation) {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = nullptr;
@@ -38,18 +41,9 @@ std::vector<const char*> Context::getRequiredExtensions(bool enableValidation) {
     return extensions;
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData) {
-
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-    return VK_FALSE;
-}
-
-
+/* Initializes the Vulkan instance, debug messenger,
+   creates the surface from the provided Window, selects a physical device,
+   creates the logical device. */
 Context::Context(Window* window, bool enableValidation)
     : m_enableValidation(enableValidation)
 {
@@ -60,6 +54,7 @@ Context::Context(Window* window, bool enableValidation)
     createLogicalDevice();
 }
 
+// cleans up all Vulkan resources
 Context::~Context() {
     if (m_device != VK_NULL_HANDLE) {
         vkDestroyDevice(m_device, nullptr);
@@ -73,6 +68,8 @@ Context::~Context() {
     }
 }
 
+/* Creates the Vulkan instance using the information set in the VkApplicationInfo and required extensions.
+   Validates that requested validation layers are available. */
 void Context::createInstance() {
     if (m_enableValidation && !checkValidationLayerSupport(m_validationLayers)) {
         throw std::runtime_error("Validation layers requested, but not available!");
@@ -107,15 +104,17 @@ void Context::createInstance() {
     }
 }
 
+// Creates the window surface using the provided Window object's createSurface method.
 void Context::createSurface(Window* window)
 {
-    // Use the window to create the surface with the already-created instance.
     m_surface = window->createSurface(m_instance);
     if (m_surface == VK_NULL_HANDLE) {
         throw std::runtime_error("Failed to create window surface!");
     }
 }
 
+/* Selects a physical device (GPU) that supports the necessary queues and extensions.
+   This function uses the m_surface (created earlier) to check for presentation support.*/
 void Context::selectPhysicalDevice() {
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(m_instance, &deviceCount, nullptr);
@@ -135,6 +134,7 @@ void Context::selectPhysicalDevice() {
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
         int i = 0;
+        // check each queue family for graphics and presentation support
         for (const auto& queueFamily : queueFamilies) {
             if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
                 indices.graphicsFamily = i;
@@ -147,6 +147,8 @@ void Context::selectPhysicalDevice() {
             i++;
         }
 
+
+        // check that the device supports required extensions
         bool extensionsSupported = false;
         {
             uint32_t extensionCount;
@@ -160,6 +162,7 @@ void Context::selectPhysicalDevice() {
             extensionsSupported = requiredExtensions.empty();
         }
 
+        // if both queue families are available and required extensions are supported, the device is indeed suitable
         if (indices.isComplete() && extensionsSupported) {
             m_physicalDevice = device;
             m_queueFamilies = indices;
@@ -172,14 +175,18 @@ void Context::selectPhysicalDevice() {
     }
 }
 
+/* Creates a logical device from the selected physical device.
+   Also retrieves the graphics and presentation queues from the created device. */
 void Context::createLogicalDevice() {
 
     QueueFamilyIndices indices = findQueueFamilies();
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    // use a set to avoid creating duplicate queue families if the same family supports both graphics and presentation
     std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     float queuePriority = 1.0f;
+    // prepare the create info for each unique queue family
     for (auto queueFamily : uniqueQueueFamilies) {
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -212,11 +219,16 @@ void Context::createLogicalDevice() {
         throw std::runtime_error("Failed to create logical device!");
     }
 
+    // retrieve the graphics queue.
     vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
+
+    // Retrieve the present queue.
     vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &m_presentQueue);
 
 }
 
+
+// Queries the available queue families for the physical device and returns the ones that support both graphics and presentation.
 QueueFamilyIndices Context::findQueueFamilies() const
 {
     QueueFamilyIndices indices;

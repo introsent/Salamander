@@ -2,6 +2,8 @@
 #include <iostream>
 #include <stdexcept>
 
+/* Stores the Vulkan instance and whether validation messages are enabled. If enabled,
+   it sets up the debug messenger so that validation messages are forwarded to our callback. */
 DebugMessenger::DebugMessenger(VkInstance instance, bool enableValidation)
     : m_instance(instance), m_enableValidation(enableValidation), m_messenger(VK_NULL_HANDLE)
 {
@@ -10,6 +12,8 @@ DebugMessenger::DebugMessenger(VkInstance instance, bool enableValidation)
     }
 }
 
+/* If validation is enabled and a messenger was created, it retrieves the pointer to
+   vkDestroyDebugUtilsMessengerEXT and uses it to clean up the messenger. */
 DebugMessenger::~DebugMessenger() {
     if (m_enableValidation && m_messenger != VK_NULL_HANDLE) {
         auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
@@ -20,21 +24,24 @@ DebugMessenger::~DebugMessenger() {
     }
 }
 
+/* Fills in the VkDebugUtilsMessengerCreateInfoEXT structure with the configuration wanted.
+   This structure tells Vulkan which messages to report and what callback function to call. */
 void DebugMessenger::populateCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
     createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType =
-        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+    // set which severities to report: verbose, warning, and error
+    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+    // set which types of messages to report: general, validation, and performance
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+    // assign the callback function for handling debug messages
     createInfo.pfnUserCallback = debugCallback;
-    createInfo.pUserData = nullptr; // No user data in this case.
 }
 
+/* Sets up the debug messenger by querying Vulkan for the debug messenger creation function,
+   then creating the messenger with the parameters set in populateCreateInfo(). */
 void DebugMessenger::setupDebugMessenger() {
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateCreateInfo(createInfo);
@@ -46,6 +53,8 @@ void DebugMessenger::setupDebugMessenger() {
     }
 }
 
+/* The static callback function that is invoked by Vulkan when a debug message is generated.
+   It simply prints the message to std::cerr. Returning VK_FALSE tells Vulkan not to abort the call. */
 VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessenger::debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
