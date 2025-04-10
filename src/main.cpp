@@ -59,22 +59,9 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    }
-    else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
 
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
+
+
 
 struct UniformBufferObject {
     glm::mat4 model;
@@ -258,26 +245,10 @@ private:
         // Finally, destroy the VMA allocator before destroying the device
         vmaDestroyAllocator(allocator);
 
-        if (enableValidationLayers) {
-            DestroyDebugUtilsMessengerEXT(m_context->instance(), debugMessenger, nullptr);
-        }
-
         delete m_context;
 
         delete m_window;
     }
-
-
-    //void initWindow() {
-    //    glfwInit();
-    //
-    //    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    //    //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    //
-    //    window = glfwCreateWindow(WIDTH, HEIGHT, "Salamander", nullptr, nullptr);
-    //    glfwSetWindowUserPointer(window, this);
-    //    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    //}
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
         auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
@@ -286,7 +257,6 @@ private:
 
 
     void initVulkan() {
-        setupDebugMessenger();
         createAllocator();
         createSwapChain();
         createImageViews();
@@ -299,9 +269,7 @@ private:
         createTextureImage();
         createTextureImageView();
         createTextureSampler();
-
         loadModel();
-
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
@@ -919,7 +887,7 @@ private:
     }
 
     void createCommandPool() {
-        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(m_context->physicalDevice());
+        QueueFamilyIndices queueFamilyIndices = m_context->findQueueFamilies();
 
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1182,7 +1150,7 @@ private:
         createInfo.imageArrayLayers = 1;
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-        QueueFamilyIndices indices = findQueueFamilies(m_context->physicalDevice());
+        QueueFamilyIndices indices = m_context->findQueueFamilies();
         uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
         if (indices.graphicsFamily != indices.presentFamily) {
@@ -1241,7 +1209,7 @@ private:
     }
 
     bool isDeviceSuitable(VkPhysicalDevice device) {
-        QueueFamilyIndices indices = findQueueFamilies(device);
+        QueueFamilyIndices indices = m_context->findQueueFamilies();
 
         bool extensionsSupported = checkDeviceExtensionSupport(device);
 
@@ -1266,25 +1234,6 @@ private:
         //    deviceFeatures.geometryShader;
     }
 
-    static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-        createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback = debugCallback;
-    }
-
-    void setupDebugMessenger() {
-        if (!enableValidationLayers) return;
-
-        VkDebugUtilsMessengerCreateInfoEXT createInfo;
-        populateDebugMessengerCreateInfo(createInfo);
-
-        if (CreateDebugUtilsMessengerEXT(m_context->instance(), &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-            throw std::runtime_error("failed to set up debug messenger!");
-        }
-    }
-
     static std::vector<const char*> getRequiredExtensions() {
         uint32_t glfwExtensionCount = 0;
         const char** glfwExtensions;
@@ -1297,37 +1246,6 @@ private:
         }
 
         return extensions;
-    }
-
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
-        QueueFamilyIndices indices;
-
-        uint32_t queueFamilyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-        int i = 0;
-        for (const auto& queueFamily : queueFamilies) {
-            VkBool32 presentSupport = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_context->surface(), &presentSupport);
-            if (presentSupport) {
-                indices.presentFamily = i;
-            }
-
-            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-                indices.graphicsFamily = i;
-            }
-
-            if (indices.isComplete()) {
-                break;
-            }
-
-            i++;
-        }
-
-        return indices;
     }
 
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {

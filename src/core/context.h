@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "window.h"
+#include "debug_messenger.h"
 
 // simple QueueFamilyIndices structure
 struct QueueFamilyIndices {
@@ -17,7 +18,7 @@ struct QueueFamilyIndices {
     }
 };
 
-class Context {
+class Context final {
 public:
     Context(Window* window, bool enableValidation);
     ~Context();
@@ -25,6 +26,8 @@ public:
     Context& operator=(const Context&) = delete;
     Context(Context&&) = delete;
     Context& operator=(Context&&) = delete;
+
+    QueueFamilyIndices findQueueFamilies() const;
 
     VkDevice device() const { return m_device; }
     VkPhysicalDevice physicalDevice() const { return m_physicalDevice; }
@@ -39,10 +42,11 @@ private:
     void createSurface(Window* window);
     void selectPhysicalDevice();
     void createLogicalDevice();
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) const;
+    
     static bool checkValidationLayerSupport(const std::vector<const char*>& validationLayers);
-    std::vector<const char*> getRequiredExtensions(bool enableValidation);
+    static std::vector<const char*> getRequiredExtensions(bool enableValidation);
 
+	
     VkInstance m_instance = VK_NULL_HANDLE;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
     VkDevice m_device = VK_NULL_HANDLE;
@@ -50,7 +54,7 @@ private:
     VkQueue m_presentQueue = VK_NULL_HANDLE;
     VkSurfaceKHR m_surface = VK_NULL_HANDLE;
     QueueFamilyIndices m_queueFamilies;
-
+    DebugMessenger* m_debugMessenger;
     bool m_enableValidation = false;
 
     // list of validation layers and device extensions.

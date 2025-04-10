@@ -38,10 +38,23 @@ std::vector<const char*> Context::getRequiredExtensions(bool enableValidation) {
     return extensions;
 }
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData) {
+
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+}
+
+
 Context::Context(Window* window, bool enableValidation)
     : m_enableValidation(enableValidation)
 {
     createInstance();
+    m_debugMessenger = new DebugMessenger(m_instance, enableValidation);
     createSurface(window);
     selectPhysicalDevice();
     createLogicalDevice();
@@ -54,6 +67,7 @@ Context::~Context() {
     if (m_surface != VK_NULL_HANDLE) {
         vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     }
+    delete m_debugMessenger;
     if (m_instance != VK_NULL_HANDLE) {
         vkDestroyInstance(m_instance, nullptr);
     }
@@ -160,7 +174,7 @@ void Context::selectPhysicalDevice() {
 
 void Context::createLogicalDevice() {
 
-    QueueFamilyIndices indices = findQueueFamilies(m_physicalDevice);
+    QueueFamilyIndices indices = findQueueFamilies();
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -203,20 +217,20 @@ void Context::createLogicalDevice() {
 
 }
 
-QueueFamilyIndices Context::findQueueFamilies(VkPhysicalDevice device) const
+QueueFamilyIndices Context::findQueueFamilies() const
 {
     QueueFamilyIndices indices;
 
     uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, nullptr);
 
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, queueFamilies.data());
 
     int i = 0;
     for (const auto& queueFamily : queueFamilies) {
         VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_surface, &presentSupport);
+        vkGetPhysicalDeviceSurfaceSupportKHR(m_physicalDevice, i, m_surface, &presentSupport);
         if (presentSupport) {
             indices.presentFamily = i;
         }
