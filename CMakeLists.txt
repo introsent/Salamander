@@ -57,7 +57,11 @@ set(${PROJECT_NAME}_SOURCES
     "src/core/window.h"
     "src/core/window.cpp" 
     "src/core/context.h" 
-    "src/core/context.cpp" "src/core/debug_messenger.h" "src/core/debug_messenger.cpp")
+    "src/core/context.cpp" 
+    "src/core/debug_messenger.h" 
+    "src/core/debug_messenger.cpp" 
+    "src/core/swap_chain.h"
+    "src/core/swap_chain.cpp")
 
 # Add the project executable
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
