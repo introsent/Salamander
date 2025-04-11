@@ -3,11 +3,6 @@
 #include "context.h"
 #include <vector>
 
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
-};
 
 class SwapChain final {
 public:
@@ -20,7 +15,7 @@ public:
     VkFormat format() const { return m_imageFormat; }
     const std::vector<VkFramebuffer>& framebuffers() const { return m_framebuffers; }
     void createFramebuffers(VkRenderPass renderPass, VkImageView depthImageView);
-    SwapChainSupportDetails querySwapChainSupport() const;
+
 
 private:
     void createSwapChain();
