@@ -1,22 +1,9 @@
 #pragma once
-#include <vector>
+#include <array>
 #include <string>
-#include <vk_mem_alloc.h>
+#include "pipeline_config.h"
 #include "../core/context.h"
 
-struct PipelineConfig {
-    std::string vertShaderPath;
-    std::string fragShaderPath;
-    VkVertexInputBindingDescription bindingDescription;
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly;
-    VkPipelineViewportStateCreateInfo viewportState;
-    VkPipelineRasterizationStateCreateInfo rasterizer;
-    VkPipelineMultisampleStateCreateInfo multisampling;
-    VkPipelineDepthStencilStateCreateInfo depthStencil;
-    VkPipelineColorBlendStateCreateInfo colorBlending;
-    VkPipelineDynamicStateCreateInfo dynamicState;
-};
 
 class Pipeline {
 public:
@@ -39,7 +26,6 @@ public:
 private:
     void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
     void createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout);
-    void defaultPipelineConfig(PipelineConfig& config);
 
     Context* m_context;
     VkPipeline m_pipeline;
