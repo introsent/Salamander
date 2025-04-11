@@ -36,7 +36,9 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
+#include "core/framebuffer_manager.h"
 #include "core/swap_chain.h"
+#include "core/swap_chain_image_views.h"
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -135,6 +137,8 @@ private:
     Window* m_window;
     Context* m_context;
     SwapChain* m_swapChain;
+    SwapChainImageViews* m_imageViews;
+    FramebufferManager* m_framebufferManager;
 
     VkRenderPass renderPass;
 
@@ -194,7 +198,10 @@ private:
     void cleanup() {
         vkDeviceWaitIdle(m_context->device());
 
+        delete m_framebufferManager;
+        delete m_imageViews;
         delete m_swapChain;
+        
 
         vkDestroyImageView(m_context->device(), depthImageView, nullptr);
         vmaDestroyImage(allocator, depthImage, depthImageAllocation);
@@ -248,12 +255,13 @@ private:
     void initVulkan() {
         createAllocator();
         m_swapChain = new SwapChain(m_context, m_window);
+        m_imageViews = new SwapChainImageViews(m_context, m_swapChain);
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
         createCommandPool();
         createDepthResources();
-        m_swapChain->createFramebuffers(renderPass, depthImageView);
+        m_framebufferManager = new FramebufferManager(m_context, &m_imageViews->views(), m_swapChain->extent(), renderPass, depthImageView);
         createTextureImage();
         createTextureImageView();
         createTextureSampler();
@@ -828,7 +836,7 @@ private:
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = renderPass;
-        renderPassInfo.framebuffer = m_swapChain->framebuffers()[imageIndex];
+        renderPassInfo.framebuffer = m_framebufferManager->framebuffers()[imageIndex];
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = m_swapChain->extent();
 
@@ -1088,10 +1096,11 @@ private:
         VkExtent2D validExtent = m_window->getValidExtent();
 
         m_swapChain->recreate();
+        m_imageViews->recreate(m_swapChain);
 
         createDepthResources();
 
-        m_swapChain->createFramebuffers(renderPass, depthImageView);
+        m_framebufferManager->recreate(&m_imageViews->views(), m_swapChain->extent(), renderPass, depthImageView);
     }
 
 
@@ -1126,7 +1135,7 @@ private:
         vkWaitForFences(m_context->device(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
         uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(m_context->device(), m_swapChain->swapChain(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+        VkResult result = vkAcquireNextImageKHR(m_context->device(), m_swapChain->handle(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             recreateSwapChain();
@@ -1169,7 +1178,7 @@ private:
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
-        VkSwapchainKHR swapChains[] = { m_swapChain->swapChain()};
+        VkSwapchainKHR swapChains[] = { m_swapChain->handle()};
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
 
