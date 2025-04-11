@@ -8,6 +8,13 @@
 #include "window.h"
 #include "debug_messenger.h"
 
+
+struct SwapChainSupportDetails {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> presentModes;
+};
+
 // simple QueueFamilyIndices structure
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -27,7 +34,7 @@ public:
     Context(Context&&) = delete;
     Context& operator=(Context&&) = delete;
 
-    QueueFamilyIndices findQueueFamilies() const;
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) const;
 
     VkDevice device() const { return m_device; }
     VkPhysicalDevice physicalDevice() const { return m_physicalDevice; }
@@ -37,15 +44,20 @@ public:
     VkInstance instance() const { return m_instance; }
     VkSurfaceKHR surface() const { return m_surface; }
 
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) const;
+
 private:
     void createInstance();
     void createSurface(Window* window);
     void selectPhysicalDevice();
     void createLogicalDevice();
-    
-    static bool checkValidationLayerSupport(const std::vector<const char*>& validationLayers);
-    static std::vector<const char*> getRequiredExtensions(bool enableValidation);
 
+    
+    bool checkValidationLayerSupport() const;
+    bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
+    bool isDeviceSuitable(VkPhysicalDevice device) const;
+
+    static std::vector<const char*> getRequiredExtensions(bool enableValidation);
 	
     VkInstance m_instance = VK_NULL_HANDLE;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;

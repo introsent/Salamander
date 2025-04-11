@@ -23,7 +23,7 @@ void SwapChain::recreate() {
 }
 
 void SwapChain::createSwapChain() {
-    SwapChainSupportDetails swapChainSupport = querySwapChainSupport();
+    SwapChainSupportDetails swapChainSupport = m_context->querySwapChainSupport(m_context->physicalDevice());
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -45,7 +45,7 @@ void SwapChain::createSwapChain() {
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueFamilyIndices indices = m_context->findQueueFamilies();
+    QueueFamilyIndices indices = m_context->findQueueFamilies(m_context->physicalDevice());
     uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(),
                                     indices.presentFamily.value() };
 
@@ -140,33 +140,6 @@ void SwapChain::cleanup() {
         vkDestroySwapchainKHR(m_context->device(), m_swapChain, nullptr);
         m_swapChain = VK_NULL_HANDLE;
     }
-}
-
-SwapChainSupportDetails SwapChain::querySwapChainSupport() const
-{
-    SwapChainSupportDetails details;
-    VkPhysicalDevice physicalDevice = m_context->physicalDevice();
-
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_context->surface(), &details.capabilities);
-
-    uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_context->surface(), &formatCount, nullptr);
-    if (formatCount != 0) {
-        details.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_context->surface(),
-            &formatCount, details.formats.data());
-    }
-
-    uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_context->surface(),
-        &presentModeCount, nullptr);
-    if (presentModeCount != 0) {
-        details.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_context->surface(),
-            &presentModeCount, details.presentModes.data());
-    }
-
-    return details;
 }
 
 VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
