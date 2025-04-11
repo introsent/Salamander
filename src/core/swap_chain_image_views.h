@@ -7,6 +7,10 @@ class SwapChainImageViews final {
 public:
     SwapChainImageViews(Context* context, const SwapChain* swapChain);
     ~SwapChainImageViews();
+    SwapChainImageViews(const SwapChainImageViews&) = delete;
+    SwapChainImageViews& operator=(const SwapChainImageViews&) = delete;
+    SwapChainImageViews(SwapChainImageViews&&) = delete;
+    SwapChainImageViews& operator=(SwapChainImageViews&&) = delete;
 
     const std::vector<VkImageView>& views() const { return m_imageViews; }
     void recreate(const SwapChain* swapChain);
