@@ -8,6 +8,10 @@ class SwapChain final {
 public:
     SwapChain(Context* context, Window* window);
     ~SwapChain();
+    SwapChain(const SwapChain&) = delete;
+    SwapChain& operator=(const SwapChain&) = delete;
+    SwapChain(SwapChain&&) = delete;
+    SwapChain& operator=(SwapChain&&) = delete;
 
     void recreate();
     VkSwapchainKHR handle() const { return m_swapChain; }
