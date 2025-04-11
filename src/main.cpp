@@ -145,9 +145,6 @@ private:
     VmaAllocation depthImageAllocation;
     VkImageView depthImageView = VK_NULL_HANDLE;
 
-
-
-
     void cleanup() {
         vkDeviceWaitIdle(m_context->device());
 
@@ -196,11 +193,6 @@ private:
         delete m_context;
 
         delete m_window;
-    }
-
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-        auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
-        app->framebufferResized = true;
     }
 
 
