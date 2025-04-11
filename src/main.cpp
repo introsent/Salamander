@@ -37,8 +37,8 @@
 #include <glm/gtx/hash.hpp>
 
 #include "core/framebuffer_manager.h"
+#include "core/image_views.h"
 #include "core/swap_chain.h"
-#include "core/swap_chain_image_views.h"
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -137,7 +137,7 @@ private:
     Window* m_window;
     Context* m_context;
     SwapChain* m_swapChain;
-    SwapChainImageViews* m_imageViews;
+    ImageViews* m_imageViews;
     FramebufferManager* m_framebufferManager;
 
     VkRenderPass renderPass;
@@ -255,7 +255,7 @@ private:
     void initVulkan() {
         createAllocator();
         m_swapChain = new SwapChain(m_context, m_window);
-        m_imageViews = new SwapChainImageViews(m_context, m_swapChain);
+        m_imageViews = new ImageViews(m_context, m_swapChain);
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();

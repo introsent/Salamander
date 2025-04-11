@@ -1,22 +1,22 @@
-#include "swap_chain_image_views.h"
+#include "image_views.h"
 #include <stdexcept>
 
-SwapChainImageViews::SwapChainImageViews(Context* context, const SwapChain* swapChain)
+ImageViews::ImageViews(Context* context, const SwapChain* swapChain)
     : m_context(context), m_format(swapChain->format()) {
     createImageViews(swapChain);
 }
 
-SwapChainImageViews::~SwapChainImageViews() {
+ImageViews::~ImageViews() {
     cleanup();
 }
 
-void SwapChainImageViews::recreate(const SwapChain* swapChain) {
+void ImageViews::recreate(const SwapChain* swapChain) {
     cleanup();
     m_format = swapChain->format();
     createImageViews(swapChain);
 }
 
-void SwapChainImageViews::createImageViews(const SwapChain* swapChain) {
+void ImageViews::createImageViews(const SwapChain* swapChain) {
     const auto& images = swapChain->images();
     m_imageViews.resize(images.size());
 
@@ -42,7 +42,7 @@ void SwapChainImageViews::createImageViews(const SwapChain* swapChain) {
     }
 }
 
-void SwapChainImageViews::cleanup() {
+void ImageViews::cleanup() {
     for (auto imageView : m_imageViews) {
         vkDestroyImageView(m_context->device(), imageView, nullptr);
     }
