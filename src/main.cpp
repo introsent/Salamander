@@ -191,13 +191,24 @@ private:
         m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
         m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
         m_textureManager = new TextureManager(m_context->device(), allocator, m_commandManager, m_bufferManager);
-        createDepthResources();
+        m_depthImage = m_textureManager->createTexture(
+            m_swapChain->extent().width,
+            m_swapChain->extent().height,
+            findDepthFormat(),
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
+            false // no sampler needed for depth
+        );
         m_framebufferManager = new FramebufferManager(m_context, &m_imageViews->views(), m_swapChain->extent(), renderPass, m_depthImage.view);
-    	createTextureImage();
+        m_textureImage = m_textureManager->loadTexture(TEXTURE_PATH);
+
         loadModel();
+
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
+
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffer();
@@ -243,20 +254,6 @@ private:
         }
     }
 
-    void createDepthResources() {
-        VkFormat depthFormat = findDepthFormat();
-
-        m_depthImage = m_textureManager->createTexture(
-            m_swapChain->extent().width,
-            m_swapChain->extent().height,
-            depthFormat,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            VK_IMAGE_ASPECT_DEPTH_BIT,
-            false // no sampler needed for depth
-        );
-    }
-
     VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
         for (VkFormat format : candidates) {
             VkFormatProperties props;
@@ -284,10 +281,7 @@ private:
     bool hasStencilComponent(VkFormat format) {
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
-   
-    void createTextureImage() {
-        m_textureImage = m_textureManager->loadTexture(TEXTURE_PATH);
-    }
+
     
     void createDescriptorSets() {
         std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
@@ -493,8 +487,6 @@ private:
         }
     }
 
-
-
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -645,7 +637,15 @@ private:
         m_swapChain->recreate();
         m_imageViews->recreate(m_swapChain);
 
-        createDepthResources();
+        m_depthImage = m_textureManager->createTexture(
+            m_swapChain->extent().width,
+            m_swapChain->extent().height,
+            findDepthFormat(),
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
+            false // no sampler needed for depth
+        );
 
         m_framebufferManager->recreate(&m_imageViews->views(), m_swapChain->extent(), renderPass, m_depthImage.view);
     }
