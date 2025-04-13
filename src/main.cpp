@@ -39,6 +39,10 @@
 #include "core/swap_chain.h"
 #include "rendering/pipeline.h"
 
+#include "resources/command_manager.h"
+#include "resources/buffer_manager.h"
+#include "resources/texture_manager.h"
+
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
