@@ -22,6 +22,8 @@ public:
     VkSampler sampler() const { return m_sampler; }
     VkImage image() const { return m_image; }
 
+ 
+
 private:
     void createImage(uint32_t width, uint32_t height, VkFormat format,
         VkImageTiling tiling, VkImageUsageFlags usage,

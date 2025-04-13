@@ -28,38 +28,43 @@ void TextureManager::loadTexture(const std::string& filepath) {
 
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
-    // Create staging buffer
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingAlloc;
-    m_bufferManager->createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingAlloc);
+    ManagedBuffer staging = m_bufferManager->createBuffer(
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU
+    );
 
     void* data;
-    vmaMapMemory(m_allocator, stagingAlloc, &data);
+    vmaMapMemory(m_allocator, staging.allocation, &data);
     memcpy(data, pixels, static_cast<size_t>(imageSize));
-    vmaUnmapMemory(m_allocator, stagingAlloc);
+    vmaUnmapMemory(m_allocator, staging.allocation);
 
     stbi_image_free(pixels);
 
-    // Create GPU-only image
-    createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB,
+    createImage(
+        texWidth,
+        texHeight,
+        VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY, m_image, m_allocation);
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        m_image,
+        m_allocation
+    );
 
     transitionImageLayout(m_image, VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    copyBufferToImage(stagingBuffer, m_image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    copyBufferToImage(staging.buffer, m_image,
+        static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
     transitionImageLayout(m_image, VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    vmaDestroyBuffer(m_allocator, stagingBuffer, stagingAlloc);
-
     m_imageView = createImageView(m_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     createSampler();
 }
+
 
 void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat format,
     VkImageTiling tiling, VkImageUsageFlags usage,
