@@ -113,34 +113,17 @@ private:
 
     bool framebufferResized = false;
 
-    // VMA Allocator
     VmaAllocator allocator;
 
     CommandManager* m_commandManager = nullptr;
     BufferManager* m_bufferManager = nullptr;
     TextureManager* m_textureManager = nullptr;
 
-
-    // Vertex buffer and its allocation handle managed by VMA
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
     ManagedBuffer m_vertexBuffer;
-    //VkBuffer vertexBuffer;
-    //VmaAllocation vertexBufferAllocation;
-
-    //ManagedBuffer m_stagingBuffer;
-    //VkBuffer stagingBuffer;
-    //VmaAllocation stagingBufferAllocation;
-
-
     ManagedBuffer m_indexBuffer;
-    //VkBuffer indexBuffer;
-    //VmaAllocation indexBufferAllocation;
-
-    //std::vector<VkBuffer> uniformBuffers;
-    //std::vector< VmaAllocation> uniformBufferAllocations;
-    //std::vector<void*> uniformBuffersMapped;
     std::vector<ManagedBuffer> m_uniformBuffers;
     std::vector<void*> uniformBuffersMapped;
 
@@ -150,23 +133,11 @@ private:
 
 
     ManagedTexture m_textureImage;
-    //VkImage textureImage;
-    //VmaAllocation textureImageAllocation;
-    // 
-    //VkImageView textureImageView;
-
-    //VkSampler textureSampler;
-
     ManagedTexture m_depthImage;
-    //VkImage depthImage = VK_NULL_HANDLE;
-    //VmaAllocation depthImageAllocation;
-    //VkImageView depthImageView = VK_NULL_HANDLE;
 
     void cleanup() {
-        // Wait until the device is idle so no commands are pending.
         vkDeviceWaitIdle(m_context->device());
 
-        // Remove manual cleanup of uniform buffers here:
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             if (uniformBuffersMapped[i]) {
                 vmaUnmapMemory(allocator, m_uniformBuffers[i].allocation);
@@ -174,28 +145,18 @@ private:
             }
         }
 
-
-        // Destroy managers that encapsulate resources.
-        // Their destructors should handle all internal resources.
-        delete m_textureManager;      // TextureManager cleans its own textures.
-        delete m_bufferManager;         // BufferManager cleans up all buffers it created.
+        delete m_textureManager;    
+        delete m_bufferManager;         
         delete m_commandManager;
 
-        // Destroy higher-level objects that depend on the swap chain.
         delete m_framebufferManager;
         delete m_imageViews;
         delete m_swapChain;
 
-        // Destroy depth image resources.
-        //vkDestroyImageView(m_context->device(), m_depthImage.view, nullptr);
-        //vmaDestroyImage(allocator, m_depthImage.image, m_depthImage.allocation);
-
-        // Destroy the graphics pipeline.
         delete m_pipeline;
 
         // Destroy the render pass.
         vkDestroyRenderPass(m_context->device(), renderPass, nullptr);
-
        
         // Destroy descriptor objects.
         vkDestroyDescriptorPool(m_context->device(), descriptorPool, nullptr);
@@ -208,13 +169,10 @@ private:
             vkDestroyFence(m_context->device(), inFlightFences[i], nullptr);
         }
 
-        // Destroy the command pool.
         vkDestroyCommandPool(m_context->device(), commandPool, nullptr);
 
-        // Finally, destroy the VMA allocator before destroying the device.
         vmaDestroyAllocator(allocator);
 
-        // Now, clean up the context and window.
         delete m_context;
         delete m_window;
     }
@@ -285,48 +243,9 @@ private:
         }
     }
 
-    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
-        VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
-        VkImage& image, VmaAllocation& allocation) {
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.width = width;
-        imageInfo.extent.height = height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.format = format;
-        imageInfo.tiling = tiling;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = usage;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        VmaAllocationCreateInfo allocInfo{};
-        allocInfo.usage = memoryUsage;
-
-        // 'allocator' must be a valid VmaAllocator. 
-        if (vmaCreateImage(allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create image!");
-        }
-    }
-
     void createDepthResources() {
         VkFormat depthFormat = findDepthFormat();
 
-        // Destroy old depth image if it exists
-        if (m_depthImage.image) {
-            vmaDestroyImage(allocator, m_depthImage.image, m_depthImage.allocation);
-            m_depthImage.image = VK_NULL_HANDLE;
-            m_depthImage.allocation = nullptr;
-        }
-        if (m_depthImage.view) {
-            vkDestroyImageView(m_context->device(), m_depthImage.view, nullptr);
-            m_depthImage.view = VK_NULL_HANDLE;
-        }
-
-        // Create new depth image using the texture manager
         m_depthImage = m_textureManager->createTexture(
             m_swapChain->extent().width,
             m_swapChain->extent().height,
@@ -361,124 +280,14 @@ private:
             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
         );
     }
-	
 
     bool hasStencilComponent(VkFormat format) {
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
-
-
-
-    VkCommandBuffer beginSingleTimeCommands() {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(m_context->device(), &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-        return commandBuffer;
-    }
-
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(m_context->graphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(m_context->graphicsQueue());
-
-        vkFreeCommandBuffers(m_context->device(), commandPool, 1, &commandBuffer);
-    }
-
-
-    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-        VkImageMemoryBarrier barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.oldLayout = oldLayout;
-        barrier.newLayout = newLayout;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = image;
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
-
-        VkPipelineStageFlags sourceStage;
-        VkPipelineStageFlags destinationStage;
-
-        if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-            barrier.srcAccessMask = 0;
-            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        }
-        else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-            sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-            destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        }
-        else {
-            throw std::invalid_argument("unsupported layout transition!");
-        }
-
-        vkCmdPipelineBarrier(
-            commandBuffer,
-            sourceStage, destinationStage,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &barrier
-        );
-
-        endSingleTimeCommands(commandBuffer);
-    }
-
-    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-        VkBufferImageCopy region{};
-        region.bufferOffset = 0;
-        region.bufferRowLength = 0;
-        region.bufferImageHeight = 0;
-        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.imageSubresource.mipLevel = 0;
-        region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount = 1;
-        region.imageOffset = { 0, 0, 0 };
-        region.imageExtent = {
-            width,
-            height,
-            1
-        };
-
-        vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-        endSingleTimeCommands(commandBuffer);
-    }
-
+   
     void createTextureImage() {
         m_textureImage = m_textureManager->loadTexture(TEXTURE_PATH);
     }
-
     
     void createDescriptorSets() {
         std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
@@ -597,41 +406,35 @@ private:
     void createIndexBuffer() {
         VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-        // Create staging buffer (CPU-visible)
         ManagedBuffer staging = m_bufferManager->createBuffer(
             bufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VMA_MEMORY_USAGE_CPU_TO_GPU
         );
 
-        // Copy data to staging buffer
         void* data;
         vmaMapMemory(allocator, staging.allocation, &data);
         memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
         vmaUnmapMemory(allocator, staging.allocation);
 
-        // Create GPU-only index buffer
         m_indexBuffer = m_bufferManager->createBuffer(
             bufferSize,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY
         );
 
-        // Copy from staging to device-local buffer
         m_bufferManager->copyBuffer(staging.buffer, m_indexBuffer.buffer, bufferSize);
     }
 
     void createVertexBuffer() {
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-        // Create a staging buffer in CPU-visible memory
         ManagedBuffer staging = m_bufferManager->createBuffer(
             bufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VMA_MEMORY_USAGE_CPU_TO_GPU
         );
 
-        // Copy vertex data to the staging buffer
         void* data;
         vmaMapMemory(allocator, staging.allocation, &data);
         memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
@@ -941,21 +744,6 @@ private:
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
-
-   
-
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData) {
-
-        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-        return VK_FALSE;
-    }
-
-
 
     static std::vector<char> readFile(const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
