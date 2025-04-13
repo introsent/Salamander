@@ -61,7 +61,7 @@ set(${PROJECT_NAME}_SOURCES
     "src/core/debug_messenger.h" 
     "src/core/debug_messenger.cpp" 
     "src/core/swap_chain.h"
-    "src/core/swap_chain.cpp" "src/core/image_views.h" "src/core/image_views.cpp" "src/core/framebuffer_manager.h" "src/core/framebuffer_manager.cpp" "src/rendering/pipeline.h" "src/rendering/pipeline.cpp" "src/rendering/pipeline_config.h" "src/rendering/pipeline_config.cpp" "src/core/data_structures.h"  "src/resources/command_manager.h" "src/resources/command_manager.cpp")
+    "src/core/swap_chain.cpp" "src/core/image_views.h" "src/core/image_views.cpp" "src/core/framebuffer_manager.h" "src/core/framebuffer_manager.cpp" "src/rendering/pipeline.h" "src/rendering/pipeline.cpp" "src/rendering/pipeline_config.h" "src/rendering/pipeline_config.cpp" "src/core/data_structures.h"  "src/resources/command_manager.h" "src/resources/command_manager.cpp" "src/resources/buffer_manager.h" "src/resources/buffer_manager.cpp")
 
 # Add the project executable
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
