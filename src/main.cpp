@@ -8,8 +8,6 @@
 
 #include "vk_mem_alloc.h" // Include the VMA header
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -118,86 +116,106 @@ private:
     // VMA Allocator
     VmaAllocator allocator;
 
+    CommandManager* m_commandManager = nullptr;
+    BufferManager* m_bufferManager = nullptr;
+    TextureManager* m_textureManager = nullptr;
+
+
     // Vertex buffer and its allocation handle managed by VMA
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    VkBuffer vertexBuffer;
-    VmaAllocation vertexBufferAllocation;
 
-    VkBuffer stagingBuffer;
-    VmaAllocation stagingBufferAllocation;
+    ManagedBuffer m_vertexBuffer;
+    //VkBuffer vertexBuffer;
+    //VmaAllocation vertexBufferAllocation;
 
-    VkBuffer indexBuffer;
-    VmaAllocation indexBufferAllocation;
+    //ManagedBuffer m_stagingBuffer;
+    //VkBuffer stagingBuffer;
+    //VmaAllocation stagingBufferAllocation;
 
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector< VmaAllocation> uniformBufferAllocations;
+
+    ManagedBuffer m_indexBuffer;
+    //VkBuffer indexBuffer;
+    //VmaAllocation indexBufferAllocation;
+
+    //std::vector<VkBuffer> uniformBuffers;
+    //std::vector< VmaAllocation> uniformBufferAllocations;
+    //std::vector<void*> uniformBuffersMapped;
+    std::vector<ManagedBuffer> m_uniformBuffers;
     std::vector<void*> uniformBuffersMapped;
 
     VkDescriptorPool descriptorPool;
 
     std::vector<VkDescriptorSet> descriptorSets;
 
-    VkImage textureImage;
-    VmaAllocation textureImageAllocation;
-     
-    VkImageView textureImageView;
+    //VkImage textureImage;
+    //VmaAllocation textureImageAllocation;
+    // 
+    //VkImageView textureImageView;
 
-    VkSampler textureSampler;
+    //VkSampler textureSampler;
 
     VkImage depthImage = VK_NULL_HANDLE;
     VmaAllocation depthImageAllocation;
     VkImageView depthImageView = VK_NULL_HANDLE;
 
     void cleanup() {
+        // Wait until the device is idle so no commands are pending.
         vkDeviceWaitIdle(m_context->device());
 
+        // Remove manual cleanup of uniform buffers here:
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            if (uniformBuffersMapped[i]) {
+                vmaUnmapMemory(allocator, m_uniformBuffers[i].allocation);
+                uniformBuffersMapped[i] = nullptr;
+            }
+        }
+
+
+        // Destroy managers that encapsulate resources.
+        // Their destructors should handle all internal resources.
+        delete m_textureManager;      // TextureManager cleans its own textures.
+        delete m_bufferManager;         // BufferManager cleans up all buffers it created.
+        delete m_commandManager;
+
+        // Destroy higher-level objects that depend on the swap chain.
         delete m_framebufferManager;
         delete m_imageViews;
         delete m_swapChain;
-        
 
+        // Destroy depth image resources.
         vkDestroyImageView(m_context->device(), depthImageView, nullptr);
         vmaDestroyImage(allocator, depthImage, depthImageAllocation);
 
-        vkDestroySampler(m_context->device(), textureSampler, nullptr);
-        vkDestroyImageView(m_context->device(), textureImageView, nullptr);
-        vmaDestroyImage(allocator, textureImage, textureImageAllocation);
-
+        // Destroy the graphics pipeline.
         delete m_pipeline;
 
+        // Destroy the render pass.
         vkDestroyRenderPass(m_context->device(), renderPass, nullptr);
 
-        // Unmap and destroy uniform buffers
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (uniformBuffersMapped[i] != nullptr) {
-                vmaUnmapMemory(allocator, uniformBufferAllocations[i]);
-                uniformBuffersMapped[i] = nullptr;
-            }
-            vmaDestroyBuffer(allocator, uniformBuffers[i], uniformBufferAllocations[i]);
-        }
-
+       
+        // Destroy descriptor objects.
         vkDestroyDescriptorPool(m_context->device(), descriptorPool, nullptr);
         vkDestroyDescriptorSetLayout(m_context->device(), descriptorSetLayout, nullptr);
 
-        vmaDestroyBuffer(allocator, indexBuffer, indexBufferAllocation);
-        vmaDestroyBuffer(allocator, vertexBuffer, vertexBufferAllocation);
-
+        // Destroy synchronization objects.
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(m_context->device(), renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(m_context->device(), imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(m_context->device(), inFlightFences[i], nullptr);
         }
 
+        // Destroy the command pool.
         vkDestroyCommandPool(m_context->device(), commandPool, nullptr);
 
-        // Finally, destroy the VMA allocator before destroying the device
+        // Finally, destroy the VMA allocator before destroying the device.
         vmaDestroyAllocator(allocator);
 
+        // Now, clean up the context and window.
         delete m_context;
-
         delete m_window;
     }
+
 
 
     void initVulkan() {
@@ -211,9 +229,12 @@ private:
         createCommandPool();
         createDepthResources();
         m_framebufferManager = new FramebufferManager(m_context, &m_imageViews->views(), m_swapChain->extent(), renderPass, depthImageView);
-        createTextureImage();
-        createTextureImageView();
-        createTextureSampler();
+        m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
+        m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
+        m_textureManager = new TextureManager(m_context->device(), allocator, m_commandManager, m_bufferManager);
+    	createTextureImage();
+        //createTextureImageView();
+        //createTextureSampler();
         loadModel();
         createVertexBuffer();
         createIndexBuffer();
@@ -263,6 +284,33 @@ private:
         }
     }
 
+    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+        VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
+        VkImage& image, VmaAllocation& allocation) {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = format;
+        imageInfo.tiling = tiling;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo allocInfo{};
+        allocInfo.usage = memoryUsage;
+
+        // 'allocator' must be a valid VmaAllocator. 
+        if (vmaCreateImage(allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image!");
+        }
+    }
+
     void createDepthResources() {
         VkFormat depthFormat = findDepthFormat();
         if (depthImage)
@@ -308,85 +356,6 @@ private:
 
     bool hasStencilComponent(VkFormat format) {
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-    }
-
-
-
-    void createTextureSampler()
-    {
-        VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(m_context->physicalDevice(), &properties);
-
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-        if (vkCreateSampler(m_context->device(), &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create texture sampler!");
-        }
-    }
-
-    void createTextureImageView()
-    {
-        textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-    }
-
-    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
-        VkImageViewCreateInfo viewInfo{};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = image;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = format;
-        viewInfo.subresourceRange.aspectMask = aspectFlags;
-        viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
-        viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
-
-        VkImageView imageView;
-        if (vkCreateImageView(m_context->device(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create texture image view!");
-        }
-
-        return imageView;
-    }
-
-    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
-        VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
-        VkImage& image, VmaAllocation& allocation) {
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.width = width;
-        imageInfo.extent.height = height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.format = format;
-        imageInfo.tiling = tiling;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = usage;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        VmaAllocationCreateInfo allocInfo{};
-        allocInfo.usage = memoryUsage;
-
-        // 'allocator' must be a valid VmaAllocator. 
-        if (vmaCreateImage(allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create image!");
-        }
     }
 
 
@@ -498,48 +467,7 @@ private:
     }
 
     void createTextureImage() {
-        int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-        if (!pixels) {
-            throw std::runtime_error("failed to load texture image!");
-        }
-
-        // Create a staging buffer in host-visible memory using VMA.
-        VkBuffer stagingBuffer;
-        VmaAllocation stagingBufferAllocation;
-        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation);
-
-        // Map the staging buffer and copy pixel data.
-        void* data;
-        vmaMapMemory(allocator, stagingBufferAllocation, &data);
-        memcpy(data, pixels, static_cast<size_t>(imageSize));
-        vmaUnmapMemory(allocator, stagingBufferAllocation);
-
-        // Free the original pixel data.
-        stbi_image_free(pixels);
-
-        // Create the texture image in GPU-only memory using VMA.
-        createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY, textureImage, textureImageAllocation);
-
-        // Transition the texture image from UNDEFINED to TRANSFER_DST_OPTIMAL.
-        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-        // Copy the staging buffer data to the texture image.
-        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth),
-            static_cast<uint32_t>(texHeight));
-
-        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        // Clean up the staging buffer using VMA.
-        vmaDestroyBuffer(allocator, stagingBuffer, stagingBufferAllocation);
+        m_textureManager->loadTexture(TEXTURE_PATH);
     }
 
     
@@ -558,14 +486,14 @@ private:
     
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.buffer = m_uniformBuffers[i].buffer;
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
     
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = textureImageView;
-            imageInfo.sampler = textureSampler;
+            imageInfo.imageView = m_textureManager->imageView();
+            imageInfo.sampler = m_textureManager->sampler();
     
             std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
     
@@ -609,21 +537,24 @@ private:
     }
 
 
-    void createUniformBuffers()
-    {
+    void createUniformBuffers() {
         VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBufferAllocations.resize(MAX_FRAMES_IN_FLIGHT);
+        m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
         uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            // Allocate with CPU_TO_GPU so that the buffer is host visible and coherent
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
-                uniformBuffers[i], uniformBufferAllocations[i]);
+            // Create and track the uniform buffer
+            m_uniformBuffers[i] = m_bufferManager->createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU
+            );
 
-            // Persistently map the buffer so we can update it each frame without mapping/unmapping every time
-            vmaMapMemory(allocator, uniformBufferAllocations[i], &uniformBuffersMapped[i]);
+            // Persistently map it
+            void* mappedData = nullptr;
+            vmaMapMemory(allocator, m_uniformBuffers[i].allocation, &mappedData);
+            uniformBuffersMapped[i] = mappedData;
         }
     }
 
@@ -653,75 +584,53 @@ private:
         }
     }
 
-    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& allocation) {
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        VmaAllocationCreateInfo allocInfo{};
-        allocInfo.usage = memoryUsage;
-
-        if (vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &buffer, &allocation, nullptr) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create buffer!");
-        }
-    }
-
 
     void createIndexBuffer() {
         VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-        VkBuffer stagingBuffer;
-        VmaAllocation stagingBufferAllocation;
-        // Create a staging buffer in CPU-visible memory for the indices
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation);
+        // Create staging buffer (CPU-visible)
+        ManagedBuffer staging = m_bufferManager->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU
+        );
 
-        // Copy the index data to the staging buffer
+        // Copy data to staging buffer
         void* data;
-        vmaMapMemory(allocator, stagingBufferAllocation, &data);
+        vmaMapMemory(allocator, staging.allocation, &data);
         memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(allocator, stagingBufferAllocation);
+        vmaUnmapMemory(allocator, staging.allocation);
 
-        // Create the device-local index buffer
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY, indexBuffer, indexBufferAllocation);
+        // Create GPU-only index buffer
+        m_indexBuffer = m_bufferManager->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY
+        );
 
-        // Copy data from the staging buffer to the device-local index buffer
-        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-        // Clean up the staging buffer
-        vmaDestroyBuffer(allocator, stagingBuffer, stagingBufferAllocation);
+        // Copy from staging to device-local buffer
+        m_bufferManager->copyBuffer(staging.buffer, m_indexBuffer.buffer, bufferSize);
     }
 
     void createVertexBuffer() {
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
         // Create a staging buffer in CPU-visible memory
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation);
+        ManagedBuffer staging = m_bufferManager->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU
+        );
 
         // Copy vertex data to the staging buffer
         void* data;
-        vmaMapMemory(allocator, stagingBufferAllocation, &data);
+        vmaMapMemory(allocator, staging.allocation, &data);
         memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(allocator, stagingBufferAllocation);
+        vmaUnmapMemory(allocator, staging.allocation);
 
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, vertexBuffer, vertexBufferAllocation);
+        m_vertexBuffer = m_bufferManager->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 
-        copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-        vmaDestroyBuffer(allocator, stagingBuffer, stagingBufferAllocation);
-    }
-
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        endSingleTimeCommands(commandBuffer);
+        m_bufferManager->copyBuffer(staging.buffer, m_vertexBuffer.buffer, bufferSize);
     }
 
     void createAllocator() {
@@ -814,11 +723,11 @@ private:
         scissor.extent = m_swapChain->extent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { vertexBuffer };
+        VkBuffer vertexBuffers[] = { m_vertexBuffer.buffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->layout(), 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
