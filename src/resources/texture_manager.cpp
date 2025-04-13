@@ -1,6 +1,7 @@
 #include "texture_manager.h"
 #include "buffer_manager.h"
 #include "command_manager.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb_image.h"
 
@@ -9,7 +10,8 @@
 
 TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
     CommandManager* commandManager, BufferManager* bufferManager)
-    : m_device(device), m_allocator(allocator), m_commandManager(commandManager), m_bufferManager(bufferManager) {
+    : m_device(device), m_allocator(allocator),
+    m_commandManager(commandManager), m_bufferManager(bufferManager) {
 }
 
 TextureManager::~TextureManager() {
@@ -18,6 +20,7 @@ TextureManager::~TextureManager() {
         if (tex.view)     vkDestroyImageView(m_device, tex.view, nullptr);
         if (tex.image)    vmaDestroyImage(m_allocator, tex.image, tex.allocation);
     }
+    m_managedTextures.clear();
 }
 
 ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
@@ -27,11 +30,8 @@ ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
 
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
-    // Create staging buffer
     ManagedBuffer staging = m_bufferManager->createBuffer(
-        imageSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU
+        imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
     );
 
     void* data;
@@ -40,28 +40,10 @@ ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
     vmaUnmapMemory(m_allocator, staging.allocation);
     stbi_image_free(pixels);
 
-    // Create GPU image and managed texture
     ManagedTexture texture;
-
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent = { static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1 };
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-    if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo, &texture.image, &texture.allocation, nullptr) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create texture image!");
-    }
+    createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY, texture.image, texture.allocation);
 
     transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -69,23 +51,76 @@ ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
     transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    // Create view
+    texture.view = createImageView(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    texture.sampler = createSampler();
+
+    m_managedTextures.push_back(texture);
+    return m_managedTextures.back();
+}
+
+ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, VkFormat format,
+    VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler)
+{
+    ManagedTexture texture;
+
+    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL, usage, memoryUsage,
+        texture.image, texture.allocation);
+    texture.view = createImageView(texture.image, format, aspect);
+
+    if (createSampler) {
+        texture.sampler = TextureManager::createSampler();
+    }
+
+    m_managedTextures.push_back(texture);
+    return m_managedTextures.back();
+}
+
+void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat format,
+    VkImageTiling tiling, VkImageUsageFlags usage,
+    VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation) const
+{
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent = { width, height, 1 };
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = usage;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = memoryUsage;
+
+    if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create Vulkan image!");
+    }
+}
+
+VkImageView TextureManager::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) const {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = texture.image;
+    viewInfo.image = image;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = aspectFlags;
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    if (vkCreateImageView(m_device, &viewInfo, nullptr, &texture.view) != VK_SUCCESS) {
+    VkImageView imageView;
+    if (vkCreateImageView(m_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create image view!");
     }
 
-    // Create sampler
+    return imageView;
+}
+
+VkSampler TextureManager::createSampler() const {
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -99,78 +134,17 @@ ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-    if (vkCreateSampler(m_device, &samplerInfo, nullptr, &texture.sampler) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create texture sampler!");
+    VkSampler sampler;
+    if (vkCreateSampler(m_device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create sampler!");
     }
 
-    m_managedTextures.push_back(texture);
-    return m_managedTextures.back();
+    return sampler;
 }
 
-ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, VkFormat format,
-    VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler)
+void TextureManager::transitionImageLayout(VkImage image, VkFormat format,
+    VkImageLayout oldLayout, VkImageLayout newLayout) const
 {
-    ManagedTexture texture;
-
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent = { width, height, 1 };
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.format = format;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = usage;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = memoryUsage;
-
-    if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo, &texture.image, &texture.allocation, nullptr) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create generic image!");
-    }
-
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = texture.image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = format;
-    viewInfo.subresourceRange.aspectMask = aspect;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    if (vkCreateImageView(m_device, &viewInfo, nullptr, &texture.view) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create image view!");
-    }
-
-    if (createSampler) {
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = 16.0f;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-        if (vkCreateSampler(m_device, &samplerInfo, nullptr, &texture.sampler) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create sampler!");
-        }
-    }
-
-    m_managedTextures.push_back(texture);
-    return m_managedTextures.back();
-}
-
-void TextureManager::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) const {
     VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
 
     VkImageMemoryBarrier barrier{};
@@ -195,7 +169,8 @@ void TextureManager::transitionImageLayout(VkImage image, VkFormat format, VkIma
         sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     }
-    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
