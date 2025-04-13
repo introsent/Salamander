@@ -2,10 +2,19 @@
 
 #include <vulkan/vulkan.h>
 #include <string>
+#include <vector>
+
 #include "vk_mem_alloc.h"
 
 class CommandManager;
 class BufferManager;
+
+struct ManagedTexture {
+    VkImage image = VK_NULL_HANDLE;
+    VmaAllocation allocation = nullptr;
+    VkImageView view = VK_NULL_HANDLE;
+    VkSampler sampler = VK_NULL_HANDLE; // optional, null for non-sampled textures
+};
 
 class TextureManager {
 public:
@@ -16,13 +25,11 @@ public:
     TextureManager(TextureManager&&) = delete;
     TextureManager& operator=(TextureManager&&) = delete;
 
-    void loadTexture(const std::string& filepath);
+    ManagedTexture& loadTexture(const std::string& filepath);
+    ManagedTexture& createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage,
+                                  VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler);
 
-    VkImageView imageView() const { return m_imageView; }
-    VkSampler sampler() const { return m_sampler; }
-    VkImage image() const { return m_image; }
-
- 
+    const std::vector<ManagedTexture>& getTextures() const { return m_managedTextures; }
 
 private:
     void createImage(uint32_t width, uint32_t height, VkFormat format,
@@ -39,8 +46,6 @@ private:
     CommandManager* m_commandManager;
     BufferManager* m_bufferManager;
 
-    VkImage m_image = VK_NULL_HANDLE;
-    VmaAllocation m_allocation = nullptr;
-    VkImageView m_imageView = VK_NULL_HANDLE;
-    VkSampler m_sampler = VK_NULL_HANDLE;
+    std::vector<ManagedTexture> m_managedTextures;
+
 };

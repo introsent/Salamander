@@ -148,6 +148,8 @@ private:
 
     std::vector<VkDescriptorSet> descriptorSets;
 
+
+    ManagedTexture m_textureImage;
     //VkImage textureImage;
     //VmaAllocation textureImageAllocation;
     // 
@@ -155,9 +157,10 @@ private:
 
     //VkSampler textureSampler;
 
-    VkImage depthImage = VK_NULL_HANDLE;
-    VmaAllocation depthImageAllocation;
-    VkImageView depthImageView = VK_NULL_HANDLE;
+    ManagedTexture m_depthImage;
+    //VkImage depthImage = VK_NULL_HANDLE;
+    //VmaAllocation depthImageAllocation;
+    //VkImageView depthImageView = VK_NULL_HANDLE;
 
     void cleanup() {
         // Wait until the device is idle so no commands are pending.
@@ -184,8 +187,8 @@ private:
         delete m_swapChain;
 
         // Destroy depth image resources.
-        vkDestroyImageView(m_context->device(), depthImageView, nullptr);
-        vmaDestroyImage(allocator, depthImage, depthImageAllocation);
+        //vkDestroyImageView(m_context->device(), m_depthImage.view, nullptr);
+        //vmaDestroyImage(allocator, m_depthImage.image, m_depthImage.allocation);
 
         // Destroy the graphics pipeline.
         delete m_pipeline;
@@ -227,14 +230,12 @@ private:
         PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
         m_pipeline = new Pipeline(m_context, renderPass, descriptorSetLayout, configDefault);
         createCommandPool();
-        createDepthResources();
-        m_framebufferManager = new FramebufferManager(m_context, &m_imageViews->views(), m_swapChain->extent(), renderPass, depthImageView);
         m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
         m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
         m_textureManager = new TextureManager(m_context->device(), allocator, m_commandManager, m_bufferManager);
+        createDepthResources();
+        m_framebufferManager = new FramebufferManager(m_context, &m_imageViews->views(), m_swapChain->extent(), renderPass, m_depthImage.view);
     	createTextureImage();
-        //createTextureImageView();
-        //createTextureSampler();
         loadModel();
         createVertexBuffer();
         createIndexBuffer();
@@ -313,20 +314,28 @@ private:
 
     void createDepthResources() {
         VkFormat depthFormat = findDepthFormat();
-        if (depthImage)
-        {
-            vmaDestroyImage(allocator, depthImage, depthImageAllocation);
+
+        // Destroy old depth image if it exists
+        if (m_depthImage.image) {
+            vmaDestroyImage(allocator, m_depthImage.image, m_depthImage.allocation);
+            m_depthImage.image = VK_NULL_HANDLE;
+            m_depthImage.allocation = nullptr;
         }
-        if (depthImageView)
-        {
-            vkDestroyImageView(m_context->device(), depthImageView, nullptr);
+        if (m_depthImage.view) {
+            vkDestroyImageView(m_context->device(), m_depthImage.view, nullptr);
+            m_depthImage.view = VK_NULL_HANDLE;
         }
-        createImage(m_swapChain->extent().width, m_swapChain->extent().height, depthFormat,
-            VK_IMAGE_TILING_OPTIMAL,
+
+        // Create new depth image using the texture manager
+        m_depthImage = m_textureManager->createTexture(
+            m_swapChain->extent().width,
+            m_swapChain->extent().height,
+            depthFormat,
             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY, // Use VMA's enum for GPU-only memory.
-            depthImage, depthImageAllocation);
-        depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
+            false // no sampler needed for depth
+        );
     }
 
     VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
@@ -467,7 +476,7 @@ private:
     }
 
     void createTextureImage() {
-        m_textureManager->loadTexture(TEXTURE_PATH);
+        m_textureImage = m_textureManager->loadTexture(TEXTURE_PATH);
     }
 
     
@@ -492,8 +501,8 @@ private:
     
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = m_textureManager->imageView();
-            imageInfo.sampler = m_textureManager->sampler();
+            imageInfo.imageView = m_textureImage.view;
+            imageInfo.sampler = m_textureImage.sampler;
     
             std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
     
@@ -515,7 +524,7 @@ private:
     
             vkUpdateDescriptorSets(m_context->device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         }
-    }
+    }   
     
 
     void createDescriptorPool() {
@@ -835,7 +844,7 @@ private:
 
         createDepthResources();
 
-        m_framebufferManager->recreate(&m_imageViews->views(), m_swapChain->extent(), renderPass, depthImageView);
+        m_framebufferManager->recreate(&m_imageViews->views(), m_swapChain->extent(), renderPass, m_depthImage.view);
     }
 
 
