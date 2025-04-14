@@ -33,6 +33,7 @@
 #include "core/framebuffer_manager.h"
 #include "core/image_views.h"
 #include "core/swap_chain.h"
+#include "rendering/depth_format.h"
 
 #include "rendering/descriptor_manager.h"
 #include "rendering/descriptor_set_layout.h"
@@ -94,6 +95,8 @@ private:
     RenderPass* m_renderPass;
     DescriptorSetLayout* m_descriptorSetLayout;
 
+    DepthFormat* m_depthFormat;
+
     Pipeline* m_pipeline;
 
     VkCommandPool commandPool;
@@ -120,7 +123,7 @@ private:
     std::vector<ManagedBuffer> m_uniformBuffers;
     std::vector<void*> uniformBuffersMapped;
 
-    DescriptorManager* m_descriptorManager;
+    DescriptorManager* m_descriptorManager = nullptr;
 
     ManagedTexture m_textureImage;
     ManagedTexture m_depthImage;
@@ -164,15 +167,17 @@ private:
 
         delete m_context;
         delete m_window;
+
+		delete m_depthFormat;
     }
-
-
 
     void initVulkan() {
         createAllocator();
         m_swapChain = new SwapChain(m_context, m_window);
         m_imageViews = new ImageViews(m_context, m_swapChain);
-        m_renderPass = new RenderPass(m_context, m_swapChain->format(), findDepthFormat()); 
+        m_depthFormat = new DepthFormat(m_context->physicalDevice());
+
+        m_renderPass = new RenderPass(m_context, m_swapChain->format(), m_depthFormat->handle()); 
         m_descriptorSetLayout = new DescriptorSetLayout(m_context);
         PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
         m_pipeline = new Pipeline(m_context, m_renderPass->handle(), m_descriptorSetLayout->handle(), configDefault);
@@ -180,10 +185,11 @@ private:
         m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
         m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
         m_textureManager = new TextureManager(m_context->device(), allocator, m_commandManager, m_bufferManager);
+       
         m_depthImage = m_textureManager->createTexture(
             m_swapChain->extent().width,
             m_swapChain->extent().height,
-            findDepthFormat(),
+            m_depthFormat->handle(),
             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -263,34 +269,6 @@ private:
                 indices.push_back(uniqueVertices[vertex]);
             }
         }
-    }
-
-    VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
-        for (VkFormat format : candidates) {
-            VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(m_context->physicalDevice(), format, &props);
-
-            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
-                return format;
-            }
-            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-                return format;
-            }
-        }
-
-        throw std::runtime_error("failed to find supported format!");
-    }
-
-    VkFormat findDepthFormat() {
-        return findSupportedFormat(
-            { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-        );
-    }
-
-    bool hasStencilComponent(VkFormat format) {
-        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
 
     void createUniformBuffers() {
@@ -500,7 +478,7 @@ private:
         m_depthImage = m_textureManager->createTexture(
             m_swapChain->extent().width,
             m_swapChain->extent().height,
-            findDepthFormat(),
+            m_depthFormat->handle(),
             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_DEPTH_BIT,
