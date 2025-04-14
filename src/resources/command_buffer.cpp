@@ -2,7 +2,7 @@
 #include "command_manager.h"
 
 CommandBuffer::CommandBuffer(CommandManager* manager, VkCommandBufferLevel level)
-    : m_manager(manager), m_commandBuffer(VK_NULL_HANDLE) {
+    : m_manager(manager), m_device(manager->device()), m_commandBuffer(VK_NULL_HANDLE) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = manager->commandPool();
@@ -14,12 +14,28 @@ CommandBuffer::CommandBuffer(CommandManager* manager, VkCommandBufferLevel level
     }
 }
 
-CommandBuffer::~CommandBuffer() {
-    if (m_commandBuffer != VK_NULL_HANDLE) {
-        vkFreeCommandBuffers(m_manager->device(), m_manager->commandPool(), 1, &m_commandBuffer);
+CommandBuffer::CommandBuffer(VkDevice device, VkCommandPool commandPool, VkCommandBufferLevel level)
+    : m_manager(nullptr), m_device(device), m_commandBuffer(VK_NULL_HANDLE) {
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = level;
+    allocInfo.commandBufferCount = 1;
+
+    if (vkAllocateCommandBuffers(device, &allocInfo, &m_commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate command buffer!");
     }
 }
 
+CommandBuffer::~CommandBuffer() {
+    if (m_commandBuffer != VK_NULL_HANDLE) {
+        VkCommandPool commandPool = m_manager ? m_manager->commandPool() : VK_NULL_HANDLE;
+        if (m_device != VK_NULL_HANDLE && commandPool != VK_NULL_HANDLE) {
+            vkFreeCommandBuffers(m_device, commandPool, 1, &m_commandBuffer);
+        }
+        m_commandBuffer = VK_NULL_HANDLE; // Prevent double-free
+    }
+}
 void CommandBuffer::begin(VkCommandBufferUsageFlags usageFlags) const {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -49,4 +65,11 @@ void CommandBuffer::submit(VkQueue queue, VkFence fence) const
     }
 
     vkQueueWaitIdle(queue); // Optional: Wait for execution to complete
+}
+
+void CommandBuffer::reset() const
+{
+    if (vkResetCommandBuffer(m_commandBuffer, 0) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to reset command buffer!");
+    }
 }

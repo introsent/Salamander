@@ -1,4 +1,6 @@
 #include "command_manager.h"
+
+#include <array>
 #include <stdexcept>
 
 CommandManager::CommandManager(VkDevice device, uint32_t queueFamilyIndex, VkQueue graphicsQueue)
@@ -62,8 +64,83 @@ std::unique_ptr<CommandBuffer> CommandManager::createCommandBuffer(VkCommandBuff
     return m_commandPoolManager->allocateCommandBuffer(level);
 }
 
-void CommandManager::recordCommandBuffer(CommandBuffer& commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer, VkExtent2D extent) const
+void CommandManager::recordCommandBuffer(
+    CommandBuffer& commandBuffer,
+    VkRenderPass renderPass,
+    VkFramebuffer framebuffer,
+    VkExtent2D extent,
+    VkPipeline pipeline,
+    VkPipelineLayout pipelineLayout,
+    VkBuffer vertexBuffer,
+    VkBuffer indexBuffer,
+    const std::vector<VkDescriptorSet>& descriptorSets,
+    uint32_t currentFrame,
+    const std::vector<uint32_t>& indices
+)
 {
-    // Delegate command buffer recording to the CommandPoolManager
-    m_commandPoolManager->recordCommandBuffer(commandBuffer, renderPass, framebuffer, extent);
+    commandBuffer.begin();
+
+    // Begin the render pass
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = framebuffer;
+    renderPassInfo.renderArea.offset = { 0, 0 };
+    renderPassInfo.renderArea.extent = extent;
+
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer.handle(), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    // Bind the graphics pipeline
+    vkCmdBindPipeline(commandBuffer.handle(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    // Set the viewport
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(extent.width);
+    viewport.height = static_cast<float>(extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer.handle(), 0, 1, &viewport);
+
+    // Set the scissor
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = extent;
+    vkCmdSetScissor(commandBuffer.handle(), 0, 1, &scissor);
+
+    // Bind the vertex buffer
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer.handle(), 0, 1, &vertexBuffer, offsets);
+
+    // Bind the index buffer
+    vkCmdBindIndexBuffer(commandBuffer.handle(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+    // Bind the descriptor sets
+    vkCmdBindDescriptorSets(
+        commandBuffer.handle(),
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        pipelineLayout,
+        0,
+        1,
+        &descriptorSets[currentFrame],
+        0,
+        nullptr
+    );
+
+    // Issue the draw command
+    vkCmdDrawIndexed(commandBuffer.handle(), static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+    // End the render pass
+    vkCmdEndRenderPass(commandBuffer.handle());
+
+    // End the command buffer
+    commandBuffer.end();
 }
