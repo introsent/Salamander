@@ -84,8 +84,6 @@ public:
     }
 
 private:
-    VkDebugUtilsMessengerEXT debugMessenger;
-
     Window* m_window;
     Context* m_context;
     SwapChain* m_swapChain;
@@ -99,7 +97,6 @@ private:
 
     Pipeline* m_pipeline;
 
-    VkCommandPool commandPool;
     std::vector<std::unique_ptr<CommandBuffer>> commandBuffers;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;

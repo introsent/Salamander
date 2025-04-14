@@ -88,7 +88,7 @@ set(${PROJECT_NAME}_SOURCES
     "src/resources/command_buffer.h" 
     "src/resources/command_buffer.cpp" 
     "src/resources/command_pool_manager.h"
-    "src/resources/command_pool_manager.cpp")
+    "src/resources/command_pool_manager.cpp" "src/resources/ibuffer.h" "src/resources/buffer.h" "src/resources/vertex_buffer.h" "src/resources/vertex_buffer.cpp" "src/resources/index_buffer.h" "src/resources/index_buffer.cpp" "src/resources/uniform_buffer.h" "src/resources/uniform_buffer.cpp")
 
 # Add the project executable
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
