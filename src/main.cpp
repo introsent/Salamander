@@ -35,6 +35,7 @@
 #include "core/framebuffer_manager.h"
 #include "core/image_views.h"
 #include "core/swap_chain.h"
+#include "rendering/descriptor_set_layout.h"
 #include "rendering/pipeline.h"
 #include "rendering/render_pass.h"
 
@@ -98,7 +99,7 @@ private:
     FramebufferManager* m_framebufferManager;
 
     RenderPass* m_renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
+    DescriptorSetLayout* m_descriptorSetLayout;
 
     Pipeline* m_pipeline;
 
@@ -158,7 +159,8 @@ private:
        
         // Destroy descriptor objects.
         vkDestroyDescriptorPool(m_context->device(), descriptorPool, nullptr);
-        vkDestroyDescriptorSetLayout(m_context->device(), descriptorSetLayout, nullptr);
+
+        delete m_descriptorSetLayout;
 
         // Destroy synchronization objects.
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -182,9 +184,9 @@ private:
         m_swapChain = new SwapChain(m_context, m_window);
         m_imageViews = new ImageViews(m_context, m_swapChain);
         m_renderPass = new RenderPass(m_context, m_swapChain->format(), findDepthFormat()); 
-        createDescriptorSetLayout();
+        m_descriptorSetLayout = new DescriptorSetLayout(m_context);
         PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
-        m_pipeline = new Pipeline(m_context, m_renderPass->handle(), descriptorSetLayout, configDefault);
+        m_pipeline = new Pipeline(m_context, m_renderPass->handle(), m_descriptorSetLayout->handle(), configDefault);
         createCommandPool();
         m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
         m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
@@ -282,7 +284,7 @@ private:
 
     
     void createDescriptorSets() {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout->handle());
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descriptorPool;
@@ -365,32 +367,6 @@ private:
             void* mappedData = nullptr;
             vmaMapMemory(allocator, m_uniformBuffers[i].allocation, &mappedData);
             uniformBuffersMapped[i] = mappedData;
-        }
-    }
-
-    void createDescriptorSetLayout() {
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayoutBinding.pImmutableSamplers = nullptr;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-        layoutInfo.pBindings = bindings.data();
-
-        if (vkCreateDescriptorSetLayout(m_context->device(), &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
 
