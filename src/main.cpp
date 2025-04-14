@@ -66,18 +66,11 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-
-
-
-
 struct UniformBufferObject {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
 };
-
-
-
 
 class HelloTriangleApplication {
 public:
