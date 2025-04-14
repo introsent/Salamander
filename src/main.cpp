@@ -36,6 +36,7 @@
 #include "core/image_views.h"
 #include "core/swap_chain.h"
 #include "rendering/pipeline.h"
+#include "rendering/render_pass.h"
 
 #include "resources/command_manager.h"
 #include "resources/buffer_manager.h"
@@ -96,9 +97,7 @@ private:
     ImageViews* m_imageViews;
     FramebufferManager* m_framebufferManager;
 
-    
-
-    VkRenderPass renderPass;
+    RenderPass* m_renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
 
     Pipeline* m_pipeline;
@@ -155,8 +154,7 @@ private:
 
         delete m_pipeline;
 
-        // Destroy the render pass.
-        vkDestroyRenderPass(m_context->device(), renderPass, nullptr);
+        delete m_renderPass;
        
         // Destroy descriptor objects.
         vkDestroyDescriptorPool(m_context->device(), descriptorPool, nullptr);
@@ -183,10 +181,10 @@ private:
         createAllocator();
         m_swapChain = new SwapChain(m_context, m_window);
         m_imageViews = new ImageViews(m_context, m_swapChain);
-        createRenderPass();
+        m_renderPass = new RenderPass(m_context, m_swapChain->format(), findDepthFormat()); 
         createDescriptorSetLayout();
         PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
-        m_pipeline = new Pipeline(m_context, renderPass, descriptorSetLayout, configDefault);
+        m_pipeline = new Pipeline(m_context, m_renderPass->handle(), descriptorSetLayout, configDefault);
         createCommandPool();
         m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
         m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
@@ -200,7 +198,7 @@ private:
             VK_IMAGE_ASPECT_DEPTH_BIT,
             false // no sampler needed for depth
         );
-        m_framebufferManager = new FramebufferManager(m_context, &m_imageViews->views(), m_swapChain->extent(), renderPass, m_depthImage.view);
+        m_framebufferManager = new FramebufferManager(m_context, &m_imageViews->views(), m_swapChain->extent(), m_renderPass->handle(), m_depthImage.view);
         m_textureImage = m_textureManager->loadTexture(TEXTURE_PATH);
 
         loadModel();
@@ -497,7 +495,7 @@ private:
 
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.renderPass = m_renderPass->handle();
         renderPassInfo.framebuffer = m_framebufferManager->framebuffers()[imageIndex];
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = m_swapChain->extent();
@@ -558,64 +556,6 @@ private:
 
     }
 
-    void createRenderPass() {
-        VkAttachmentDescription colorAttachment{};
-        colorAttachment.format = m_swapChain->format();
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentDescription depthAttachment{};
-        depthAttachment.format = findDepthFormat();
-        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        VkAttachmentReference colorAttachmentRef{};
-        colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkAttachmentReference depthAttachmentRef{};
-        depthAttachmentRef.attachment = 1;
-        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &colorAttachmentRef;
-        subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-        std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
-        VkRenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-        renderPassInfo.pAttachments = attachments.data();
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-
-        if (vkCreateRenderPass(m_context->device(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create render pass!");
-        }
-    }
-
     VkShaderModule createShaderModule(const std::vector<char>& code) {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -647,7 +587,7 @@ private:
             false // no sampler needed for depth
         );
 
-        m_framebufferManager->recreate(&m_imageViews->views(), m_swapChain->extent(), renderPass, m_depthImage.view);
+        m_framebufferManager->recreate(&m_imageViews->views(), m_swapChain->extent(), m_renderPass->handle(), m_depthImage.view);
     }
 
 

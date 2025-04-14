@@ -1,6 +1,5 @@
 #pragma once
 #include "../core/context.h"
-#include "../core/swap_chain.h"
 
 class RenderPass {
 public:
