@@ -8,6 +8,9 @@ VertexBuffer::VertexBuffer(BufferManager* bufferManager,
                            const std::vector<Vertex>& vertices)
     : Buffer(alloc)  // Pass allocator to the base class
 {
+    managedBuffer.buffer = VK_NULL_HANDLE;
+    managedBuffer.allocation = nullptr;
+
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
     // Create staging buffer (CPU visible).
@@ -31,4 +34,17 @@ VertexBuffer::VertexBuffer(BufferManager* bufferManager,
     VkCommandBuffer commandBuffer = commandManager->beginSingleTimeCommands();
     bufferManager->copyBuffer(staging.buffer, managedBuffer.buffer, bufferSize);
     commandManager->endSingleTimeCommands(commandBuffer);
+}
+
+// Move constructor
+VertexBuffer::VertexBuffer(VertexBuffer&& other) noexcept
+    : Buffer(std::move(other)) {
+}
+
+// Move assignment
+VertexBuffer& VertexBuffer::operator=(VertexBuffer&& other) noexcept {
+    if (this != &other) {
+        Buffer::operator=(std::move(other)); // Invoke base move
+    }
+    return *this;
 }

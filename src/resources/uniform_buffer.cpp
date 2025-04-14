@@ -1,5 +1,7 @@
 #include "uniform_buffer.h"
 
+#include <chrono>
+
 UniformBuffer::UniformBuffer(BufferManager* bufferManager, VmaAllocator alloc, VkDeviceSize bufferSize)
     : Buffer(alloc) // Pass allocator to the base class
 {
@@ -13,7 +15,8 @@ UniformBuffer::UniformBuffer(BufferManager* bufferManager, VmaAllocator alloc, V
     vmaMapMemory(allocator, managedBuffer.allocation, &mapped);
 }
 
-void UniformBuffer::update(VkExtent2D extent) {
+void UniformBuffer::update(VkExtent2D extent) const
+{
     static auto startTime = std::chrono::high_resolution_clock::now();
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
@@ -39,5 +42,5 @@ UniformBuffer::~UniformBuffer() {
         mapped = nullptr;
     }
     // Call the base class's destroy function.
-    destroy();
+    Buffer::destroy();
 }

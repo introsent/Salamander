@@ -42,7 +42,10 @@
 
 #include "resources/command_manager.h"
 #include "resources/buffer_manager.h"
+#include "resources/index_buffer.h"
 #include "resources/texture_manager.h"
+#include "resources/uniform_buffer.h"
+#include "resources/vertex_buffer.h"
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -66,12 +69,6 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
-
-struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
 
 class HelloTriangleApplication {
 public:
@@ -115,9 +112,9 @@ private:
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
-    ManagedBuffer m_vertexBuffer;
-    ManagedBuffer m_indexBuffer;
-    std::vector<ManagedBuffer> m_uniformBuffers;
+    VertexBuffer m_vertexBuffer;
+    IndexBuffer m_indexBuffer;
+    std::vector<UniformBuffer> m_uniformBuffers;
     std::vector<void*> uniformBuffersMapped;
 
     DescriptorManager* m_descriptorManager = nullptr;
@@ -127,13 +124,6 @@ private:
 
     void cleanup() {
         vkDeviceWaitIdle(m_context->device());
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (uniformBuffersMapped[i]) {
-                vmaUnmapMemory(allocator, m_uniformBuffers[i].allocation);
-                uniformBuffersMapped[i] = nullptr;
-            }
-        }
 
         delete m_textureManager;
         delete m_bufferManager;
@@ -199,8 +189,8 @@ private:
 
         loadModel();
 
-        createVertexBuffer();
-        createIndexBuffer();
+        m_vertexBuffer = std::move(VertexBuffer(m_bufferManager, m_commandManager, allocator, vertices));
+		m_indexBuffer = std::move(IndexBuffer(m_bufferManager, m_commandManager, allocator, indices));
         createUniformBuffers();
 
         std::vector<VkDescriptorPoolSize> poolSizes(2);
@@ -216,7 +206,7 @@ private:
         );
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = m_uniformBuffers[i].buffer;
+            bufferInfo.buffer = m_uniformBuffers[i].handle();
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -273,75 +263,13 @@ private:
     void createUniformBuffers() {
         VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-        m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
-
+        m_uniformBuffers.clear();
+        m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT); // Prevent reallocation
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            // Create and track the uniform buffer
-            m_uniformBuffers[i] = m_bufferManager->createBuffer(
-                bufferSize,
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                VMA_MEMORY_USAGE_CPU_TO_GPU
-            );
-
-            // Persistently map it
-            void* mappedData = nullptr;
-            vmaMapMemory(allocator, m_uniformBuffers[i].allocation, &mappedData);
-            uniformBuffersMapped[i] = mappedData;
+            m_uniformBuffers.emplace_back(m_bufferManager, allocator, bufferSize);
         }
     }
 
-
-    void createIndexBuffer() {
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-        ManagedBuffer staging = m_bufferManager->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU
-        );
-
-        void* data;
-        vmaMapMemory(allocator, staging.allocation, &data);
-        memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(allocator, staging.allocation);
-
-        m_indexBuffer = m_bufferManager->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY
-        );
-
-
-        VkCommandBuffer commandBuffer = m_commandManager->beginSingleTimeCommands();
-        m_bufferManager->copyBuffer(staging.buffer, m_indexBuffer.buffer, bufferSize);
-        m_commandManager->endSingleTimeCommands(commandBuffer);
-    }
-
-    void createVertexBuffer() {
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-        ManagedBuffer staging = m_bufferManager->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU
-        );
-
-        void* data;
-        vmaMapMemory(allocator, staging.allocation, &data);
-        memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(allocator, staging.allocation);
-
-        m_vertexBuffer = m_bufferManager->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY
-        );
-
-        VkCommandBuffer commandBuffer = m_commandManager->beginSingleTimeCommands();
-        m_bufferManager->copyBuffer(staging.buffer, m_vertexBuffer.buffer, bufferSize);
-        m_commandManager->endSingleTimeCommands(commandBuffer);
-    }
 
     void createAllocator() {
         VmaAllocatorCreateInfo allocatorInfo = {};
@@ -426,25 +354,6 @@ private:
         vkDeviceWaitIdle(m_context->device());
     }
 
-    void updateUniformBuffer(uint32_t currentImage) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-        UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f),
-            (float)m_swapChain->extent().width / (float)m_swapChain->extent().height,
-            0.1f, 10.0f);
-        ubo.proj[1][1] *= -1; // Flip Y for Vulkan
-
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-    }
-
     void drawFrame() {
         vkWaitForFences(m_context->device(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -459,7 +368,7 @@ private:
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        updateUniformBuffer(currentFrame);
+        m_uniformBuffers[currentFrame].update(m_swapChain->extent());
 
         vkResetFences(m_context->device(), 1, &inFlightFences[currentFrame]);
 
@@ -472,8 +381,8 @@ private:
 			m_swapChain->extent(),
 			m_pipeline->handle(),
 			m_pipeline->layout(),
-			m_vertexBuffer.buffer,
-			m_indexBuffer.buffer,
+			m_vertexBuffer.handle(),
+			m_indexBuffer.handle(),
 			{ m_descriptorManager->getDescriptorSets() },
 			currentFrame,
 			indices

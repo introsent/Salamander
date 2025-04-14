@@ -3,27 +3,37 @@
 #include "buffer_manager.h"
 #include "vk_mem_alloc.h"
 #include <vulkan/vulkan.h>
-#include <chrono>
-#include <cstring>
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
+#include "../core/data_structures.h"
 
-// Define UniformBufferObject with model, view, and projection matrices.
-struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
-
-class UniformBuffer : public Buffer {
+class UniformBuffer final : public Buffer {
 public:
     void* mapped = nullptr; 
 
     // Constructs the uniform buffer, mapping it persistently.
+    UniformBuffer() = default;
     UniformBuffer(BufferManager* bufferManager, VmaAllocator alloc, VkDeviceSize bufferSize);
 
+
+    UniformBuffer(UniformBuffer&& other) noexcept
+        : Buffer(std::move(other)), // Invoke base move
+        mapped(other.mapped)
+    {
+        other.mapped = nullptr; // Invalidate source
+    }
+    UniformBuffer& operator=(UniformBuffer&& other) noexcept {
+        if (this != &other) {
+            Buffer::operator=(std::move(other)); // Invoke base move
+            mapped = other.mapped;
+            other.mapped = nullptr;
+        }
+        return *this;
+    }
+    // Disable copying
+    UniformBuffer(const UniformBuffer&) = delete;
+    UniformBuffer& operator=(const UniformBuffer&) = delete;
+
     // Updates uniform data; extent is used to compute the aspect ratio.
-    void update(VkExtent2D extent);
+    void update(VkExtent2D extent) const;
 
     ~UniformBuffer() override;
 };
