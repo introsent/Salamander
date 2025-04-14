@@ -138,8 +138,8 @@ private:
             }
         }
 
-        delete m_textureManager;    
-        delete m_bufferManager;         
+        delete m_textureManager;
+        delete m_bufferManager;
         delete m_commandManager;
 
         delete m_framebufferManager;
@@ -149,7 +149,7 @@ private:
         delete m_pipeline;
 
         delete m_renderPass;
-       
+
         delete m_descriptorManager;
 
         delete m_descriptorSetLayout;
@@ -168,7 +168,7 @@ private:
         delete m_context;
         delete m_window;
 
-		delete m_depthFormat;
+        delete m_depthFormat;
     }
 
     void initVulkan() {
@@ -177,7 +177,7 @@ private:
         m_imageViews = new ImageViews(m_context, m_swapChain);
         m_depthFormat = new DepthFormat(m_context->physicalDevice());
 
-        m_renderPass = new RenderPass(m_context, m_swapChain->format(), m_depthFormat->handle()); 
+        m_renderPass = new RenderPass(m_context, m_swapChain->format(), m_depthFormat->handle());
         m_descriptorSetLayout = new DescriptorSetLayout(m_context);
         PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
         m_pipeline = new Pipeline(m_context, m_renderPass->handle(), m_descriptorSetLayout->handle(), configDefault);
@@ -185,7 +185,7 @@ private:
         m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
         m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
         m_textureManager = new TextureManager(m_context->device(), allocator, m_commandManager, m_bufferManager);
-       
+
         m_depthImage = m_textureManager->createTexture(
             m_swapChain->extent().width,
             m_swapChain->extent().height,
@@ -209,12 +209,12 @@ private:
         poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-		m_descriptorManager = new DescriptorManager(
-			m_context->device(),
-			m_descriptorSetLayout->handle(),
-			poolSizes,
-			MAX_FRAMES_IN_FLIGHT
-		);
+        m_descriptorManager = new DescriptorManager(
+            m_context->device(),
+            m_descriptorSetLayout->handle(),
+            poolSizes,
+            MAX_FRAMES_IN_FLIGHT
+        );
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = m_uniformBuffers[i].buffer;
@@ -563,7 +563,7 @@ private:
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
-        VkSwapchainKHR swapChains[] = { m_swapChain->handle()};
+        VkSwapchainKHR swapChains[] = { m_swapChain->handle() };
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
 
