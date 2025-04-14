@@ -31,3 +31,16 @@ IndexBuffer::IndexBuffer(BufferManager* bufferManager,
     bufferManager->copyBuffer(staging.buffer, managedBuffer.buffer, bufferSize);
     commandManager->endSingleTimeCommands(commandBuffer);
 }
+
+// Move constructor
+IndexBuffer::IndexBuffer(IndexBuffer&& other) noexcept
+    : Buffer(std::move(other)) {
+}
+
+// Move assignment
+IndexBuffer& IndexBuffer::operator=(IndexBuffer&& other) noexcept {
+    if (this != &other) {
+        Buffer::operator=(std::move(other));
+    }
+    return *this;
+}
