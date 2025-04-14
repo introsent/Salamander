@@ -32,12 +32,10 @@ IndexBuffer::IndexBuffer(BufferManager* bufferManager,
     commandManager->endSingleTimeCommands(commandBuffer);
 }
 
-// Move constructor
 IndexBuffer::IndexBuffer(IndexBuffer&& other) noexcept
     : Buffer(std::move(other)) {
 }
 
-// Move assignment
 IndexBuffer& IndexBuffer::operator=(IndexBuffer&& other) noexcept {
     if (this != &other) {
         Buffer::operator=(std::move(other));
