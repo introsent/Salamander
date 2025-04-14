@@ -6,8 +6,7 @@ CommandManager::CommandManager(VkDevice device, VkCommandPool commandPool, VkQue
 
 CommandManager::~CommandManager() = default;
 
-VkCommandBuffer CommandManager::beginSingleTimeCommands() const
-{
+VkCommandBuffer CommandManager::beginSingleTimeCommands() const {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -26,8 +25,7 @@ VkCommandBuffer CommandManager::beginSingleTimeCommands() const
     return commandBuffer;
 }
 
-void CommandManager::endSingleTimeCommands(VkCommandBuffer commandBuffer) const
-{
+void CommandManager::endSingleTimeCommands(VkCommandBuffer commandBuffer) const {
     vkEndCommandBuffer(commandBuffer);
 
     VkSubmitInfo submitInfo{};
@@ -39,4 +37,8 @@ void CommandManager::endSingleTimeCommands(VkCommandBuffer commandBuffer) const
     vkQueueWaitIdle(m_graphicsQueue);
 
     vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
+}
+
+std::unique_ptr<CommandBuffer> CommandManager::createCommandBuffer(VkCommandBufferLevel level) const {
+    return std::make_unique<CommandBuffer>(const_cast<CommandManager*>(this), level);
 }
