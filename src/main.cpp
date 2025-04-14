@@ -100,7 +100,7 @@ private:
     Pipeline* m_pipeline;
 
     VkCommandPool commandPool;
-    std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<std::unique_ptr<CommandBuffer>> commandBuffers;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -140,7 +140,6 @@ private:
 
         delete m_textureManager;
         delete m_bufferManager;
-        delete m_commandManager;
 
         delete m_framebufferManager;
         delete m_imageViews;
@@ -161,7 +160,7 @@ private:
             vkDestroyFence(m_context->device(), inFlightFences[i], nullptr);
         }
 
-        vkDestroyCommandPool(m_context->device(), commandPool, nullptr);
+        delete m_commandManager;
 
         vmaDestroyAllocator(allocator);
 
@@ -181,8 +180,11 @@ private:
         m_descriptorSetLayout = new DescriptorSetLayout(m_context);
         PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
         m_pipeline = new Pipeline(m_context, m_renderPass->handle(), m_descriptorSetLayout->handle(), configDefault);
-        createCommandPool();
-        m_commandManager = new CommandManager(m_context->device(), commandPool, m_context->graphicsQueue());
+        m_commandManager = new CommandManager(
+            m_context->device(),
+            m_context->findQueueFamilies(m_context->physicalDevice()).graphicsFamily.value(),
+            m_context->graphicsQueue()
+        );
         m_bufferManager = new BufferManager(m_context->device(), allocator, m_commandManager);
         m_textureManager = new TextureManager(m_context->device(), allocator, m_commandManager, m_bufferManager);
 
@@ -313,7 +315,10 @@ private:
             VMA_MEMORY_USAGE_GPU_ONLY
         );
 
+
+        VkCommandBuffer commandBuffer = m_commandManager->beginSingleTimeCommands();
         m_bufferManager->copyBuffer(staging.buffer, m_indexBuffer.buffer, bufferSize);
+        m_commandManager->endSingleTimeCommands(commandBuffer);
     }
 
     void createVertexBuffer() {
@@ -330,9 +335,15 @@ private:
         memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
         vmaUnmapMemory(allocator, staging.allocation);
 
-        m_vertexBuffer = m_bufferManager->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+        m_vertexBuffer = m_bufferManager->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY
+        );
 
+        VkCommandBuffer commandBuffer = m_commandManager->beginSingleTimeCommands();
         m_bufferManager->copyBuffer(staging.buffer, m_vertexBuffer.buffer, bufferSize);
+        m_commandManager->endSingleTimeCommands(commandBuffer);
     }
 
     void createAllocator() {
@@ -370,88 +381,10 @@ private:
     }
 
     void createCommandBuffer() {
-        commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
-
-        if (vkAllocateCommandBuffers(m_context->device(), &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            auto commandBuffer = m_commandManager->createCommandBuffer();
+            commandBuffers.push_back(std::move(commandBuffer));
         }
-    }
-
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-            throw std::runtime_error("failed to begin recording command buffer!");
-        }
-
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = m_renderPass->handle();
-        renderPassInfo.framebuffer = m_framebufferManager->framebuffers()[imageIndex];
-        renderPassInfo.renderArea.offset = { 0, 0 };
-        renderPassInfo.renderArea.extent = m_swapChain->extent();
-
-        std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-        clearValues[1].depthStencil = { 1.0f, 0 };
-
-        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassInfo.pClearValues = clearValues.data();
-
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->handle());
-
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float)m_swapChain->extent().width;
-        viewport.height = (float)m_swapChain->extent().height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = { 0, 0 };
-        scissor.extent = m_swapChain->extent();
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        VkBuffer vertexBuffers[] = { m_vertexBuffer.buffer };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-        vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->layout(), 0, 1, &m_descriptorManager->getDescriptorSets()[currentFrame], 0, nullptr);
-
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-        vkCmdEndRenderPass(commandBuffer);
-
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to record command buffer!");
-        }
-    }
-
-    void createCommandPool() {
-        QueueFamilyIndices queueFamilyIndices = m_context->findQueueFamilies(m_context->physicalDevice());
-
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-
-        if (vkCreateCommandPool(m_context->device(), &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create command pool!");
-        }
-
     }
 
     VkShaderModule createShaderModule(const std::vector<char>& code) {
@@ -487,7 +420,6 @@ private:
 
         m_framebufferManager->recreate(&m_imageViews->views(), m_swapChain->extent(), m_renderPass->handle(), m_depthImage.view);
     }
-
 
     void mainLoop() {
         while (!m_window->shouldClose()) {
@@ -534,8 +466,23 @@ private:
 
         vkResetFences(m_context->device(), 1, &inFlightFences[currentFrame]);
 
-        vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-        recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+        // Reset and record the command buffer
+        commandBuffers[currentFrame]->reset();
+        CommandManager::recordCommandBuffer(
+			*commandBuffers[currentFrame],
+			m_renderPass->handle(),
+			m_framebufferManager->framebuffers()[imageIndex],
+			m_swapChain->extent(),
+			m_pipeline->handle(),
+			m_pipeline->layout(),
+			m_vertexBuffer.buffer,
+			m_indexBuffer.buffer,
+			{ m_descriptorManager->getDescriptorSets() },
+			currentFrame,
+			indices
+		);
+
+        const VkCommandBuffer rawCommandBuffer = commandBuffers[currentFrame]->handle();
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -547,7 +494,7 @@ private:
         submitInfo.pWaitDstStageMask = waitStages;
 
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+        submitInfo.pCommandBuffers = &rawCommandBuffer;
 
         VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
         submitInfo.signalSemaphoreCount = 1;
@@ -579,9 +526,9 @@ private:
             throw std::runtime_error("failed to present swap chain image!");
         }
 
-
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
+
 
     static std::vector<char> readFile(const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);

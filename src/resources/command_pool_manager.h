@@ -13,9 +13,6 @@ public:
     // Allocate a command buffer
     std::unique_ptr<CommandBuffer> allocateCommandBuffer(VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-    // Record a command buffer
-    void recordCommandBuffer(CommandBuffer& commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer, VkExtent2D extent);
-
     // Access the raw Vulkan command pool
     VkCommandPool handle() const { return m_commandPool; }
 

@@ -24,10 +24,26 @@ public:
     std::unique_ptr<CommandBuffer> createCommandBuffer(VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY) const;
 
     // Record a command buffer
-    void recordCommandBuffer(CommandBuffer& commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer, VkExtent2D extent) const;
+    static void recordCommandBuffer(
+        CommandBuffer& commandBuffer,
+        VkRenderPass renderPass,
+        VkFramebuffer framebuffer,
+        VkExtent2D extent,
+        VkPipeline pipeline,
+        VkPipelineLayout pipelineLayout,
+        VkBuffer vertexBuffer,
+        VkBuffer indexBuffer,
+        const std::vector<VkDescriptorSet>& descriptorSets,
+        uint32_t currentFrame,
+        const std::vector<uint32_t>& indices
+    );
 
     // Accessors
+    VkDevice device() const { return m_device; }
     VkQueue graphicsQueue() const { return m_graphicsQueue; }
+    VkCommandPool commandPool() const {
+        return m_commandPoolManager->handle();
+    }
 
 private:
     VkDevice m_device;
