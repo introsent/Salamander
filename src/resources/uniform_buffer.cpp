@@ -5,14 +5,29 @@
 UniformBuffer::UniformBuffer(BufferManager* bufferManager, VmaAllocator alloc, VkDeviceSize bufferSize)
     : Buffer(alloc) // Pass allocator to the base class
 {
-    // Create the uniform buffer (CPU accessible)
     managedBuffer = bufferManager->createBuffer(
         bufferSize,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU
     );
-    // Map the buffer persistently.
     vmaMapMemory(allocator, managedBuffer.allocation, &mapped);
+}
+
+UniformBuffer::UniformBuffer(UniformBuffer&& other) noexcept
+    : Buffer(std::move(other)),
+    mapped(other.mapped)
+{
+    other.mapped = nullptr; // Invalidate source
+}
+UniformBuffer& UniformBuffer::operator=(UniformBuffer&& other) noexcept
+{
+    if (this != &other) {
+        unmapBuffer();
+        Buffer::operator=(std::move(other)); 
+        mapped = other.mapped;
+        other.mapped = nullptr;
+    }
+    return *this;
 }
 
 void UniformBuffer::update(VkExtent2D extent) const
@@ -36,11 +51,13 @@ void UniformBuffer::update(VkExtent2D extent) const
     memcpy(mapped, &ubo, sizeof(ubo));
 }
 
-UniformBuffer::~UniformBuffer() {
+void UniformBuffer::unmapBuffer()
+{
     if (mapped) {
         vmaUnmapMemory(allocator, managedBuffer.allocation);
         mapped = nullptr;
     }
-    // Call the base class's destroy function.
-    Buffer::destroy();
+}
+UniformBuffer::~UniformBuffer() {
+    unmapBuffer();
 }

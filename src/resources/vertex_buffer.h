@@ -11,14 +11,8 @@ public:
         const CommandManager* commandManager,
         VmaAllocator allocator,
         const std::vector<Vertex>& vertices);
-
-    // Implement move operations
     VertexBuffer(VertexBuffer&& other) noexcept;
     VertexBuffer& operator=(VertexBuffer&& other) noexcept;
-
-    // Disable copy
     VertexBuffer(const VertexBuffer&) = delete;
     VertexBuffer& operator=(const VertexBuffer&) = delete;
-
-    ~VertexBuffer() override = default;
 };

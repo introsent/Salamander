@@ -126,6 +126,8 @@ private:
         vkDeviceWaitIdle(m_context->device());
 
         delete m_textureManager;
+
+        m_uniformBuffers.clear();
         delete m_bufferManager;
 
         delete m_framebufferManager;

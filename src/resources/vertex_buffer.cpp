@@ -36,15 +36,13 @@ VertexBuffer::VertexBuffer(BufferManager* bufferManager,
     commandManager->endSingleTimeCommands(commandBuffer);
 }
 
-// Move constructor
 VertexBuffer::VertexBuffer(VertexBuffer&& other) noexcept
     : Buffer(std::move(other)) {
 }
 
-// Move assignment
 VertexBuffer& VertexBuffer::operator=(VertexBuffer&& other) noexcept {
     if (this != &other) {
-        Buffer::operator=(std::move(other)); // Invoke base move
+        Buffer::operator=(std::move(other)); 
     }
     return *this;
 }
