@@ -11,14 +11,19 @@
 #include "rendering/descriptor_manager.h"
 #include "core/data_structures.h" // For Vertex definition
 
-#include <memory>
-#include <vector>
-
 #include "core/framebuffer_manager.h"
 #include "core/image_views.h"
 #include "resources/index_buffer.h"
 #include "resources/uniform_buffer.h"
 #include "resources/vertex_buffer.h"
+
+#include "rendering/descriptor_set_layout.h"
+#include "rendering/depth_format.h"
+
+#include <vector>
+#include <string>
+#include <stdexcept>
+#include <unordered_map>
 
 class Renderer {
 public:
@@ -27,9 +32,10 @@ public:
         VmaAllocator allocator,
         const std::string& modelPath,
         const std::string& texturePath);
-    ~Renderer();
+    ~Renderer(); // Calls cleanup()
 
-    void initialize();
+    // New version that matches the initVulkan order.
+    void initVulkan();
     void drawFrame();
     void recreateSwapChain();
 
@@ -37,46 +43,58 @@ public:
 
 private:
     struct Frame {
-        std::unique_ptr<CommandBuffer> commandBuffer;
+        std::unique_ptr<CommandBuffer> commandBuffer; // Now raw pointer (ownership is manual)
         VkSemaphore imageAvailableSemaphore;
         VkSemaphore renderFinishedSemaphore;
         VkFence inFlightFence;
     };
 
-    constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+    // The number of frames; used in resource creation and sync objects.
+    int MAX_FRAMES_IN_FLIGHT = 2;
 
+    // Provided externally (ownership passed in)
     Context* m_context;
     Window* m_window;
     VmaAllocator m_allocator;
 
+    // Model data.
     std::vector<Vertex> m_vertices;
     std::vector<uint32_t> m_indices;
 
-    std::unique_ptr<SwapChain> m_swapChain;
-    std::unique_ptr<ImageViews> m_imageViews;
-    std::unique_ptr<RenderPass> m_renderPass;
-    std::unique_ptr<Pipeline> m_pipeline;
-    std::unique_ptr<FramebufferManager> m_framebufferManager;
-    std::unique_ptr<DescriptorManager> m_descriptorManager;
+    // Resources that will be created/destroyed in our init/cleanup order.
+    SwapChain* m_swapChain = nullptr;
+    ImageViews* m_imageViews = nullptr;
+    DepthFormat* m_depthFormat = nullptr;
+    RenderPass* m_renderPass = nullptr;
+    DescriptorSetLayout* m_descriptorSetLayout = nullptr;
+    Pipeline* m_pipeline = nullptr;
+    FramebufferManager* m_framebufferManager = nullptr;
+    DescriptorManager* m_descriptorManager = nullptr;
 
-    std::vector<Frame> m_frames;
-    uint32_t m_currentFrame = 0;
-    bool m_framebufferResized = false;
+    // Synchronization objects are held in a vector.
+    std::vector<Frame>   m_frames;
+    uint32_t             m_currentFrame = 0;
+    bool                 m_framebufferResized = false;
 
-    CommandManager* m_commandManager;
-    BufferManager* m_bufferManager;
-    TextureManager* m_textureManager;
+    CommandManager* m_commandManager = nullptr;
+    BufferManager* m_bufferManager = nullptr;
+    TextureManager* m_textureManager = nullptr;
 
-    ManagedTexture m_depthTexture;
-    ManagedTexture m_modelTexture;
+    // Textures: one for depth and one for the model/texture image.
+    ManagedTexture       m_depthImage;
+    ManagedTexture       m_textureImage;
 
-    VertexBuffer m_vertexBuffer;
-    IndexBuffer m_indexBuffer;
+    // Buffers.
+    VertexBuffer         m_vertexBuffer;
+    IndexBuffer          m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
 
-    void createSyncObjects();
+    // Helpers for initialization.
+    void createUniformBuffers();
     void createCommandBuffers();
-    void createDepthResources();
-    void updateUniformBuffer(uint32_t currentImage);
+    void createSyncObjects();
     void loadModel(const std::string& modelPath);
+
+    // Cleanup used by the destructor.
+    void cleanup();
 };
