@@ -18,7 +18,6 @@ Renderer::Renderer(Context* context,
     m_window(window),
     m_allocator(allocator)
 {
-
     initVulkan();
 
     m_commandManager = new CommandManager(
