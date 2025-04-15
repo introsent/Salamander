@@ -34,7 +34,7 @@ public:
         const std::string& texturePath);
     ~Renderer(); // Calls cleanup()
 
-    // New version that matches the initVulkan order.
+    // New version that matches the initVulkan order
     void initVulkan();
     void drawFrame();
     void recreateSwapChain();
@@ -49,7 +49,7 @@ private:
         VkFence inFlightFence;
     };
 
-    // The number of frames; used in resource creation and sync objects.
+    // The number of frames; used in resource creation and sync objects
     int MAX_FRAMES_IN_FLIGHT = 2;
 
     // Provided externally (ownership passed in)
@@ -57,11 +57,11 @@ private:
     Window* m_window;
     VmaAllocator m_allocator;
 
-    // Model data.
+    // Model data
     std::vector<Vertex> m_vertices;
     std::vector<uint32_t> m_indices;
 
-    // Resources that will be created/destroyed in our init/cleanup order.
+    // Resources that will be created/destroyed in our init/cleanup order
     SwapChain* m_swapChain = nullptr;
     ImageViews* m_imageViews = nullptr;
     DepthFormat* m_depthFormat = nullptr;
@@ -71,7 +71,7 @@ private:
     FramebufferManager* m_framebufferManager = nullptr;
     DescriptorManager* m_descriptorManager = nullptr;
 
-    // Synchronization objects are held in a vector.
+    // Synchronization objects are held in a vector
     std::vector<Frame>   m_frames;
     uint32_t             m_currentFrame = 0;
     bool                 m_framebufferResized = false;
@@ -80,21 +80,21 @@ private:
     BufferManager* m_bufferManager = nullptr;
     TextureManager* m_textureManager = nullptr;
 
-    // Textures: one for depth and one for the model/texture image.
+    // Textures: one for depth and one for the model/texture image
     ManagedTexture       m_depthImage;
     ManagedTexture       m_textureImage;
 
-    // Buffers.
+    // Buffers
     VertexBuffer         m_vertexBuffer;
     IndexBuffer          m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
 
-    // Helpers for initialization.
+    // Helpers for initialization
     void createUniformBuffers();
     void createCommandBuffers();
     void createSyncObjects();
     void loadModel(const std::string& modelPath);
 
-    // Cleanup used by the destructor.
+    // Cleanup used by the destructor
     void cleanup();
 };
