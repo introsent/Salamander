@@ -23,7 +23,6 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
-#include <unordered_map>
 
 class Renderer {
 public:

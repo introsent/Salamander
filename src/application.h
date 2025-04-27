@@ -1,5 +1,5 @@
 #pragma once
-
+#include "deletion_queue.h"
 #include <string>
 #include "core/data_structures.h"
 #include "core/window.h"
@@ -17,10 +17,9 @@ public:
     void run();
 
 private:
-    Window* m_window = nullptr;
-    Context* m_context = nullptr;
-    Renderer* m_renderer = nullptr;
-    VmaAllocator allocator = VK_NULL_HANDLE;
+    void createWindowAndContext();
+    void createAllocator();
+    void mainLoop() const;
 
     static bool enableValidationLayers() {
 #ifdef NDEBUG
@@ -30,8 +29,13 @@ private:
 #endif
     }
 
-    void createWindowAndContext();
-    void createAllocator();
-    void mainLoop() const;
-    void cleanup() const;
+    // Resources
+    Window* m_window = nullptr;
+    Context* m_context = nullptr;
+    VmaAllocator m_allocator{ VK_NULL_HANDLE };
+    Renderer* m_renderer = nullptr;
+
+    // Deletion queue
+    DeletionQueue m_deletionQueue;
 };
+
