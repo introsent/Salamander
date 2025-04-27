@@ -98,7 +98,7 @@ set(${PROJECT_NAME}_SOURCES
     "src/resources/uniform_buffer.h" 
     "src/resources/uniform_buffer.cpp" 
     "src/renderer.h" 
-    "src/renderer.cpp" "src/application.h" "src/application.cpp")
+    "src/renderer.cpp" "src/application.h" "src/application.cpp" "src/deletion_queue.h")
 
 # Add the project executable
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
