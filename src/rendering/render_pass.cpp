@@ -25,7 +25,7 @@ RenderPassBuilder::RenderPassBuilder(const Context* context,
     m_depthFormat(depthFormat) {
 }
 
-RenderPassBuilder::AttachmentSetups RenderPassBuilder::createBaseAttachments() {
+RenderPassBuilder::AttachmentSetups RenderPassBuilder::createBaseAttachments() const {
     AttachmentSetups setups{};
 
     // Color attachment setup
@@ -74,7 +74,8 @@ RenderPassBuilder::AttachmentSetups RenderPassBuilder::createBaseAttachments() {
     return setups;
 }
 
-VkRenderPass RenderPassBuilder::build() {
+VkRenderPass RenderPassBuilder::build() const
+{
     auto setups = createBaseAttachments();
 
     std::array<VkAttachmentDescription, 2> attachments = {
