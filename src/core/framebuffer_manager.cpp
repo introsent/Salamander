@@ -11,9 +11,6 @@ FramebufferManager::FramebufferManager(Context* context,
     createFramebuffers(imageViews, extent, renderPass, depthImageView);
 }
 
-FramebufferManager::~FramebufferManager() {
-    cleanup();
-}
 
 void FramebufferManager::recreate(const std::vector<VkImageView>* imageViews,
     VkExtent2D extent,
@@ -43,6 +40,14 @@ void FramebufferManager::createFramebuffers(const std::vector<VkImageView>* imag
         if (vkCreateFramebuffer(m_context->device(), &framebufferInfo, nullptr, &m_framebuffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create framebuffer!");
         }
+    }
+
+    // Register a *final cleanup* for shutdown
+    for (auto framebuffer : m_framebuffers) {
+        VkDevice device = m_context->device(); // capture by value!
+        DeletionQueue::get().pushFunction([device, framebuffer]() {
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+            });
     }
 }
 

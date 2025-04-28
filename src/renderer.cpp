@@ -2,6 +2,7 @@
 #include "core/image_views.h"
 #include "rendering/depth_format.h"
 #include "rendering/descriptor_set_layout.h"
+#include "deletion_queue.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -14,21 +15,28 @@ Renderer::Renderer(Context* context,
     VmaAllocator allocator,
     const std::string& modelPath,
     const std::string& texturePath)
-    : m_context(context),
-    m_window(window),
-    m_allocator(allocator)
+    : m_context(context)
+    , m_window(window)
+    , m_allocator(allocator)
 {
     initVulkan();
 
-    m_commandManager = new CommandManager(
+    // Command, buffer, texture managers
+    m_commandManager = std::make_unique<CommandManager>(
         m_context->device(),
         m_context->findQueueFamilies(m_context->physicalDevice()).graphicsFamily.value(),
         m_context->graphicsQueue()
     );
 
-    m_bufferManager = new BufferManager(m_context->device(), m_allocator, m_commandManager);
-    m_textureManager = new TextureManager(m_context->device(), m_allocator, m_commandManager, m_bufferManager);
+    m_bufferManager = std::make_unique<BufferManager>(
+        m_context->device(), m_allocator, m_commandManager.get()
+    );
 
+    m_textureManager = std::make_unique<TextureManager>(
+        m_context->device(), m_allocator, m_commandManager.get(), m_bufferManager.get()
+    );
+
+    // Depth image (queues its own cleanup inside TextureManager)
     m_depthImage = m_textureManager->createTexture(
         m_swapChain->extent().width,
         m_swapChain->extent().height,
@@ -36,10 +44,11 @@ Renderer::Renderer(Context* context,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
         VK_IMAGE_ASPECT_DEPTH_BIT,
-        false 
+        false
     );
 
-    m_framebufferManager = new FramebufferManager(
+    // Framebuffers (queues cleanup in FramebufferManager)
+    m_framebufferManager = std::make_unique<FramebufferManager>(
         m_context,
         &m_imageViews->views(),
         m_swapChain->extent(),
@@ -47,26 +56,30 @@ Renderer::Renderer(Context* context,
         m_depthImage.view
     );
 
+    // Texture image (queues cleanup in TextureManager)
     m_textureImage = m_textureManager->loadTexture(texturePath);
 
     loadModel(modelPath);
 
-    m_vertexBuffer = VertexBuffer(m_bufferManager, m_commandManager, m_allocator, m_vertices);
-    m_indexBuffer = IndexBuffer(m_bufferManager, m_commandManager, m_allocator, m_indices);
-    createUniformBuffers();
+    // Vertex/index buffers (managers queue destruction)
+    m_vertexBuffer = VertexBuffer(m_bufferManager.get(), m_commandManager.get(), m_allocator, m_vertices);
+    m_indexBuffer = IndexBuffer(m_bufferManager.get(), m_commandManager.get(), m_allocator, m_indices);
+    createUniformBuffers();  // UniformBuffer destructor unmaps automatically
 
-    std::vector<VkDescriptorPoolSize> poolSizes(2);
-    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    m_descriptorManager = new DescriptorManager(
+    // Descriptor manager + update sets
+    std::vector<VkDescriptorPoolSize> poolSizes = {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,       MAX_FRAMES_IN_FLIGHT },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
+    };
+
+    m_descriptorManager = std::make_unique<DescriptorManager>(
         m_context->device(),
         m_descriptorSetLayout->handle(),
         poolSizes,
         MAX_FRAMES_IN_FLIGHT
     );
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = m_uniformBuffers[i].handle();
         bufferInfo.offset = 0;
@@ -77,42 +90,28 @@ Renderer::Renderer(Context* context,
         imageInfo.imageView = m_textureImage.view;
         imageInfo.sampler = m_textureImage.sampler;
 
-        m_descriptorManager->updateDescriptorSet(i, bufferInfo, imageInfo);
+        m_descriptorManager->updateDescriptorSet(
+            static_cast<uint32_t>(i), bufferInfo, imageInfo
+        );
     }
+
     createCommandBuffers();
     createSyncObjects();
 }
 
 
 void Renderer::initVulkan() {
-    m_swapChain = new SwapChain(m_context, m_window);
-
-    m_imageViews = new ImageViews(m_context, m_swapChain);
-
-    m_depthFormat = new DepthFormat(m_context->physicalDevice());
-
-    m_renderPass = new RenderPass(m_context, m_swapChain->format(), m_depthFormat->handle());
-
-    m_descriptorSetLayout = new DescriptorSetLayout(m_context);
-
+    m_swapChain = std::make_unique<SwapChain>(m_context, m_window);
+    m_imageViews = std::make_unique<ImageViews>(m_context, m_swapChain.get());
+    m_depthFormat = std::make_unique<DepthFormat>(m_context->physicalDevice());
+    m_renderPass = std::make_unique<RenderPass>(m_context, m_swapChain->format(), m_depthFormat->handle());
+    m_descriptorSetLayout = std::make_unique<DescriptorSetLayout>(m_context);
     PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
-    m_pipeline = new Pipeline(m_context, m_renderPass->handle(), m_descriptorSetLayout->handle(), configDefault);
-}
-
-void Renderer::createUniformBuffers() {
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-    m_uniformBuffers.clear();
-    m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_uniformBuffers.emplace_back(m_bufferManager, m_allocator, bufferSize);
-    }
-}
-
-void Renderer::createCommandBuffers() {
-    m_frames.resize(MAX_FRAMES_IN_FLIGHT);
-    for (auto& frame : m_frames) {
-        frame.commandBuffer = m_commandManager->createCommandBuffer();
-    }
+    m_pipeline = std::make_unique<Pipeline>(m_context,
+        m_renderPass->handle(),
+        m_descriptorSetLayout->handle(),
+        configDefault
+    );
 }
 
 void Renderer::createSyncObjects() {
@@ -127,10 +126,40 @@ void Renderer::createSyncObjects() {
         if (vkCreateSemaphore(m_context->device(), &semaphoreInfo, nullptr, &frame.imageAvailableSemaphore) != VK_SUCCESS ||
             vkCreateSemaphore(m_context->device(), &semaphoreInfo, nullptr, &frame.renderFinishedSemaphore) != VK_SUCCESS ||
             vkCreateFence(m_context->device(), &fenceInfo, nullptr, &frame.inFlightFence) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create synchronization objects for a frame!");
+            throw std::runtime_error("failed to create sync objects for a frame!");
         }
+
+        // Queue up their destruction
+        auto device = m_context->device();
+        DeletionQueue::get().pushFunction([device, sem = frame.imageAvailableSemaphore]() {
+            vkDestroySemaphore(device, sem, nullptr);
+            });
+        DeletionQueue::get().pushFunction([device, sem = frame.renderFinishedSemaphore]() {
+            vkDestroySemaphore(device, sem, nullptr);
+            });
+        DeletionQueue::get().pushFunction([device, f = frame.inFlightFence]() {
+            vkDestroyFence(device, f, nullptr);
+            });
     }
 }
+
+
+void Renderer::createUniformBuffers() {
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+    m_uniformBuffers.clear();
+    m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_uniformBuffers.emplace_back(m_bufferManager.get(), m_allocator, bufferSize);
+    }
+}
+
+void Renderer::createCommandBuffers() {
+    m_frames.resize(MAX_FRAMES_IN_FLIGHT);
+    for (auto& frame : m_frames) {
+        frame.commandBuffer = m_commandManager->createCommandBuffer();
+    }
+}
+
 
 void Renderer::loadModel(const std::string& modelPath) {
     tinyobj::attrib_t attrib;
@@ -247,7 +276,7 @@ void Renderer::drawFrame() {
 void Renderer::recreateSwapChain() {
     vkDeviceWaitIdle(m_context->device());
     m_swapChain->recreate();
-    m_imageViews->recreate(m_swapChain);
+    m_imageViews->recreate(m_swapChain.get());
     // Recreate depth image and update framebuffer manager.
     m_depthImage = m_textureManager->createTexture(
         m_swapChain->extent().width,
@@ -271,31 +300,8 @@ void Renderer::markFramebufferResized() {
 
 void Renderer::cleanup() {
     vkDeviceWaitIdle(m_context->device());
-    delete m_textureManager;
 
     m_uniformBuffers.clear();
-
-    delete m_bufferManager;
-
-    delete m_framebufferManager;
-    delete m_imageViews;
-    delete m_swapChain;
-
-    delete m_pipeline;
-    delete m_renderPass;
-
-    delete m_descriptorManager;
-    delete m_descriptorSetLayout;
-
-    for (size_t i = 0; i < m_frames.size(); i++) {
-        vkDestroySemaphore(m_context->device(), m_frames[i].renderFinishedSemaphore, nullptr);
-        vkDestroySemaphore(m_context->device(), m_frames[i].imageAvailableSemaphore, nullptr);
-        vkDestroyFence(m_context->device(), m_frames[i].inFlightFence, nullptr);
-    }
-
-    delete m_commandManager;
-
-    delete m_depthFormat;
 }
 
 Renderer::~Renderer() {

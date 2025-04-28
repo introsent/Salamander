@@ -81,13 +81,15 @@ Pipeline::Pipeline(
         throw std::runtime_error("failed to create graphics pipeline");
     }
 
+    VkDevice   deviceCopy = m_context->device();
+    VkPipeline pipelineCopy = m_pipeline;
+
+    DeletionQueue::get().pushFunction([deviceCopy, pipelineCopy]() {
+        vkDestroyPipeline(deviceCopy, pipelineCopy, nullptr);
+        });
+
     vkDestroyShaderModule(m_context->device(), vertShaderModule, nullptr);
     vkDestroyShaderModule(m_context->device(), fragShaderModule, nullptr);
-}
-
-Pipeline::~Pipeline() {
-    vkDestroyPipeline(m_context->device(), m_pipeline, nullptr);
-    vkDestroyPipelineLayout(m_context->device(), m_pipelineLayout, nullptr);
 }
 
 void Pipeline::createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule) {
@@ -111,4 +113,11 @@ void Pipeline::createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout) {
     if (vkCreatePipelineLayout(m_context->device(), &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout");
     }
+
+    VkDevice         deviceCopy = m_context->device();
+    VkPipelineLayout layoutCopy = m_pipelineLayout;
+
+    DeletionQueue::get().pushFunction([deviceCopy, layoutCopy]() {
+        vkDestroyPipelineLayout(deviceCopy, layoutCopy, nullptr);
+        });
 }

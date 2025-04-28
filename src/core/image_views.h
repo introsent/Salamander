@@ -6,7 +6,6 @@
 class ImageViews final {
 public:
     ImageViews(Context* context, const SwapChain* swapChain);
-    ~ImageViews();
     ImageViews(const ImageViews&) = delete;
     ImageViews& operator=(const ImageViews&) = delete;
     ImageViews(ImageViews&&) = delete;

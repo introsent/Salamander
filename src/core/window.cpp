@@ -1,6 +1,8 @@
 #include "window.h"
 #include <stdexcept>
 
+#include "../deletion_queue.h"
+
 Window::Window(int width, int height, const char* title)
     : m_width(width), m_height(height), m_resized(false), m_resizeCallback(nullptr) {
 
@@ -11,6 +13,13 @@ Window::Window(int width, int height, const char* title)
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     m_window = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
+	DeletionQueue::get().pushFunction([this]() {
+		if (m_window) {
+			glfwDestroyWindow(m_window);
+		}
+        glfwTerminate();
+		});
+
     if (!m_window) {
         glfwTerminate();
         throw std::runtime_error("Failed to create GLFW window!");
@@ -19,13 +28,6 @@ Window::Window(int width, int height, const char* title)
     // Set up resize callback
     glfwSetWindowUserPointer(m_window, this);
     glfwSetFramebufferSizeCallback(m_window, Window::framebufferResizeCallback);
-}
-
-Window::~Window() {
-    if (m_window) {
-        glfwDestroyWindow(m_window);
-    }
-    glfwTerminate();
 }
 
 void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height) {

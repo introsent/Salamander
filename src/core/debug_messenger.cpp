@@ -2,6 +2,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "../deletion_queue.h"
+
 /* Stores the Vulkan instance and whether validation messages are enabled. If enabled,
    it sets up the debug messenger so that validation messages are forwarded to our callback. */
 DebugMessenger::DebugMessenger(VkInstance instance, bool enableValidation)
@@ -9,18 +11,6 @@ DebugMessenger::DebugMessenger(VkInstance instance, bool enableValidation)
 {
     if (m_enableValidation) {
         setupDebugMessenger();
-    }
-}
-
-/* If validation is enabled and a messenger was created, it retrieves the pointer to
-   vkDestroyDebugUtilsMessengerEXT and uses it to clean up the messenger. */
-DebugMessenger::~DebugMessenger() {
-    if (m_enableValidation && m_messenger != VK_NULL_HANDLE) {
-        auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-            vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT"));
-        if (func != nullptr) {
-            func(m_instance, m_messenger, nullptr);
-        }
     }
 }
 
@@ -51,6 +41,18 @@ void DebugMessenger::setupDebugMessenger() {
     if (func != nullptr && func(m_instance, &createInfo, nullptr, &m_messenger) != VK_SUCCESS) {
         throw std::runtime_error("failed to set up debug messenger!");
     }
+
+    /* If validation is enabled and a messenger was created, it retrieves the pointer to
+   vkDestroyDebugUtilsMessengerEXT and uses it to clean up the messenger. */
+	DeletionQueue::get().pushFunction([this]() {
+		if (m_messenger != VK_NULL_HANDLE) {
+			auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+				vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT"));
+			if (func != nullptr) {
+				func(m_instance, m_messenger, nullptr);
+			}
+		}
+		});
 }
 
 /* The static callback function that is invoked by Vulkan when a debug message is generated.

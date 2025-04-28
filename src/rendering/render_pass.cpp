@@ -7,10 +7,6 @@ RenderPass::RenderPass(const Context* context, VkFormat swapChainFormat, VkForma
     createRenderPass(swapChainFormat, depthFormat);
 }
 
-RenderPass::~RenderPass() {
-    vkDestroyRenderPass(m_context->device(), m_renderPass, nullptr);
-}
-
 void RenderPass::createRenderPass(VkFormat swapChainFormat, VkFormat depthFormat) {
     RenderPassBuilder builder(m_context, swapChainFormat, depthFormat);
     m_renderPass = builder.build();
@@ -91,10 +87,17 @@ VkRenderPass RenderPassBuilder::build() const
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &setups.dependency;
 
-    VkRenderPass renderPass;
-    if (vkCreateRenderPass(m_context->device(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+    VkRenderPass renderPassHandle;
+    if (vkCreateRenderPass(m_context->device(), &renderPassInfo, nullptr, &renderPassHandle) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create render pass!");
     }
 
-    return renderPass;
+    VkDevice deviceCopy = m_context->device();
+    VkRenderPass renderPassCopy = renderPassHandle;
+
+    DeletionQueue::get().pushFunction([deviceCopy, renderPassCopy]() {
+        vkDestroyRenderPass(deviceCopy, renderPassCopy, nullptr);
+        });
+
+    return renderPassHandle;
 }

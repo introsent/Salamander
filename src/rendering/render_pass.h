@@ -7,7 +7,6 @@ class RenderPassBuilder;  // Forward declaration
 class RenderPass {
 public:
     RenderPass(const Context* context, VkFormat swapChainFormat, VkFormat depthFormat);
-    ~RenderPass();
 
     RenderPass(const RenderPass&) = delete;
     RenderPass& operator=(const RenderPass&) = delete;

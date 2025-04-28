@@ -1,15 +1,26 @@
 #include "command_manager.h"
-
+#include "../deletion_queue.h"
 #include <array>
 #include <stdexcept>
 
 CommandManager::CommandManager(VkDevice device, uint32_t queueFamilyIndex, VkQueue graphicsQueue)
     : m_device(device), m_graphicsQueue(graphicsQueue) {
-    // Initialize the CommandPoolManager with the device and queue family index
-    m_commandPoolManager = std::make_unique<CommandPoolManager>(device, queueFamilyIndex, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    m_commandPoolManager = CommandPoolManager::create(
+        device,
+        queueFamilyIndex,
+        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+    );
 }
 
-CommandManager::~CommandManager() = default;
+CommandManager::~CommandManager()
+{
+    VkDevice device = m_device;
+    VkCommandPool pool = m_commandPoolManager->handle();
+
+    DeletionQueue::get().pushFunction([device, pool]() {
+        vkDestroyCommandPool(device, pool, nullptr);
+        });
+}
 
 VkCommandBuffer CommandManager::beginSingleTimeCommands() const {
     // Allocate a command buffer for one-time use

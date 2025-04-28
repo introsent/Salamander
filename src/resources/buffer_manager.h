@@ -14,7 +14,6 @@ struct ManagedBuffer {
 class BufferManager {
 public:
     BufferManager(VkDevice device, VmaAllocator allocator, CommandManager* commandManager);
-    ~BufferManager();
     BufferManager(const BufferManager&) = delete;
     BufferManager& operator=(const BufferManager&) = delete;
     BufferManager(BufferManager&&) = delete;

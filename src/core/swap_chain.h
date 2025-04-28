@@ -7,7 +7,6 @@
 class SwapChain final {
 public:
     SwapChain(Context* context, Window* window);
-    ~SwapChain();
     SwapChain(const SwapChain&) = delete;
     SwapChain& operator=(const SwapChain&) = delete;
     SwapChain(SwapChain&&) = delete;

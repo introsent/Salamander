@@ -15,7 +15,6 @@ const std::string TEXTURE_PATH = "./textures/viking_room.png";
 class VulkanApplication {
 public:
     void run();
-
 private:
     void createWindowAndContext();
     void createAllocator();
@@ -30,12 +29,9 @@ private:
     }
 
     // Resources
-    Window* m_window = nullptr;
-    Context* m_context = nullptr;
+    std::unique_ptr<Window> m_window;
+    std::unique_ptr<Context> m_context;
     VmaAllocator m_allocator{ VK_NULL_HANDLE };
-    Renderer* m_renderer = nullptr;
-
-    // Deletion queue
-    DeletionQueue m_deletionQueue;
+    std::unique_ptr<Renderer> m_renderer;
 };
 

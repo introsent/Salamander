@@ -1,16 +1,14 @@
 #include "application.h"
 #include <stdexcept>
 #include <iostream>
+#include "deletion_queue.h"
 
 void VulkanApplication::run() {
     createWindowAndContext();
     createAllocator();
 
     // Create renderer and register its cleanup
-    m_renderer = new Renderer(m_context, m_window, m_allocator, MODEL_PATH, TEXTURE_PATH);
-    m_deletionQueue.push([this]() {
-        delete m_renderer;
-        });
+    m_renderer = std::make_unique<Renderer>(m_context.get(), m_window.get(), m_allocator, MODEL_PATH, TEXTURE_PATH);
 
     // On window resize callback, notify renderer
     m_window->setResizeCallback([this]() {
@@ -18,22 +16,19 @@ void VulkanApplication::run() {
         });
 
     mainLoop();
+
+    m_renderer.reset();
+
+
+    DeletionQueue::get().flush();
     // Flush all deletions instead of manual cleanup
-    m_deletionQueue.flush();
+    //.flush();
 }
 
 void VulkanApplication::createWindowAndContext() {
-    m_window = new Window(WIDTH, HEIGHT, "Salamander");
-    // Register window deletion
-    m_deletionQueue.push([this]() {
-        delete m_window;
-        });
+    m_window = std::make_unique<Window>(WIDTH, HEIGHT, "Salamander");
 
-    m_context = new Context(m_window, enableValidationLayers());
-    // Register context deletion
-    m_deletionQueue.push([this]() {
-        delete m_context;
-        });
+    m_context = std::make_unique<Context>(m_window.get(), enableValidationLayers());
 }
 
 void VulkanApplication::createAllocator() {
@@ -46,7 +41,7 @@ void VulkanApplication::createAllocator() {
         throw std::runtime_error("Failed to create VMA allocator!");
     }
     // Register allocator destruction
-    m_deletionQueue.push([this]() {
+    DeletionQueue::get().pushFunction([this]() {
         vmaDestroyAllocator(m_allocator);
         });
 }

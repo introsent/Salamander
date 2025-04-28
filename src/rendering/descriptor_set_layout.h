@@ -4,7 +4,6 @@
 class DescriptorSetLayout final {
 public:
     DescriptorSetLayout(const Context* context);
-    ~DescriptorSetLayout();
     DescriptorSetLayout(const DescriptorSetLayout&) = delete;
     DescriptorSetLayout& operator=(const DescriptorSetLayout&) = delete;
     DescriptorSetLayout(DescriptorSetLayout&&) = delete;

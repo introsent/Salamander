@@ -9,7 +9,6 @@ public:
         VkExtent2D extent,
         VkRenderPass renderPass,
         VkImageView depthImageView);
-    ~FramebufferManager();
     FramebufferManager(const FramebufferManager&) = delete;
     FramebufferManager& operator=(const FramebufferManager&) = delete;
     FramebufferManager(FramebufferManager&&) = delete;
