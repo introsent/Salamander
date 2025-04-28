@@ -19,7 +19,6 @@ class TextureManager {
 public:
     TextureManager(VkDevice device, VmaAllocator allocator,
         CommandManager* commandManager, BufferManager* bufferManager);
-    ~TextureManager();
     TextureManager(const TextureManager&) = delete;
     TextureManager& operator=(const TextureManager&) = delete;
     TextureManager(TextureManager&&) = delete;

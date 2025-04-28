@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 #include <memory>
+#include <vector>
+
 #include "command_pool_manager.h"
 #include "command_buffer.h"
 
@@ -48,5 +50,5 @@ public:
 private:
     VkDevice m_device;
     VkQueue m_graphicsQueue;
-    std::unique_ptr<CommandPoolManager> m_commandPoolManager;
+    std::shared_ptr<CommandPoolManager> m_commandPoolManager;
 };

@@ -13,7 +13,6 @@ public:
         VkDescriptorSetLayout descriptorSetLayout,
         const PipelineConfig& config
     );
-    ~Pipeline();
 
     Pipeline(const Pipeline&) = delete;
     Pipeline& operator=(const Pipeline&) = delete;

@@ -1,6 +1,8 @@
 #include "descriptor_manager.h"
 #include <array>
 
+#include "../deletion_queue.h"
+
 DescriptorManager::DescriptorManager(
     VkDevice device,
     VkDescriptorSetLayout layout,
@@ -17,6 +19,13 @@ DescriptorManager::DescriptorManager(
         throw std::runtime_error("Failed to create descriptor pool");
     }
 
+    VkDevice         dev = m_device;
+    VkDescriptorPool pool = m_descriptorPool;
+
+    DeletionQueue::get().pushFunction([dev, pool]() {
+        vkDestroyDescriptorPool(dev, pool, nullptr);
+        });
+
     std::vector<VkDescriptorSetLayout> layouts(maxSets, m_layout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -28,10 +37,6 @@ DescriptorManager::DescriptorManager(
     if (vkAllocateDescriptorSets(m_device, &allocInfo, m_descriptorSets.data()) != VK_SUCCESS) {
         throw std::runtime_error("Failed to allocate descriptor sets");
     }
-}
-
-DescriptorManager::~DescriptorManager() {
-    vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
 }
 
 void DescriptorManager::updateDescriptorSet(

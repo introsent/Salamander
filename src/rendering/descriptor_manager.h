@@ -12,7 +12,6 @@ public:
         const std::vector<VkDescriptorPoolSize>& poolSizes,
         uint32_t maxSets
     );
-    ~DescriptorManager();
     DescriptorManager(const DescriptorManager&) = delete;
     DescriptorManager& operator=(const DescriptorManager&) = delete;
     DescriptorManager(DescriptorManager&&) = delete;

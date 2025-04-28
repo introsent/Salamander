@@ -84,16 +84,7 @@ Context::Context(Window* window, bool enableValidation)
 
 // cleans up all Vulkan resources
 Context::~Context() {
-    if (m_device != VK_NULL_HANDLE) {
-        vkDestroyDevice(m_device, nullptr);
-    }
-    if (m_surface != VK_NULL_HANDLE) {
-        vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
-    }
     delete m_debugMessenger;
-    if (m_instance != VK_NULL_HANDLE) {
-        vkDestroyInstance(m_instance, nullptr);
-    }
 }
 
 /* Creates the Vulkan instance using the information set in the VkApplicationInfo and required extensions.
@@ -130,6 +121,11 @@ void Context::createInstance() {
     if (vkCreateInstance(&createInfo, nullptr, &m_instance) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create Vulkan instance!");
     }
+	DeletionQueue::get().pushFunction([this]() {
+		if (m_instance != VK_NULL_HANDLE) {
+			vkDestroyInstance(m_instance, nullptr);
+		}
+		});
 }
 
 // Creates the window surface using the provided Window object's createSurface method.
@@ -139,6 +135,12 @@ void Context::createSurface(Window* window)
     if (m_surface == VK_NULL_HANDLE) {
         throw std::runtime_error("Failed to create window surface!");
     }
+
+    DeletionQueue::get().pushFunction([this]() {
+        if (m_surface != VK_NULL_HANDLE) {
+            vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
+        }
+        });
 }
 
 /* Selects a physical device (GPU) that supports the necessary queues and extensions.
@@ -230,6 +232,12 @@ void Context::createLogicalDevice() {
     if (vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create logical device!");
     }
+
+	DeletionQueue::get().pushFunction([this]() {
+		if (m_device != VK_NULL_HANDLE) {
+			vkDestroyDevice(m_device, nullptr);
+		}
+		});
 
     // retrieve the graphics queue.
     vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);

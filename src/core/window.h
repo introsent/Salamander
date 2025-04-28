@@ -8,7 +8,6 @@
 class Window final {
 public:
     Window(int width, int height, const char* title);
-    ~Window();
 
     // Delete copy and move operations
     Window(const Window&) = delete;

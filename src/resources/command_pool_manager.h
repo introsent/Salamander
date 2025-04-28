@@ -1,22 +1,22 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include <vector>
-#include <stdexcept>
-#include "command_buffer.h"
 #include <memory>
 
-class CommandPoolManager {
+class CommandBuffer;
+class CommandPoolManager : public std::enable_shared_from_this<CommandPoolManager> {
 public:
-    CommandPoolManager(VkDevice device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags = 0);
-    ~CommandPoolManager();
+    static std::shared_ptr<CommandPoolManager> create(
+        VkDevice device,
+        uint32_t queueFamilyIndex,
+        VkCommandPoolCreateFlags flags = 0
+    );
 
-    // Allocate a command buffer
-    std::unique_ptr<CommandBuffer> allocateCommandBuffer(VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-    // Access the raw Vulkan command pool
+    VkDevice device() const { return m_device; } 
+    std::unique_ptr<CommandBuffer> allocateCommandBuffer(VkCommandBufferLevel level);
     VkCommandPool handle() const { return m_commandPool; }
 
 private:
+    CommandPoolManager(VkDevice device, uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags);
     VkDevice m_device;
     VkCommandPool m_commandPool;
 };

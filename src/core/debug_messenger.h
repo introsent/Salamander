@@ -6,7 +6,6 @@
 class DebugMessenger final {
 public:
     DebugMessenger(VkInstance instance, bool enableValidation);
-    ~DebugMessenger();
     DebugMessenger(const DebugMessenger&) = delete;
     DebugMessenger& operator=(const DebugMessenger&) = delete;
     DebugMessenger(DebugMessenger&&) = delete;

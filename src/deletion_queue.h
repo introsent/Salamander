@@ -1,23 +1,44 @@
+// DeletionQueue.h
 #pragma once
 
-#include <vector>
 #include <functional>
+#include <vector>
 
+// A global, process-lifetime queue of Vulkan cleanup calls.
+// Use DeletionQueue::get().pushFunction(...) anywhere.
 class DeletionQueue {
 public:
-    // Push a deletion function onto the queue
-    void push(std::function<void()> func) {
-        m_deletors.push_back(std::move(func));
+    // Get the one and only instance.
+    static DeletionQueue& get() {
+        static DeletionQueue instance;
+        return instance;
     }
 
-    // Execute all deletors in reverse order
+    // Enqueue a destroyer lambda.
+    void pushFunction(std::function<void()>&& fn) {
+        deletors.push_back(std::move(fn));
+    }
+
+    // Flush in reverse order. Call at shutdown.
     void flush() {
-        for (auto it = m_deletors.rbegin(); it != m_deletors.rend(); ++it) {
+        for (auto it = deletors.rbegin(); it != deletors.rend(); ++it) {
             (*it)();
         }
-        m_deletors.clear();
+        deletors.clear();
     }
 
+    // Whether the queue is empty.
+    bool empty() const { return deletors.empty(); }
+
 private:
-    std::vector<std::function<void()>> m_deletors;
+    DeletionQueue() = default;
+    ~DeletionQueue() = default;
+
+    // non-copyable, non-movable
+    DeletionQueue(const DeletionQueue&) = delete;
+    DeletionQueue& operator=(const DeletionQueue&) = delete;
+    DeletionQueue(DeletionQueue&&) = delete;
+    DeletionQueue& operator=(DeletionQueue&&) = delete;
+
+    std::unordered_map<std::string, std::function<void()>> m_deletors;
 };

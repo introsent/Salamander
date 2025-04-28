@@ -1,4 +1,5 @@
 #include "image_views.h"
+#include "../deletion_queue.h" 
 #include <stdexcept>
 
 ImageViews::ImageViews(Context* context, const SwapChain* swapChain)
@@ -6,12 +7,8 @@ ImageViews::ImageViews(Context* context, const SwapChain* swapChain)
     createImageViews(swapChain);
 }
 
-ImageViews::~ImageViews() {
-    cleanup();
-}
-
 void ImageViews::recreate(const SwapChain* swapChain) {
-    cleanup();
+    cleanup(); // immediately destroy old ones
     m_format = swapChain->format();
     createImageViews(swapChain);
 }
@@ -39,6 +36,14 @@ void ImageViews::createImageViews(const SwapChain* swapChain) {
         if (vkCreateImageView(m_context->device(), &createInfo, nullptr, &m_imageViews[i]) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create image views!");
         }
+    }
+
+    // Register a *final cleanup* for shutdown
+    for (auto imageView : m_imageViews) {
+        VkDevice device = m_context->device(); // capture by value!
+        DeletionQueue::get().pushFunction([device, imageView]() {
+            vkDestroyImageView(device, imageView, nullptr);
+            });
     }
 }
 

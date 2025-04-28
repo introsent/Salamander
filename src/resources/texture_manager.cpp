@@ -8,19 +8,12 @@
 #include <stdexcept>
 #include <cstring>
 
+#include "../deletion_queue.h"
+
 TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
-    CommandManager* commandManager, BufferManager* bufferManager)
+                               CommandManager* commandManager, BufferManager* bufferManager)
     : m_device(device), m_allocator(allocator),
     m_commandManager(commandManager), m_bufferManager(bufferManager) {
-}
-
-TextureManager::~TextureManager() {
-    for (const auto& tex : m_managedTextures) {
-        if (tex.sampler) vkDestroySampler(m_device, tex.sampler, nullptr);
-        if (tex.view)     vkDestroyImageView(m_device, tex.view, nullptr);
-        if (tex.image)    vmaDestroyImage(m_allocator, tex.image, tex.allocation);
-    }
-    m_managedTextures.clear();
 }
 
 ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
@@ -98,6 +91,14 @@ void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat forma
     if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create Vulkan image!");
     }
+
+    VmaAllocator allocCopy = m_allocator;
+    VkImage       imageCopy = image;
+    VmaAllocation allocHandle = allocation;
+
+    DeletionQueue::get().pushFunction([allocCopy, imageCopy, allocHandle]() {
+        vmaDestroyImage(allocCopy, imageCopy, allocHandle);
+        });
 }
 
 VkImageView TextureManager::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) const {
@@ -116,7 +117,12 @@ VkImageView TextureManager::createImageView(VkImage image, VkFormat format, VkIm
     if (vkCreateImageView(m_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create image view!");
     }
+    VkDevice     deviceCopy = m_device;
+    VkImageView  viewCopy = imageView;
 
+    DeletionQueue::get().pushFunction([deviceCopy, viewCopy]() {
+        vkDestroyImageView(deviceCopy, viewCopy, nullptr);
+        });
     return imageView;
 }
 
@@ -138,6 +144,12 @@ VkSampler TextureManager::createSampler() const {
     if (vkCreateSampler(m_device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create sampler!");
     }
+    VkDevice deviceCopy = m_device;
+    VkSampler samplerCopy = sampler;
+
+    DeletionQueue::get().pushFunction([deviceCopy, samplerCopy]() {
+        vkDestroySampler(deviceCopy, samplerCopy, nullptr);
+        });
 
     return sampler;
 }

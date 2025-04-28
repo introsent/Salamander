@@ -8,10 +8,6 @@ SwapChain::SwapChain(Context* context, Window* window)
     createSwapChain();
 }
 
-SwapChain::~SwapChain() {
-    cleanup();
-}
-
 void SwapChain::recreate() {
     vkDeviceWaitIdle(m_context->device());
     cleanup();
@@ -61,6 +57,13 @@ void SwapChain::createSwapChain() {
     if (vkCreateSwapchainKHR(m_context->device(), &createInfo, nullptr, &m_swapChain) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create swap chain!");
     }
+
+    VkDevice deviceCopy = m_context->device();
+    VkSwapchainKHR swapChainCopy = m_swapChain;
+
+	DeletionQueue::get().pushFunction([deviceCopy, swapChainCopy]() {
+		vkDestroySwapchainKHR(deviceCopy, swapChainCopy, nullptr);
+		});
 
     vkGetSwapchainImagesKHR(m_context->device(), m_swapChain, &imageCount, nullptr);
     m_images.resize(imageCount);

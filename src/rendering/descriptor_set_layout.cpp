@@ -6,10 +6,6 @@ DescriptorSetLayout::DescriptorSetLayout(const Context* context) : m_context(con
     createLayout();
 }
 
-DescriptorSetLayout::~DescriptorSetLayout() {
-    vkDestroyDescriptorSetLayout(m_context->device(), m_layout, nullptr);
-}
-
 void DescriptorSetLayout::createLayout() {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
@@ -31,7 +27,16 @@ void DescriptorSetLayout::createLayout() {
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(m_context->device(), &layoutInfo, nullptr, &m_layout) != VK_SUCCESS) {
+    VkDescriptorSetLayout layoutHandle;
+    if (vkCreateDescriptorSetLayout(m_context->device(), &layoutInfo, nullptr, &layoutHandle) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create descriptor set layout!");
     }
+
+    VkDevice                 deviceCopy = m_context->device();
+    VkDescriptorSetLayout    layoutCopy = layoutHandle;
+
+    DeletionQueue::get().pushFunction([deviceCopy, layoutCopy]() {
+        vkDestroyDescriptorSetLayout(deviceCopy, layoutCopy, nullptr);
+        });
+    m_layout = layoutHandle;
 }

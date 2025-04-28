@@ -1,13 +1,10 @@
 #include "buffer_manager.h"
 #include <stdexcept>
 #include "command_manager.h"
+#include "../deletion_queue.h"
 
 BufferManager::BufferManager(VkDevice device, VmaAllocator allocator, CommandManager* commandManager)
     : m_device(device), m_allocator(allocator), m_commandManager(commandManager) {
-}
-
-BufferManager::~BufferManager() {
-    cleanup();
 }
 
 ManagedBuffer BufferManager::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) {
@@ -24,6 +21,14 @@ ManagedBuffer BufferManager::createBuffer(VkDeviceSize size, VkBufferUsageFlags 
     if (vmaCreateBuffer(m_allocator, &bufferInfo, &allocInfo, &managedBuffer.buffer, &managedBuffer.allocation, nullptr) != VK_SUCCESS) {
         throw std::runtime_error("failed to create buffer!");
     }
+    ManagedBuffer localBuf = managedBuffer;  
+    VmaAllocator  alloc = m_allocator;       
+
+    DeletionQueue::get().pushFunction([alloc, localBuf]() {
+        vmaDestroyBuffer(alloc,
+            localBuf.buffer,
+            localBuf.allocation);
+        });
 
     // Store the created buffer for later cleanup.
     m_managedBuffers.push_back(managedBuffer);
@@ -39,11 +44,4 @@ void BufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceS
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
     m_commandManager->endSingleTimeCommands(commandBuffer);
-}
-
-void BufferManager::cleanup() {
-    for (const auto& managedBuffer : m_managedBuffers) {
-        vmaDestroyBuffer(m_allocator, managedBuffer.buffer, managedBuffer.allocation);
-    }
-    m_managedBuffers.clear();
 }
