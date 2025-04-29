@@ -38,38 +38,8 @@
 
   <ol>
     <li><strong>Install Vulkan SDK and CMake (≥ 3.27)</strong>:
-      <p>Use your system's package manager or download from the official sources.</p>
+      <p>You can open the project directly in Visual Studio using CMake integration. Ensure the Vulkan SDK is installed and properly configured on your system.</p>
     </li>
-
-    <li><strong>Clone the Repository</strong>:
-      <pre><code>git clone &lt;repo_url&gt;
-cd salamander</code></pre>
-    </li>
-
-    <li><strong>Set Project Root (Optional)</strong>:
-      <pre><code>export SALAMANDER_ROOT=$(pwd)</code></pre>
-    </li>
-
-    <li><strong>Create a Build Directory</strong>:
-      <pre><code>mkdir build &amp;&amp; cd build</code></pre>
-    </li>
-
-    <li><strong>Run CMake to Configure the Project</strong>:
-      <pre><code>cmake .. -DCMAKE_BUILD_TYPE=Release</code></pre>
-    </li>
-
-    <li><strong>Compile</strong>:
-      <pre><code># For Debug Build:
-./compileDebug.sh
-
-# For Release Build:
-./compileRelease.sh</code></pre>
-    </li>
-
-    <li><strong>Run the Executable</strong>:
-      <pre><code>./bin/salamander</code></pre>
-    </li>
-  </ol>
 
   <h2>Notes</h2>
   <ul>
