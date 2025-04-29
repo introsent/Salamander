@@ -42,12 +42,6 @@
     </li>
   </ol>
 
-  <h2>Notes</h2>
-  <ul>
-    <li>Windows support is not currently provided.</li>
-    <li>Ensure Vulkan tools and layers are properly installed to validate the rendering pipeline.</li>
-  </ul>
-
   <hr>
 
   <p>
