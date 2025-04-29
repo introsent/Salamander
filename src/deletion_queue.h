@@ -20,23 +20,19 @@ public:
     }
 
 
-    // Add or replace deletor by name, keeping the original insertion order
     void pushFunction(const std::string& name, Deletor&& deletor)
     {
         for (auto& entry : entries)
         {
             if (entry.name == name)
             {
-                entry.deletor = std::move(deletor); // Replace in-place
+                entry.deletor = std::move(deletor);
                 return;
             }
         }
-
-        // Not found, add new
         entries.push_back({ name, std::move(deletor) });
     }
 
-    // Flush and run all deletors in reverse order
     void flush()
     {
         for (auto it = entries.rbegin(); it != entries.rend(); ++it)
