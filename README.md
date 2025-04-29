@@ -1,6 +1,6 @@
 
   <h1>Salamander Renderer</h1>
-  <p>Ivans Minajevs 2GD 11</p>
+  <p>Ivans Minajevs 2GD11</p>
   <p>https://github.com/Howest-DAE-GD/graphics-programming-2-vulkan-project-introsent</p>
   <hr>
   <p>
