@@ -42,10 +42,11 @@ void FramebufferManager::createFramebuffers(const std::vector<VkImageView>* imag
         }
     }
 
+	int framebufferIndex = 0;
     // Register a *final cleanup* for shutdown
     for (auto framebuffer : m_framebuffers) {
         VkDevice device = m_context->device(); // capture by value!
-        DeletionQueue::get().pushFunction([device, framebuffer]() {
+        DeletionQueue::get().pushFunction("Framebuffer_" + std::to_string(framebufferIndex++), [device, framebuffer]() {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
             });
     }

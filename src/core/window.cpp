@@ -13,7 +13,7 @@ Window::Window(int width, int height, const char* title)
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     m_window = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
-	DeletionQueue::get().pushFunction([this]() {
+	DeletionQueue::get().pushFunction("Window", [this]() {
 		if (m_window) {
 			glfwDestroyWindow(m_window);
 		}

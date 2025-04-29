@@ -44,7 +44,7 @@ void DebugMessenger::setupDebugMessenger() {
 
     /* If validation is enabled and a messenger was created, it retrieves the pointer to
    vkDestroyDebugUtilsMessengerEXT and uses it to clean up the messenger. */
-	DeletionQueue::get().pushFunction([this]() {
+	DeletionQueue::get().pushFunction("DebugUtils", [this]() {
 		if (m_messenger != VK_NULL_HANDLE) {
 			auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
 				vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT"));

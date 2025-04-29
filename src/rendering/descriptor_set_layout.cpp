@@ -35,7 +35,7 @@ void DescriptorSetLayout::createLayout() {
     VkDevice                 deviceCopy = m_context->device();
     VkDescriptorSetLayout    layoutCopy = layoutHandle;
 
-    DeletionQueue::get().pushFunction([deviceCopy, layoutCopy]() {
+    DeletionQueue::get().pushFunction("DescriptorSetLayout", [deviceCopy, layoutCopy]() {
         vkDestroyDescriptorSetLayout(deviceCopy, layoutCopy, nullptr);
         });
     m_layout = layoutHandle;

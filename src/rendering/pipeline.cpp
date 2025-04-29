@@ -84,7 +84,7 @@ Pipeline::Pipeline(
     VkDevice   deviceCopy = m_context->device();
     VkPipeline pipelineCopy = m_pipeline;
 
-    DeletionQueue::get().pushFunction([deviceCopy, pipelineCopy]() {
+    DeletionQueue::get().pushFunction("Pipeline", [deviceCopy, pipelineCopy]() {
         vkDestroyPipeline(deviceCopy, pipelineCopy, nullptr);
         });
 
@@ -117,7 +117,7 @@ void Pipeline::createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout) {
     VkDevice         deviceCopy = m_context->device();
     VkPipelineLayout layoutCopy = m_pipelineLayout;
 
-    DeletionQueue::get().pushFunction([deviceCopy, layoutCopy]() {
+    DeletionQueue::get().pushFunction("PipelineLayout", [deviceCopy, layoutCopy]() {
         vkDestroyPipelineLayout(deviceCopy, layoutCopy, nullptr);
         });
 }

@@ -41,7 +41,7 @@ void VulkanApplication::createAllocator() {
         throw std::runtime_error("Failed to create VMA allocator!");
     }
     // Register allocator destruction
-    DeletionQueue::get().pushFunction([this]() {
+    DeletionQueue::get().pushFunction("Allocator", [this]() {
         vmaDestroyAllocator(m_allocator);
         });
 }

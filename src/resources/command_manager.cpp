@@ -17,7 +17,7 @@ CommandManager::~CommandManager()
     VkDevice device = m_device;
     VkCommandPool pool = m_commandPoolManager->handle();
 
-    DeletionQueue::get().pushFunction([device, pool]() {
+    DeletionQueue::get().pushFunction("CommandPool", [device, pool]() {
         vkDestroyCommandPool(device, pool, nullptr);
         });
 }

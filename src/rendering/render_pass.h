@@ -27,7 +27,7 @@ private:
 class RenderPassBuilder {
 public:
     RenderPassBuilder(const Context* context, VkFormat swapChainFormat, VkFormat depthFormat);
-    VkRenderPass build() const;
+    VkRenderPass build();
 
 private:
     const Context* m_context;
@@ -43,5 +43,5 @@ private:
         VkSubpassDependency dependency;
     };
 
-    AttachmentSetups createBaseAttachments() const;
+    AttachmentSetups createBaseAttachments();
 };

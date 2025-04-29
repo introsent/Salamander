@@ -122,23 +122,30 @@ void Renderer::createSyncObjects() {
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (auto& frame : m_frames) {
+    for (size_t i = 0; i < m_frames.size(); ++i) {
+        auto& frame = m_frames[i];
+
         if (vkCreateSemaphore(m_context->device(), &semaphoreInfo, nullptr, &frame.imageAvailableSemaphore) != VK_SUCCESS ||
             vkCreateSemaphore(m_context->device(), &semaphoreInfo, nullptr, &frame.renderFinishedSemaphore) != VK_SUCCESS ||
             vkCreateFence(m_context->device(), &fenceInfo, nullptr, &frame.inFlightFence) != VK_SUCCESS) {
             throw std::runtime_error("failed to create sync objects for a frame!");
         }
 
-        // Queue up their destruction
         auto device = m_context->device();
-        DeletionQueue::get().pushFunction([device, sem = frame.imageAvailableSemaphore]() {
-            vkDestroySemaphore(device, sem, nullptr);
+
+        DeletionQueue::get().pushFunction("ImageSemaphore_" + std::to_string(i),
+            [device, sem = frame.imageAvailableSemaphore]() {
+                vkDestroySemaphore(device, sem, nullptr);
             });
-        DeletionQueue::get().pushFunction([device, sem = frame.renderFinishedSemaphore]() {
-            vkDestroySemaphore(device, sem, nullptr);
+
+        DeletionQueue::get().pushFunction("RenderSemaphore_" + std::to_string(i),
+            [device, sem = frame.renderFinishedSemaphore]() {
+                vkDestroySemaphore(device, sem, nullptr);
             });
-        DeletionQueue::get().pushFunction([device, f = frame.inFlightFence]() {
-            vkDestroyFence(device, f, nullptr);
+
+        DeletionQueue::get().pushFunction("Fence_" + std::to_string(i),
+            [device, f = frame.inFlightFence]() {
+                vkDestroyFence(device, f, nullptr);
             });
     }
 }
@@ -277,6 +284,7 @@ void Renderer::recreateSwapChain() {
     vkDeviceWaitIdle(m_context->device());
     m_swapChain->recreate();
     m_imageViews->recreate(m_swapChain.get());
+
     // Recreate depth image and update framebuffer manager.
     m_depthImage = m_textureManager->createTexture(
         m_swapChain->extent().width,

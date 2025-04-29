@@ -37,7 +37,7 @@ CommandBuffer::~CommandBuffer() {
     VkDevice device = m_poolManager->device();
     VkCommandPool pool = m_poolManager->handle();
     VkCommandBuffer buffer = m_commandBuffer;
-    DeletionQueue::get().pushFunction([device, pool, buffer]() {
+    DeletionQueue::get().pushFunction("FreeCommandBuffer", [device, pool, buffer]() {
         vkFreeCommandBuffers(device, pool, 1, &buffer);
         });
 }

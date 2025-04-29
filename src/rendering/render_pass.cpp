@@ -21,7 +21,7 @@ RenderPassBuilder::RenderPassBuilder(const Context* context,
     m_depthFormat(depthFormat) {
 }
 
-RenderPassBuilder::AttachmentSetups RenderPassBuilder::createBaseAttachments() const {
+RenderPassBuilder::AttachmentSetups RenderPassBuilder::createBaseAttachments() {
     AttachmentSetups setups{};
 
     // Color attachment setup
@@ -70,8 +70,7 @@ RenderPassBuilder::AttachmentSetups RenderPassBuilder::createBaseAttachments() c
     return setups;
 }
 
-VkRenderPass RenderPassBuilder::build() const
-{
+VkRenderPass RenderPassBuilder::build() {
     auto setups = createBaseAttachments();
 
     std::array<VkAttachmentDescription, 2> attachments = {
@@ -95,7 +94,7 @@ VkRenderPass RenderPassBuilder::build() const
     VkDevice deviceCopy = m_context->device();
     VkRenderPass renderPassCopy = renderPassHandle;
 
-    DeletionQueue::get().pushFunction([deviceCopy, renderPassCopy]() {
+    DeletionQueue::get().pushFunction("RenderPass", [deviceCopy, renderPassCopy]() {
         vkDestroyRenderPass(deviceCopy, renderPassCopy, nullptr);
         });
 

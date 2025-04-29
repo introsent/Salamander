@@ -22,7 +22,7 @@ DescriptorManager::DescriptorManager(
     VkDevice         dev = m_device;
     VkDescriptorPool pool = m_descriptorPool;
 
-    DeletionQueue::get().pushFunction([dev, pool]() {
+    DeletionQueue::get().pushFunction("Descriptor pool", [dev, pool]() {
         vkDestroyDescriptorPool(dev, pool, nullptr);
         });
 

@@ -96,7 +96,8 @@ void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat forma
     VkImage       imageCopy = image;
     VmaAllocation allocHandle = allocation;
 
-    DeletionQueue::get().pushFunction([allocCopy, imageCopy, allocHandle]() {
+    static int imageID = 0;
+    DeletionQueue::get().pushFunction("Image_" + std::to_string(imageID++),[allocCopy, imageCopy, allocHandle]() {
         vmaDestroyImage(allocCopy, imageCopy, allocHandle);
         });
 }
@@ -120,7 +121,8 @@ VkImageView TextureManager::createImageView(VkImage image, VkFormat format, VkIm
     VkDevice     deviceCopy = m_device;
     VkImageView  viewCopy = imageView;
 
-    DeletionQueue::get().pushFunction([deviceCopy, viewCopy]() {
+    static int imageViewIndex = 0;
+    DeletionQueue::get().pushFunction("ImageViewTexture_" + std::to_string(imageViewIndex++), [deviceCopy, viewCopy]() {
         vkDestroyImageView(deviceCopy, viewCopy, nullptr);
         });
     return imageView;
@@ -147,7 +149,7 @@ VkSampler TextureManager::createSampler() const {
     VkDevice deviceCopy = m_device;
     VkSampler samplerCopy = sampler;
 
-    DeletionQueue::get().pushFunction([deviceCopy, samplerCopy]() {
+    DeletionQueue::get().pushFunction("Sampler", [deviceCopy, samplerCopy]() {
         vkDestroySampler(deviceCopy, samplerCopy, nullptr);
         });
 

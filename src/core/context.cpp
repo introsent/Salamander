@@ -121,7 +121,7 @@ void Context::createInstance() {
     if (vkCreateInstance(&createInfo, nullptr, &m_instance) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create Vulkan instance!");
     }
-	DeletionQueue::get().pushFunction([this]() {
+	DeletionQueue::get().pushFunction("Instance", [this]() {
 		if (m_instance != VK_NULL_HANDLE) {
 			vkDestroyInstance(m_instance, nullptr);
 		}
@@ -136,7 +136,7 @@ void Context::createSurface(Window* window)
         throw std::runtime_error("Failed to create window surface!");
     }
 
-    DeletionQueue::get().pushFunction([this]() {
+    DeletionQueue::get().pushFunction("Surface", [this]() {
         if (m_surface != VK_NULL_HANDLE) {
             vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
         }
@@ -233,7 +233,7 @@ void Context::createLogicalDevice() {
         throw std::runtime_error("Failed to create logical device!");
     }
 
-	DeletionQueue::get().pushFunction([this]() {
+	DeletionQueue::get().pushFunction("Device", [this]() {
 		if (m_device != VK_NULL_HANDLE) {
 			vkDestroyDevice(m_device, nullptr);
 		}
