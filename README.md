@@ -1,10 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Salamander Renderer</title>
-</head>
-<body>
 
   <h1>Salamander Renderer</h1>
   <p>
@@ -49,5 +42,3 @@
     for research and learning purposes in real-time graphics and Vulkan API usage.
   </p>
 
-</body>
-</html>
