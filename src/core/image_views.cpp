@@ -38,10 +38,10 @@ void ImageViews::createImageViews(const SwapChain* swapChain) {
         }
     }
 
-    // Register a *final cleanup* for shutdown
+    int imageViewIndex = 0;
     for (auto imageView : m_imageViews) {
-        VkDevice device = m_context->device(); // capture by value!
-        DeletionQueue::get().pushFunction([device, imageView]() {
+        VkDevice device = m_context->device();
+        DeletionQueue::get().pushFunction("ImageView_" + std::to_string(imageViewIndex++), [device, imageView]() {
             vkDestroyImageView(device, imageView, nullptr);
             });
     }

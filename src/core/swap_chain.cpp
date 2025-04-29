@@ -61,7 +61,7 @@ void SwapChain::createSwapChain() {
     VkDevice deviceCopy = m_context->device();
     VkSwapchainKHR swapChainCopy = m_swapChain;
 
-	DeletionQueue::get().pushFunction([deviceCopy, swapChainCopy]() {
+	DeletionQueue::get().pushFunction("SwapchainKHR", [deviceCopy, swapChainCopy]() {
 		vkDestroySwapchainKHR(deviceCopy, swapChainCopy, nullptr);
 		});
 

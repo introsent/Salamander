@@ -24,7 +24,8 @@ ManagedBuffer BufferManager::createBuffer(VkDeviceSize size, VkBufferUsageFlags 
     ManagedBuffer localBuf = managedBuffer;  
     VmaAllocator  alloc = m_allocator;       
 
-    DeletionQueue::get().pushFunction([alloc, localBuf]() {
+    static int bufferID = 0;
+    DeletionQueue::get().pushFunction("Buffer_" + std::to_string(bufferID++), [alloc, localBuf]() {
         vmaDestroyBuffer(alloc,
             localBuf.buffer,
             localBuf.allocation);

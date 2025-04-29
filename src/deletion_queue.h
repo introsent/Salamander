@@ -1,44 +1,59 @@
 // DeletionQueue.h
 #pragma once
 
-#include <functional>
-#include <vector>
+#pragma once
 
-// A global, process-lifetime queue of Vulkan cleanup calls.
-// Use DeletionQueue::get().pushFunction(...) anywhere.
-class DeletionQueue {
+#include <string>
+#include <vector>
+#include <functional>
+#include <algorithm>
+
+class DeletionQueue
+{
 public:
-    // Get the one and only instance.
-    static DeletionQueue& get() {
+    using Deletor = std::function<void()>;
+
+    static DeletionQueue& get()
+    {
         static DeletionQueue instance;
         return instance;
     }
 
-    // Enqueue a destroyer lambda.
-    void pushFunction(std::function<void()>&& fn) {
-        deletors.push_back(std::move(fn));
-    }
 
-    // Flush in reverse order. Call at shutdown.
-    void flush() {
-        for (auto it = deletors.rbegin(); it != deletors.rend(); ++it) {
-            (*it)();
+    // Add or replace deletor by name, keeping the original insertion order
+    void pushFunction(const std::string& name, Deletor&& deletor)
+    {
+        for (auto& entry : entries)
+        {
+            if (entry.name == name)
+            {
+                entry.deletor = std::move(deletor); // Replace in-place
+                return;
+            }
         }
-        deletors.clear();
+
+        // Not found, add new
+        entries.push_back({ name, std::move(deletor) });
     }
 
-    // Whether the queue is empty.
-    bool empty() const { return deletors.empty(); }
+    // Flush and run all deletors in reverse order
+    void flush()
+    {
+        for (auto it = entries.rbegin(); it != entries.rend(); ++it)
+        {
+            if (it->deletor)
+                it->deletor();
+        }
+        entries.clear();
+    }
 
 private:
-    DeletionQueue() = default;
-    ~DeletionQueue() = default;
+    struct Entry
+    {
+        std::string name;
+        Deletor deletor;
+    };
 
-    // non-copyable, non-movable
-    DeletionQueue(const DeletionQueue&) = delete;
-    DeletionQueue& operator=(const DeletionQueue&) = delete;
-    DeletionQueue(DeletionQueue&&) = delete;
-    DeletionQueue& operator=(DeletionQueue&&) = delete;
-
-    std::unordered_map<std::string, std::function<void()>> m_deletors;
+    std::vector<Entry> entries;
 };
+
