@@ -40,6 +40,7 @@
     <li><strong>Install Vulkan SDK and CMake (≥ 3.27)</strong>:
       <p>You can open the project directly in Visual Studio using CMake integration. Ensure the Vulkan SDK is installed and properly configured on your system.</p>
     </li>
+  </ol>
 
   <h2>Notes</h2>
   <ul>
