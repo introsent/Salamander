@@ -1,5 +1,8 @@
 
   <h1>Salamander Renderer</h1>
+  <p>Ivans Minajevs 2GD 11</p>
+  <p>https://github.com/Howest-DAE-GD/graphics-programming-2-vulkan-project-introsent</p>
+  <hr>
   <p>
     Salamander is a modern real-time 3D renderer built with Vulkan and C++ (targeting C++17). 
     It serves as a standalone graphics engine to demonstrate Vulkan’s capabilities, 
