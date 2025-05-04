@@ -1,5 +1,5 @@
 ﻿#include "main_scene_pass_executor.h"
-#include "../rendering/render_pass.h"
+#include "../../rendering/render_pass.h"
 
 MainScenePassExecutor::MainScenePassExecutor(RenderPass* renderPass, Resources resources)
         : m_renderPass(renderPass)

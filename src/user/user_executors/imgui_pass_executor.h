@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "render_pass_executor.h"
-#include "../rendering/render_pass.h"
+#include "../../executors/render_pass_executor.h"
+#include "../../rendering/render_pass.h"
 #include <imgui.h>
 #include <vector>
 
