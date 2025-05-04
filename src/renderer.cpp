@@ -153,30 +153,46 @@ void Renderer::drawFrame() {
 
     // Submit command buffer
     VkCommandBuffer commandBufferHandle = currentFrame.commandBuffer->handle();
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkCommandBufferSubmitInfoKHR cmdSubmitInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR,
+        .commandBuffer = commandBufferHandle
+    };
 
-    VkSemaphore waitSemaphores[] = { currentFrame.imageAvailableSemaphore };
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
-    submitInfo.pWaitDstStageMask = waitStages;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBufferHandle;
+    VkSemaphoreSubmitInfoKHR waitSemaphoreInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
+        .semaphore = currentFrame.imageAvailableSemaphore,
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR
+    };
 
-    VkSemaphore signalSemaphores[] = { currentFrame.renderFinishedSemaphore };
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
+    VkSemaphoreSubmitInfoKHR signalSemaphoreInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
+        .semaphore = currentFrame.renderFinishedSemaphore,
+        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+    };
 
-    if (vkQueueSubmit(m_context->graphicsQueue(), 1, &submitInfo, currentFrame.inFlightFence) != VK_SUCCESS) {
-        throw std::runtime_error("failed to submit draw command buffer!");
+    VkSubmitInfo2KHR submitInfo2{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2_KHR,
+        .waitSemaphoreInfoCount = 1,
+        .pWaitSemaphoreInfos = &waitSemaphoreInfo,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &cmdSubmitInfo,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &signalSemaphoreInfo
+    };
+
+    // Use actual function pointer from your context
+    if (m_context->vkQueueSubmit2KHR(m_context->graphicsQueue(), 1, &submitInfo2, currentFrame.inFlightFence) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to submit command buffer!");
     }
 
     // Present the frame
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+    // Create a temporary array for the semaphore we want to wait on
+    VkSemaphore waitSemaphore = currentFrame.renderFinishedSemaphore;
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores;
+    presentInfo.pWaitSemaphores = &waitSemaphore;
 
     VkSwapchainKHR swapChains[] = { m_swapChain->handle() };
     presentInfo.swapchainCount = 1;

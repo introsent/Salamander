@@ -51,8 +51,8 @@ void MainSceneTarget::createPipeline() {
     colorBlending.blendConstants[3] = 0.0f;
 
     PipelineConfig pipelineConfig{
-        .vertShaderPath = "./shaders/shader_vert.spv",
-        .fragShaderPath = "./shaders/shader_frag.spv",
+        .vertShaderPath = "../shaders/shader_vert.spv",
+        .fragShaderPath = "../shaders/shader_frag.spv",
         .bindingDescription = Vertex::getBindingDescription(),
         .attributeDescriptions = Vertex::getAttributeDescriptions(),
 
