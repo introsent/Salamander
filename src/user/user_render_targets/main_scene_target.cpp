@@ -1,7 +1,10 @@
 ﻿#include "main_scene_target.h"
 #include "../core/data_structures.h"
 #include "../rendering/depth_format.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
 #include "../tiny_obj_loader.h"
+
 #include "../../executors/render_pass_executor.h"
 #include "../rendering/descriptors/descriptor_set_layout_builder.h"
 #include "../executors/main_scene_pass_executor.h"
@@ -10,12 +13,13 @@
 void MainSceneTarget::initialize(const SharedResources& shared) {
     m_shared = shared;
 
-    createDescriptors();
+
     // Resources
     m_texture = m_shared.textureManager->loadTexture(TEXTURE_PATH);
     loadModel(MODEL_PATH);
-    createBuffers();
 
+    createBuffers();
+    createDescriptors();
     createRenderingResources();
 }
 
@@ -116,7 +120,7 @@ void MainSceneTarget::createRenderingResources() {
         .colorLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
         .colorInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .colorFinalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .colorFinalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .depthLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .depthStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
         .depthInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -190,6 +194,8 @@ void MainSceneTarget::createDescriptors() {
 }
 
 void MainSceneTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    updateUniformBuffers();
+
     m_executor->begin(commandBuffer, imageIndex);
     m_executor->execute(commandBuffer);
     m_executor->end(commandBuffer);
@@ -214,6 +220,10 @@ void MainSceneTarget::recreateSwapChain() {
 void MainSceneTarget::cleanup() {
     vkDeviceWaitIdle(m_shared.context->device());
     m_uniformBuffers.clear();
+}
+
+void MainSceneTarget::updateUniformBuffers() const {
+    m_uniformBuffers[m_shared.currentFrame].update(m_shared.swapChain->extent());
 }
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {

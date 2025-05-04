@@ -7,6 +7,7 @@
 #include "../resources/buffer_manager.h"
 #include "../resources/texture_manager.h"
 #include "../core/framebuffer_manager.h"
+#include "../executors/render_pass_executor.h"
 
 class RenderPassExecutor;
 
@@ -20,6 +21,7 @@ public:
         BufferManager* bufferManager;
         TextureManager* textureManager;
         FramebufferManager* framebufferManager;
+        uint32_t currentFrame;
         VmaAllocator allocator;
     };
 

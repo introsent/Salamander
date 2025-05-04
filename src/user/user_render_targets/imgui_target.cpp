@@ -37,9 +37,6 @@ void ImGuiTarget::recreateSwapChain() {
 }
 
 void ImGuiTarget::cleanup() {
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
 }
 
 
@@ -50,7 +47,7 @@ void ImGuiTarget::createRenderingResources()
         .depthFormat = DepthFormat(m_shared.context->physicalDevice()).handle(),
         .colorLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .colorInitialLayout =  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .colorInitialLayout =  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .colorFinalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
         .depthLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .depthStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -58,6 +55,8 @@ void ImGuiTarget::createRenderingResources()
         .depthFinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     };
     m_renderPass = RenderPass::create(m_shared.context, imguiPassConfig);
+
+    initializeImGui();
 
     m_framebuffers = m_shared.framebufferManager->createFramebuffersForRenderPass(m_renderPass->handle());
 
