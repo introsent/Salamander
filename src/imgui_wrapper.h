@@ -14,7 +14,6 @@
 class ImGuiWrapper {
 public:
     ImGuiWrapper(Context* context, Window* window, SwapChain* swapChain, DepthFormat* depthFormat, CommandManager* commandManager);
-    ~ImGuiWrapper();
 
     void beginFrame();
     void endFrame(VkCommandBuffer commandBuffer, FramebufferManager* framebufferManager, uint32_t imageIndex);

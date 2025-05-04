@@ -1,6 +1,7 @@
 #include "swap_chain.h"
 #include "context.h"
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 SwapChain::SwapChain(Context* context, Window* window)
