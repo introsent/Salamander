@@ -48,6 +48,10 @@ FetchContent_Declare(
 # Fetch all dependencies
 FetchContent_MakeAvailable(glfw glm vma)
 
+# Define linker flags
+set(CMAKE_EXE_LINKER_FLAGS
+        "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++ -pthread")
+
 # Define the path to your stb headers
 set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path to stb headers")
 

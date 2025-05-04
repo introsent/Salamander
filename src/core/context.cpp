@@ -49,10 +49,22 @@ bool Context::isDeviceSuitable(VkPhysicalDevice device) const {
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
-    VkPhysicalDeviceFeatures supportedFeatures;
-    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+    // Check for required features using VkPhysicalDeviceFeatures2
+    VkPhysicalDeviceFeatures2 supportedFeatures2{};
+    supportedFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
-    return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+    // Chain synchronization2 feature query
+    VkPhysicalDeviceSynchronization2FeaturesKHR supportedSync2Features{};
+    supportedSync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+    supportedFeatures2.pNext = &supportedSync2Features;
+
+    vkGetPhysicalDeviceFeatures2(device, &supportedFeatures2);
+
+    return indices.isComplete() &&
+           extensionsSupported &&
+           swapChainAdequate &&
+           supportedFeatures2.features.samplerAnisotropy &&
+           supportedSync2Features.synchronization2;
 }
 
 /* Retrieves the required instance extensions.
@@ -192,15 +204,13 @@ SwapChainSupportDetails Context::querySwapChainSupport(VkPhysicalDevice device) 
 /* Creates a logical device from the selected physical device.
    Also retrieves the graphics and presentation queues from the created device. */
 void Context::createLogicalDevice() {
-
     QueueFamilyIndices indices = findQueueFamilies(m_physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    // use a set to avoid creating duplicate queue families if the same family supports both graphics and presentation
-    std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+    std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(),
+                                             indices.presentFamily.value()};
 
     float queuePriority = 1.0f;
-    // prepare the create info for each unique queue family
     for (auto queueFamily : uniqueQueueFamilies) {
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -210,22 +220,29 @@ void Context::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures{};
-    deviceFeatures.samplerAnisotropy = VK_TRUE;
+    // Enable required features using chained structs
+    VkPhysicalDeviceFeatures2 deviceFeatures2{};
+    deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    deviceFeatures2.features.samplerAnisotropy = VK_TRUE;  // Keep existing feature
+
+    // Enable synchronization2 feature
+    VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
+    sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+    sync2Features.synchronization2 = VK_TRUE;
+    deviceFeatures2.pNext = &sync2Features;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.pNext = &deviceFeatures2;  // Use pNext for extended features
     createInfo.enabledExtensionCount = static_cast<uint32_t>(m_deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = m_deviceExtensions.data();
 
     if (m_enableValidation) {
         createInfo.enabledLayerCount = static_cast<uint32_t>(m_validationLayers.size());
         createInfo.ppEnabledLayerNames = m_validationLayers.data();
-    }
-    else {
+    } else {
         createInfo.enabledLayerCount = 0;
     }
 
@@ -233,18 +250,15 @@ void Context::createLogicalDevice() {
         throw std::runtime_error("Failed to create logical device!");
     }
 
-	DeletionQueue::get().pushFunction("Device", [this]() {
-		if (m_device != VK_NULL_HANDLE) {
-			vkDestroyDevice(m_device, nullptr);
-		}
-		});
+    // Rest of the function remains the same...
+    DeletionQueue::get().pushFunction("Device", [this]() {
+        if (m_device != VK_NULL_HANDLE) {
+            vkDestroyDevice(m_device, nullptr);
+        }
+    });
 
-    // retrieve the graphics queue.
     vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
-
-    // Retrieve the present queue.
     vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &m_presentQueue);
-
 }
 
 
