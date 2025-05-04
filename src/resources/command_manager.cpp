@@ -89,7 +89,6 @@ void CommandManager::recordCommandBuffer(
     const std::vector<uint32_t>& indices
 )
 {
-    commandBuffer.begin();
 
     // Begin the render pass
     VkRenderPassBeginInfo renderPassInfo{};
@@ -151,7 +150,4 @@ void CommandManager::recordCommandBuffer(
 
     // End the render pass
     vkCmdEndRenderPass(commandBuffer.handle());
-
-    // End the command buffer
-    commandBuffer.end();
 }

@@ -1,13 +1,29 @@
 #pragma once
 #include "../core/context.h"
 #include <vulkan/vulkan.h>
-
-class RenderPassBuilder;  // Forward declaration
+#include <memory>
 
 class RenderPass {
 public:
-    RenderPass(const Context* context, VkFormat swapChainFormat, VkFormat depthFormat);
+    // Configuration structure
+    struct Config {
+        VkFormat colorFormat;
+        VkFormat depthFormat;
+        VkAttachmentLoadOp colorLoadOp;
+        VkAttachmentStoreOp colorStoreOp;
+        VkImageLayout colorInitialLayout;
+        VkImageLayout colorFinalLayout;
+        VkAttachmentLoadOp depthLoadOp;
+        VkAttachmentStoreOp depthStoreOp;
+        VkImageLayout depthInitialLayout;
+        VkImageLayout depthFinalLayout;
+    };
 
+    static std::unique_ptr<RenderPass> create(const Context* context, const Config& config);
+
+    ~RenderPass();
+
+    // No copying/moving
     RenderPass(const RenderPass&) = delete;
     RenderPass& operator=(const RenderPass&) = delete;
     RenderPass(RenderPass&&) = delete;
@@ -16,32 +32,10 @@ public:
     VkRenderPass handle() const { return m_renderPass; }
 
 private:
-    friend class RenderPassBuilder;  // Allow builder to access private members
+    RenderPass(const Context* context, const Config& config);
+    void initialize();
 
     const Context* m_context;
-    VkRenderPass m_renderPass;
-
-    void createRenderPass(VkFormat swapChainFormat, VkFormat depthFormat);
-};
-
-class RenderPassBuilder {
-public:
-    RenderPassBuilder(const Context* context, VkFormat swapChainFormat, VkFormat depthFormat);
-    VkRenderPass build();
-
-private:
-    const Context* m_context;
-    VkFormat m_swapChainFormat;
-    VkFormat m_depthFormat;
-
-    struct AttachmentSetups {
-        VkAttachmentDescription color;
-        VkAttachmentDescription depth;
-        VkAttachmentReference colorRef;
-        VkAttachmentReference depthRef;
-        VkSubpassDescription subpass;
-        VkSubpassDependency dependency;
-    };
-
-    AttachmentSetups createBaseAttachments();
+    Config m_config;
+    VkRenderPass m_renderPass = VK_NULL_HANDLE;
 };
