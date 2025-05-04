@@ -16,8 +16,8 @@ public:
     void cleanup() override;
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-    const std::string MODEL_PATH = "./models/viking_room.obj";
-    const std::string TEXTURE_PATH = "./textures/viking_room.png";
+    const std::string MODEL_PATH = "../models/viking_room.obj";
+    const std::string TEXTURE_PATH = "../textures/viking_room.png";
 private:
     void createPipeline();
     void createRenderingResources();

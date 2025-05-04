@@ -220,16 +220,19 @@ void Context::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    // Enable required features using chained structs
     VkPhysicalDeviceFeatures2 deviceFeatures2{};
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    deviceFeatures2.features.samplerAnisotropy = VK_TRUE;  // Keep existing feature
+    deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 
-    // Enable synchronization2 feature
-    VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
-    sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-    sync2Features.synchronization2 = VK_TRUE;
-    deviceFeatures2.pNext = &sync2Features;
+    // Setup Vulkan 1.3 features - this already includes Synchronization 2
+    VkPhysicalDeviceVulkan13Features features13{};
+    features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    features13.synchronization2 = VK_TRUE;
+    features13.pNext = nullptr;  // End of chain
+
+    // Link the chain
+    deviceFeatures2.pNext = &features13;
+
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -259,6 +262,15 @@ void Context::createLogicalDevice() {
 
     vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
     vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &m_presentQueue);
+
+    vkQueueSubmit2KHR =
+      reinterpret_cast<PFN_vkQueueSubmit2KHR>(vkGetDeviceProcAddr(m_device, "vkQueueSubmit2KHR"));
+    vkCmdPipelineBarrier2KHR =
+        reinterpret_cast<PFN_vkCmdPipelineBarrier2KHR>(vkGetDeviceProcAddr(m_device, "vkCmdPipelineBarrier2KHR"));
+
+    if (!vkQueueSubmit2KHR || !vkCmdPipelineBarrier2KHR) {
+        throw std::runtime_error("Failed to load Synchronization2 functions!");
+    }
 }
 
 
