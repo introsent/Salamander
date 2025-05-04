@@ -1,7 +1,7 @@
 #include "renderer.h"
 #include "core/image_views.h"
 #include "rendering/depth_format.h"
-#include "rendering/descriptor_set_layout.h"
+#include "rendering/descriptors/descriptor_set_layout.h"
 #include "deletion_queue.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -10,24 +10,27 @@
 #include <chrono>
 #include <stdexcept>
 
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+#include "rendering/pipeline.h"
+
 Renderer::Renderer(Context* context,
-    Window* window,
-    VmaAllocator allocator,
-    const std::string& modelPath,
-    const std::string& texturePath)
+                   Window* window,
+                   VmaAllocator allocator,
+                   const std::string& modelPath,
+                   const std::string& texturePath)
     : m_context(context)
     , m_window(window)
     , m_allocator(allocator)
 {
-    initVulkan();
+    initializeVulkan();
 
-    // Command, buffer, texture managers
+    // Command, buffer, texture managers setup remains the same
     m_commandManager = std::make_unique<CommandManager>(
         m_context->device(),
         m_context->findQueueFamilies(m_context->physicalDevice()).graphicsFamily.value(),
         m_context->graphicsQueue()
     );
-
 
     m_bufferManager = std::make_unique<BufferManager>(
         m_context->device(), m_allocator, m_commandManager.get()
@@ -37,7 +40,7 @@ Renderer::Renderer(Context* context,
         m_context->device(), m_allocator, m_commandManager.get(), m_bufferManager.get()
     );
 
-    // Depth image (queues its own cleanup inside TextureManager)
+    // Depth image setup remains the same
     m_depthImage = m_textureManager->createTexture(
         m_swapChain->extent().width,
         m_swapChain->extent().height,
@@ -48,47 +51,22 @@ Renderer::Renderer(Context* context,
         false
     );
 
-
-    m_imguiWrapper = std::make_unique<ImGuiWrapper>(
-        m_context,
-        m_window,
-        m_swapChain.get(),
-		m_depthFormat.get(),
-		m_commandManager.get()
-    );
-
-    // Framebuffers (queues cleanup in FramebufferManager)
     m_framebufferManager = std::make_unique<FramebufferManager>(
         m_context,
         &m_imageViews->views(),
         m_swapChain->extent(),
-        m_renderPass->handle(),
         m_depthImage.view
     );
 
-    // Texture image (queues cleanup in TextureManager)
     m_textureImage = m_textureManager->loadTexture(texturePath);
 
     loadModel(modelPath);
 
-    // Vertex/index buffers (managers queue destruction)
     m_vertexBuffer = VertexBuffer(m_bufferManager.get(), m_commandManager.get(), m_allocator, m_vertices);
     m_indexBuffer = IndexBuffer(m_bufferManager.get(), m_commandManager.get(), m_allocator, m_indices);
-    createUniformBuffers();  // UniformBuffer destructor unmaps automatically
+    createUniformBuffers();
 
-    // Descriptor manager + update sets
-    std::vector<VkDescriptorPoolSize> poolSizes = {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,       MAX_FRAMES_IN_FLIGHT },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
-    };
-
-    m_descriptorManager = std::make_unique<DescriptorManager>(
-        m_context->device(),
-        m_descriptorSetLayout->handle(),
-        poolSizes,
-        MAX_FRAMES_IN_FLIGHT
-    );
-
+    // Update descriptor sets using the new MainDescriptorManager
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = m_uniformBuffers[i].handle();
@@ -100,41 +78,237 @@ Renderer::Renderer(Context* context,
         imageInfo.imageView = m_textureImage.view;
         imageInfo.sampler = m_textureImage.sampler;
 
-        m_descriptorManager->updateDescriptorSet(
-            static_cast<uint32_t>(i), bufferInfo, imageInfo
-        );
+        std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates;
+        updates.push_back(MainDescriptorManager::DescriptorUpdateInfo{
+            .binding = 0,
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .bufferInfo = bufferInfo,
+            .isImage = false
+        });
+        updates.push_back(MainDescriptorManager::DescriptorUpdateInfo{
+            .binding = 1,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo = imageInfo,
+            .isImage = true
+        });
+
+        m_mainDescriptorManager->updateDescriptorSet(i, updates);
     }
+
+    initializeGraphicsPipeline();
+    initializeRenderingResources();
+
 
     createCommandBuffers();
     createSyncObjects();
 }
 
 
-void Renderer::initVulkan() {
+void Renderer::initializeVulkan() {
+    // Basic Vulkan resources
     m_swapChain = std::make_unique<SwapChain>(m_context, m_window);
     m_imageViews = std::make_unique<ImageViews>(m_context, m_swapChain.get());
     m_depthFormat = std::make_unique<DepthFormat>(m_context->physicalDevice());
 
-    RenderPass::Config mainPassConfig{
-    .colorFormat = m_swapChain->format(),
-    .depthFormat = m_depthFormat->handle(),
-    .colorLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-    .colorInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .colorFinalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-    .depthLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .depthStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .depthInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .depthFinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    };
-    m_renderPass = RenderPass::create(m_context, mainPassConfig);
+    // Create descriptor set layouts
+    auto layoutBuilder = DescriptorSetLayoutBuilder(m_context->device());
+    m_mainSceneLayout = layoutBuilder
+        .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+        .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .build();
 
-    m_descriptorSetLayout = std::make_unique<DescriptorSetLayout>(m_context);
-    PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
-    m_pipeline = std::make_unique<Pipeline>(m_context,
-        m_renderPass->handle(),
-        m_descriptorSetLayout->handle(),
-        configDefault
+    // Create descriptor managers
+    std::vector<VkDescriptorPoolSize> poolSizes = {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
+    };
+
+    m_mainDescriptorManager = std::make_unique<MainDescriptorManager>(
+        m_context->device(),
+        m_mainSceneLayout->handle(),
+        poolSizes,
+        MAX_FRAMES_IN_FLIGHT
+    );
+
+    m_imguiDescriptorManager = std::make_unique<ImGuiDescriptorManager>(m_context->device());
+}
+
+void Renderer::initializeGraphicsPipeline() {
+    // Create render passes first as they're needed for pipeline creation
+    RenderPass::Config mainPassConfig{
+        .colorFormat = m_swapChain->format(),
+        .depthFormat = m_depthFormat->handle(),
+        .colorLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .colorInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .colorFinalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .depthLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .depthStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .depthInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .depthFinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    };
+
+    m_mainRenderPass = RenderPass::create(m_context, mainPassConfig);
+
+    // Define dynamic states
+    static const std::array<VkDynamicState, 2> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    // Define color blend attachment state
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                         VK_COLOR_COMPONENT_G_BIT |
+                                         VK_COLOR_COMPONENT_B_BIT |
+                                         VK_COLOR_COMPONENT_A_BIT;
+
+    // Create color blend state
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f;
+    colorBlending.blendConstants[1] = 0.0f;
+    colorBlending.blendConstants[2] = 0.0f;
+    colorBlending.blendConstants[3] = 0.0f;
+
+    PipelineConfig pipelineConfig{
+        .vertShaderPath = "./shaders/shader_vert.spv",
+        .fragShaderPath = "./shaders/shader_frag.spv",
+        .bindingDescription = Vertex::getBindingDescription(),
+        .attributeDescriptions = Vertex::getAttributeDescriptions(),
+
+        .inputAssembly = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            .primitiveRestartEnable = VK_FALSE
+        },
+
+        .viewportState = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+            .viewportCount = 1,
+            .scissorCount = 1
+        },
+
+        .rasterizer = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            .depthClampEnable = VK_FALSE,
+            .rasterizerDiscardEnable = VK_FALSE,
+            .polygonMode = VK_POLYGON_MODE_FILL,
+            .cullMode = VK_CULL_MODE_BACK_BIT,
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .depthBiasEnable = VK_FALSE,
+            .lineWidth = 1.0f
+        },
+
+        .multisampling = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+            .sampleShadingEnable = VK_FALSE
+        },
+
+        .depthStencil = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .depthTestEnable = VK_TRUE,
+            .depthWriteEnable = VK_TRUE,
+            .depthCompareOp = VK_COMPARE_OP_LESS,
+            .depthBoundsTestEnable = VK_FALSE,
+            .stencilTestEnable = VK_FALSE
+        },
+
+        .colorBlendAttachments = { colorBlendAttachment },
+        .colorBlending = colorBlending,
+
+        .dynamicState = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+            .pDynamicStates = dynamicStates.data()
+        }
+    };
+
+    m_pipeline = std::make_unique<Pipeline>(
+        m_context,
+        m_mainRenderPass->handle(),
+        m_mainSceneLayout->handle(),
+        pipelineConfig
+    );
+}
+
+void Renderer::initializeRenderingResources() {
+    // Create ImGui render pass
+    RenderPass::Config imguiPassConfig{
+        .colorFormat = m_swapChain->format(),
+        .depthFormat = m_depthFormat->handle(),
+        .colorLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .colorInitialLayout =  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .colorFinalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .depthLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .depthStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .depthInitialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .depthFinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    };
+    m_imguiRenderPass = RenderPass::create(m_context, imguiPassConfig);
+
+    // Create and set up pass executors
+    m_mainSceneFramebuffers = m_framebufferManager->createFramebuffersForRenderPass(m_mainRenderPass->handle());
+    m_imguiFramebuffers = m_framebufferManager->createFramebuffersForRenderPass(m_imguiRenderPass->handle());
+
+    // Main scene pass executor
+    MainScenePassExecutor::Resources mainResources{
+        .pipeline = m_pipeline->handle(),
+        .pipelineLayout = m_pipeline->layout(),
+        .vertexBuffer = m_vertexBuffer.handle(),
+        .indexBuffer = m_indexBuffer.handle(),
+        .descriptorSets = m_mainDescriptorManager->getDescriptorSets(),
+        .indices = m_indices,
+        .framebuffers = m_mainSceneFramebuffers.framebuffers,
+        .extent = m_swapChain->extent()
+    };
+    m_passExecutors.push_back(
+        std::make_unique<MainScenePassExecutor>(m_mainRenderPass.get(), mainResources)
+    );
+
+    // Initialize ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui_ImplGlfw_InitForVulkan(m_window->handle(), true);
+
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = m_context->instance();
+    init_info.PhysicalDevice = m_context->physicalDevice();
+    init_info.Device = m_context->device();
+    init_info.QueueFamily = m_context->findQueueFamilies(m_context->physicalDevice()).graphicsFamily.value();
+    init_info.Queue = m_context->graphicsQueue();
+    init_info.DescriptorPool = m_imguiDescriptorManager->getPool();
+    init_info.MinImageCount = m_swapChain->images().size();
+    init_info.ImageCount = m_swapChain->images().size();
+    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.RenderPass = m_imguiRenderPass->handle();
+
+    ImGui_ImplVulkan_Init(&init_info);
+
+    // Upload ImGui fonts
+    auto commandBuffer = m_commandManager->beginSingleTimeCommands();
+    ImGui_ImplVulkan_CreateFontsTexture();
+    m_commandManager->endSingleTimeCommands(commandBuffer);
+    ImGui_ImplVulkan_DestroyFontsTexture();
+
+    // ImGui pass executor
+    ImGuiPassExecutor::Resources imguiResources{
+        .framebuffers = m_imguiFramebuffers.framebuffers,
+        .extent = m_swapChain->extent(),
+        .imguiContext = ImGui::GetCurrentContext()
+    };
+    m_passExecutors.push_back(
+        std::make_unique<ImGuiPassExecutor>(m_imguiRenderPass.get(), imguiResources)
     );
 }
 
@@ -223,6 +397,7 @@ void Renderer::loadModel(const std::string& modelPath) {
     }
 }
 
+
 void Renderer::drawFrame() {
     Frame& currentFrame = m_frames[m_currentFrame];
     vkWaitForFences(m_context->device(), 1, &currentFrame.inFlightFence, VK_TRUE, UINT64_MAX);
@@ -236,44 +411,33 @@ void Renderer::drawFrame() {
         VK_NULL_HANDLE,
         &imageIndex
     );
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreateSwapChain();
-        return;
-    }
 
-    // Update the uniform buffer for the current frame.
+    // Update uniform buffer for current frame
     m_uniformBuffers[m_currentFrame].update(m_swapChain->extent());
 
+    // Reset command buffer and begin recording
     vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
     currentFrame.commandBuffer->reset();
+    currentFrame.commandBuffer->begin();
 
-    // Inside drawFrame after resetting fences and command buffer:
-    CommandBuffer* rawCommandBuffer = currentFrame.commandBuffer.get();
+    // Begin ImGui frame
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::ShowDemoWindow();
+    ImGui::Render();
 
-    rawCommandBuffer->begin();
+    // Execute all render passes
+    for (auto& executor : m_passExecutors) {
+        executor->begin(currentFrame.commandBuffer->handle(), imageIndex);
+        executor->execute(currentFrame.commandBuffer->handle());
+        executor->end(currentFrame.commandBuffer->handle());
+    }
 
-    // Record main scene commands
-    CommandManager::recordCommandBuffer(
-        *rawCommandBuffer,
-        m_renderPass->handle(),
-        m_framebufferManager->framebuffers()[imageIndex],
-        m_swapChain->extent(),
-        m_pipeline->handle(),
-        m_pipeline->layout(),
-        m_vertexBuffer.handle(),
-        m_indexBuffer.handle(),
-        { m_descriptorManager->getDescriptorSets() },
-        m_currentFrame,
-        m_indices
-    );
+    currentFrame.commandBuffer->end();
 
-    m_imguiWrapper->beginFrame();
-    // Record ImGui commands
-    m_imguiWrapper->endFrame(rawCommandBuffer->handle(), m_framebufferManager.get(), imageIndex);
-
-    rawCommandBuffer->end();
-
-	VkCommandBuffer commandBufferHandle = rawCommandBuffer->handle();
+    // Submit command buffer
+    VkCommandBuffer commandBufferHandle = currentFrame.commandBuffer->handle();
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -282,7 +446,6 @@ void Renderer::drawFrame() {
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
-
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBufferHandle;
 
@@ -294,6 +457,7 @@ void Renderer::drawFrame() {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
+    // Present the frame
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = 1;
@@ -312,9 +476,9 @@ void Renderer::drawFrame() {
     else if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
     }
+
     m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
-
 
 void Renderer::recreateSwapChain() {
     vkDeviceWaitIdle(m_context->device());
@@ -333,8 +497,42 @@ void Renderer::recreateSwapChain() {
     );
     m_framebufferManager->recreate(&m_imageViews->views(),
         m_swapChain->extent(),
-        m_renderPass->handle(),
         m_depthImage.view);
+
+    m_mainSceneFramebuffers = m_framebufferManager->createFramebuffersForRenderPass(m_mainRenderPass->handle());
+    m_imguiFramebuffers = m_framebufferManager->createFramebuffersForRenderPass(m_imguiRenderPass->handle());
+
+    // Clear existing executors
+    m_passExecutors.clear();
+
+    // Recreate main scene pass executor with new extent
+    MainScenePassExecutor::Resources mainResources{
+        .pipeline = m_pipeline->handle(),
+        .pipelineLayout = m_pipeline->layout(),
+        .vertexBuffer = m_vertexBuffer.handle(),
+        .indexBuffer = m_indexBuffer.handle(),
+        .descriptorSets = m_mainDescriptorManager->getDescriptorSets(),
+        .indices = m_indices,
+        .framebuffers = m_mainSceneFramebuffers.framebuffers,
+        .extent = m_swapChain->extent()  // Updated extent
+    };
+    m_passExecutors.push_back(
+        std::make_unique<MainScenePassExecutor>(m_mainRenderPass.get(), mainResources)
+    );
+
+    // Recreate ImGui pass executor with new extent
+    ImGuiPassExecutor::Resources imguiResources{
+        .framebuffers = m_imguiFramebuffers.framebuffers,
+        .extent = m_swapChain->extent(),  // Updated extent
+        .imguiContext = ImGui::GetCurrentContext()
+    };
+    m_passExecutors.push_back(
+        std::make_unique<ImGuiPassExecutor>(m_imguiRenderPass.get(), imguiResources)
+    );
+
+    ImGui_ImplVulkan_SetMinImageCount(m_swapChain->images().size());
+
+
 }
 
 void Renderer::markFramebufferResized() {

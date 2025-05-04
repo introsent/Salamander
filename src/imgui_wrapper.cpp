@@ -114,7 +114,7 @@ void ImGuiWrapper::endFrame(VkCommandBuffer commandBuffer,
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = m_renderPass->handle();
-    renderPassInfo.framebuffer = framebufferManager->framebuffers()[imageIndex];
+  //  renderPassInfo.framebuffer = framebufferManager->framebuffers()[imageIndex];
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = m_swapChain->extent();
 

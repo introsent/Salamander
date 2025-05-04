@@ -82,10 +82,9 @@ set(${PROJECT_NAME}_SOURCES
     "src/resources/texture_manager.cpp" 
     "src/rendering/render_pass.h" 
     "src/rendering/render_pass.cpp" 
-    "src/rendering/descriptor_set_layout.h" 
-    "src/rendering/descriptor_set_layout.cpp" 
-    "src/rendering/descriptor_manager.h" 
-    "src/rendering/descriptor_manager.cpp" 
+    "src/rendering/descriptors/descriptor_set_layout.h"
+    "src/rendering/descriptors/descriptor_set_layout.cpp"
+    "src/rendering/descriptors/descriptor_manager_base.h"
     "src/rendering/depth_format.h" 
     "src/rendering/depth_format.cpp" 
     "src/resources/command_buffer.h" 
@@ -107,6 +106,19 @@ set(${PROJECT_NAME}_SOURCES
     "src/deletion_queue.h"
     "src/imgui_wrapper.h" 
     "src/imgui_wrapper.cpp"
+    "src/executors/render_pass_executor.h"
+    "src/executors/main_scene_pass_executor.cpp"
+    "src/executors/main_scene_pass_executor.h"
+    "src/executors/imgui_pass_executor.cpp"
+    "src/executors/imgui_pass_executor.h"
+    "src/rendering/descriptors/descriptor_set_layout_builder.cpp"
+    "src/rendering/descriptors/descriptor_set_layout_builder.h"
+        src/rendering/descriptors/descriptor_pool_builder.cpp
+        src/rendering/descriptors/descriptor_pool_builder.h
+        src/user/user_descriptor_managers/main_descriptor_manager.cpp
+        src/user/user_descriptor_managers/main_descriptor_manager.h
+        src/user/user_descriptor_managers/imgui_descriptor_manager.cpp
+        src/user/user_descriptor_managers/imgui_descriptor_manager.h
 )
 
 # Add ImGui source files with proper includes and links
