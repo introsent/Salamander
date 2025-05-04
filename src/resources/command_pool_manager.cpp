@@ -33,5 +33,16 @@ std::shared_ptr<CommandPoolManager> CommandPoolManager::create(
 }
 
 std::unique_ptr<CommandBuffer> CommandPoolManager::allocateCommandBuffer(VkCommandBufferLevel level) {
-    return std::make_unique<CommandBuffer>(shared_from_this(), level);
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = m_commandPool;
+    allocInfo.level = level;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer buffer;
+    if (vkAllocateCommandBuffers(m_device, &allocInfo, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate command buffer!");
+    }
+
+    return std::make_unique<CommandBuffer>(buffer, m_commandPool);
 }

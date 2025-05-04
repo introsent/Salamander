@@ -1,19 +1,17 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include <memory>
-#include "command_pool_manager.h"
 
 class CommandBuffer {
 public:
-    explicit CommandBuffer(std::shared_ptr<CommandPoolManager> poolManager, VkCommandBufferLevel level);
-    ~CommandBuffer();
+    CommandBuffer(VkCommandBuffer handle, VkCommandPool pool);
 
-    VkCommandBuffer handle() const { return m_commandBuffer; }
-    void begin();
+    void begin(VkCommandBufferUsageFlags flags = 0);
     void end();
     void reset();
 
+    VkCommandBuffer handle() const { return m_handle; }
+
 private:
-    std::shared_ptr<CommandPoolManager> m_poolManager;
-    VkCommandBuffer m_commandBuffer;
+    VkCommandBuffer m_handle;
+    VkCommandPool m_pool;
 };

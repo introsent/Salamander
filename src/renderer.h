@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "imgui_wrapper.h"
 #include "core/context.h"
 #include "core/window.h"
 #include "core/swap_chain.h"
@@ -62,6 +64,8 @@ private:
     std::unique_ptr<Pipeline>            m_pipeline;
     std::unique_ptr<FramebufferManager>  m_framebufferManager;
     std::unique_ptr<DescriptorManager>   m_descriptorManager;
+
+    std::unique_ptr<ImGuiWrapper> m_imguiWrapper;
 
     std::vector<Frame>   m_frames;
     uint32_t             m_currentFrame = 0;

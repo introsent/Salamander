@@ -19,10 +19,8 @@ void VulkanApplication::run() {
 
     m_renderer.reset();
 
-
-    DeletionQueue::get().flush();
     // Flush all deletions instead of manual cleanup
-    //.flush();
+    DeletionQueue::get().flush();
 }
 
 void VulkanApplication::createWindowAndContext() {

@@ -28,6 +28,7 @@ Renderer::Renderer(Context* context,
         m_context->graphicsQueue()
     );
 
+
     m_bufferManager = std::make_unique<BufferManager>(
         m_context->device(), m_allocator, m_commandManager.get()
     );
@@ -45,6 +46,15 @@ Renderer::Renderer(Context* context,
         VMA_MEMORY_USAGE_GPU_ONLY,
         VK_IMAGE_ASPECT_DEPTH_BIT,
         false
+    );
+
+
+    m_imguiWrapper = std::make_unique<ImGuiWrapper>(
+        m_context,
+        m_window,
+        m_swapChain.get(),
+		m_depthFormat.get(),
+		m_commandManager.get()
     );
 
     // Framebuffers (queues cleanup in FramebufferManager)
@@ -104,7 +114,21 @@ void Renderer::initVulkan() {
     m_swapChain = std::make_unique<SwapChain>(m_context, m_window);
     m_imageViews = std::make_unique<ImageViews>(m_context, m_swapChain.get());
     m_depthFormat = std::make_unique<DepthFormat>(m_context->physicalDevice());
-    m_renderPass = std::make_unique<RenderPass>(m_context, m_swapChain->format(), m_depthFormat->handle());
+
+    RenderPass::Config mainPassConfig{
+    .colorFormat = m_swapChain->format(),
+    .depthFormat = m_depthFormat->handle(),
+    .colorLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .colorInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .colorFinalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    .depthLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .depthStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .depthInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .depthFinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    };
+    m_renderPass = RenderPass::create(m_context, mainPassConfig);
+
     m_descriptorSetLayout = std::make_unique<DescriptorSetLayout>(m_context);
     PipelineConfig configDefault = PipelineFactory::createDefaultPipelineConfig();
     m_pipeline = std::make_unique<Pipeline>(m_context,
@@ -223,8 +247,14 @@ void Renderer::drawFrame() {
     vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
     currentFrame.commandBuffer->reset();
 
+    // Inside drawFrame after resetting fences and command buffer:
+    CommandBuffer* rawCommandBuffer = currentFrame.commandBuffer.get();
+
+    rawCommandBuffer->begin();
+
+    // Record main scene commands
     CommandManager::recordCommandBuffer(
-        *currentFrame.commandBuffer,
+        *rawCommandBuffer,
         m_renderPass->handle(),
         m_framebufferManager->framebuffers()[imageIndex],
         m_swapChain->extent(),
@@ -237,7 +267,13 @@ void Renderer::drawFrame() {
         m_indices
     );
 
-    VkCommandBuffer rawCommandBuffer = currentFrame.commandBuffer->handle();
+    m_imguiWrapper->beginFrame();
+    // Record ImGui commands
+    m_imguiWrapper->endFrame(rawCommandBuffer->handle(), m_framebufferManager.get(), imageIndex);
+
+    rawCommandBuffer->end();
+
+	VkCommandBuffer commandBufferHandle = rawCommandBuffer->handle();
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -248,7 +284,7 @@ void Renderer::drawFrame() {
     submitInfo.pWaitDstStageMask = waitStages;
 
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &rawCommandBuffer;
+    submitInfo.pCommandBuffers = &commandBufferHandle;
 
     VkSemaphore signalSemaphores[] = { currentFrame.renderFinishedSemaphore };
     submitInfo.signalSemaphoreCount = 1;

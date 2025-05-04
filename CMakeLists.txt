@@ -17,13 +17,17 @@ endif()
 # Include FetchContent to download external libraries
 include(FetchContent)
 
-# Fetch GLFW
+# Fetch GLFW with proper build settings
 FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
     GIT_SHALLOW ON
 )
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 
 # Fetch GLM
 FetchContent_Declare(
@@ -44,14 +48,13 @@ FetchContent_Declare(
 # Fetch all dependencies
 FetchContent_MakeAvailable(glfw glm vma)
 
-# Define the path to your stb headers.
-# Adjust the path below if your stb_image.h is in a different location.
+# Define the path to your stb headers
 set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path to stb headers")
 
 # Set the project source files
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
-    "src/vma_impl.cpp" # Added implementation file for VMA
+    "src/vma_impl.cpp"
     "src/stb_image.h"
     "src/tiny_obj_loader.h"
     "src/core/window.h"
@@ -98,47 +101,75 @@ set(${PROJECT_NAME}_SOURCES
     "src/resources/uniform_buffer.h" 
     "src/resources/uniform_buffer.cpp" 
     "src/renderer.h" 
-    "src/renderer.cpp" "src/application.h" "src/application.cpp" "src/deletion_queue.h")
+    "src/renderer.cpp" 
+    "src/application.h" 
+    "src/application.cpp" 
+    "src/deletion_queue.h"
+    "src/imgui_wrapper.h" 
+    "src/imgui_wrapper.cpp"
+)
+
+# Add ImGui source files with proper includes and links
+add_library(ImGui STATIC
+    "src/imgui/imgui.cpp"
+    "src/imgui/imgui_draw.cpp"
+    "src/imgui/imgui_tables.cpp"
+    "src/imgui/imgui_widgets.cpp"
+    "src/imgui/imgui_demo.cpp"
+    "src/imgui/backends/imgui_impl_vulkan.cpp"
+    "src/imgui/backends/imgui_impl_glfw.cpp"
+)
+
+# ImGui include directories with GLFW and Vulkan includes
+target_include_directories(ImGui PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
+    ${glfw_SOURCE_DIR}/include
+    ${Vulkan_INCLUDE_DIRS}
+)
+
+# ImGui needs to link against GLFW and Vulkan
+target_link_libraries(ImGui PRIVATE
+    glfw
+    Vulkan::Vulkan
+)
 
 # Add the project executable
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 
 # Link libraries and include directories
-target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan glfw glm)
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    ImGui 
+    Vulkan::Vulkan 
+    glfw 
+    glm
+)
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ${vma_SOURCE_DIR}/include
-    ${STB_INCLUDE_DIR}    # Add stb include directory
+    ${STB_INCLUDE_DIR}
+    ${glfw_SOURCE_DIR}/include
+    ${Vulkan_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
 )
 
-#
 # Shader compilation via glslc
-#
-
-# Ensure VULKAN_SDK is set, as it provides glslc
 if(NOT DEFINED ENV{VULKAN_SDK})
     message(FATAL_ERROR "VULKAN_SDK environment variable is not set!")
 endif()
 
-# Define path to glslc
 set(GLSLC "$ENV{VULKAN_SDK}/Bin/glslc.exe")
-
-# Set the shader source directory and SPIR-V output directory
 set(SHADERS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
 set(SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 file(MAKE_DIRECTORY ${SPIRV_DIR})
 
-# Glob all shader source files (.vert and .frag)
 file(GLOB SHADER_FILES "${SHADERS_SOURCE_DIR}/*.vert" "${SHADERS_SOURCE_DIR}/*.frag")
-
-# List to hold compiled shader outputs
 set(COMPILED_SHADERS)
 
-# Loop over each shader and add a custom command for compilation
 foreach(SHADER ${SHADER_FILES})
     get_filename_component(SHADER_NAME ${SHADER} NAME_WE)
-    get_filename_component(SHADER_EXT ${SHADER} EXT)  # e.g., ".vert" or ".frag"
-    # Remove the leading '.' from the extension for the output file
+    get_filename_component(SHADER_EXT ${SHADER} EXT)
     string(LENGTH ${SHADER_EXT} EXT_LENGTH)
     math(EXPR SUBSTRING_LENGTH "${EXT_LENGTH} - 1")
     string(SUBSTRING ${SHADER_EXT} 1 ${SUBSTRING_LENGTH} SHADER_TYPE)
@@ -151,36 +182,21 @@ foreach(SHADER ${SHADER_FILES})
         COMMENT "Compiling shader ${SHADER_NAME}${SHADER_EXT} -> ${SHADER_NAME}_${SHADER_TYPE}.spv"
         VERBATIM
     )
-
     list(APPEND COMPILED_SHADERS ${SPIRV_OUTPUT})
 endforeach()
 
-# Create a custom target to compile all shaders
 add_custom_target(CompileShaders ALL DEPENDS ${COMPILED_SHADERS})
-
-# Ensure shaders are compiled before building the executable
 add_dependencies(${PROJECT_NAME} CompileShaders)
 
-# Copy additional SPIR-V resource files if needed (optional)
-set(SHADERS_SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
-file(GLOB_RECURSE RESOURCE_FILES "${SHADERS_SPIRV_DIR}/*.spv")
-foreach(RESOURCE ${RESOURCE_FILES})
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${RESOURCE} ${SHADERS_SPIRV_DIR}
-    )
-endforeach()
-
-# Ensure the textures directory exists in the build directory
+# Resource copying
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/textures)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/models)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shaders)
 
-# Copy the texture file from the source to the build directory
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/viking_room.png 
                ${CMAKE_CURRENT_BINARY_DIR}/textures/viking_room.png 
                COPYONLY)
-
                
-# Copy the model file
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/viking_room.obj
                ${CMAKE_CURRENT_BINARY_DIR}/models/viking_room.obj
                COPYONLY)
