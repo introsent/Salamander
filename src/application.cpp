@@ -8,7 +8,7 @@ void VulkanApplication::run() {
     createAllocator();
 
     // Create renderer and register its cleanup
-    m_renderer = std::make_unique<Renderer>(m_context.get(), m_window.get(), m_allocator, MODEL_PATH, TEXTURE_PATH);
+    m_renderer = std::make_unique<Renderer>(m_context.get(), m_window.get(), m_allocator);
 
     // On window resize callback, notify renderer
     m_window->setResizeCallback([this]() {
