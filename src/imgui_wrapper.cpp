@@ -22,14 +22,6 @@ ImGuiWrapper::ImGuiWrapper(Context* context, Window* window, SwapChain* swapChai
     initImGui();
 }
 
-ImGuiWrapper::~ImGuiWrapper() {
-    vkDeviceWaitIdle(m_context->device());
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-    vkDestroyDescriptorPool(m_context->device(), m_imguiDescriptorPool, nullptr);
-}
-
 void ImGuiWrapper::createDescriptorPool() {
     VkDescriptorPoolSize pool_sizes[] = {
         { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
@@ -56,8 +48,13 @@ void ImGuiWrapper::createDescriptorPool() {
         throw std::runtime_error("Failed to create ImGui descriptor pool");
     }
 
-    DeletionQueue::get().pushFunction("ImGuiDescriptorPool", [this]() {
-        vkDestroyDescriptorPool(m_context->device(), m_imguiDescriptorPool, nullptr);
+    VkDescriptorPool descriptorPoolCopy = m_imguiDescriptorPool;
+    VkDevice deviceCopy = m_context->device();
+    DeletionQueue::get().pushFunction("ImGuiDescriptorPool", [deviceCopy, descriptorPoolCopy]() {
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        vkDestroyDescriptorPool(deviceCopy, descriptorPoolCopy, nullptr);
         });
 }
 
