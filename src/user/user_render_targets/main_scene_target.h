@@ -1,0 +1,37 @@
+﻿#pragma once
+#include "../rendering/target/render_target.h"
+#include "../rendering/pipeline.h"
+#include "../rendering/descriptors/descriptor_set_layout.h"
+#include "../resources/vertex_buffer.h"
+#include "../resources/index_buffer.h"
+#include "../resources/uniform_buffer.h"
+#include "../user/user_descriptor_managers/main_descriptor_manager.h"
+
+class MainSceneTarget : public RenderTarget {
+public:
+    void initialize(const SharedResources& shared) override;
+    void render(VkCommandBuffer commandBuffer, uint32_t imageIndex) override;
+    void recreateSwapChain() override;
+    void cleanup() override;
+
+    static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+    static constexpr std::string MODEL_PATH = "./models/viking_room.obj";
+    static constexpr std::string TEXTURE_PATH = "./textures/viking_room.png";
+private:
+    void createPipeline();
+    void createRenderingResources();
+    void createDescriptors();
+    void loadModel(const std::string& path);
+    void createBuffers();
+
+    std::unique_ptr<Pipeline> m_pipeline;
+    std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
+    std::unique_ptr<MainDescriptorManager> m_descriptorManager;
+
+    std::vector<Vertex> m_vertices;
+    std::vector<uint32_t> m_indices;
+    VertexBuffer m_vertexBuffer;
+    IndexBuffer m_indexBuffer;
+    std::vector<UniformBuffer> m_uniformBuffers;
+    ManagedTexture m_texture;
+};

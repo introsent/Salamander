@@ -119,6 +119,11 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_descriptor_managers/main_descriptor_manager.h
         src/user/user_descriptor_managers/imgui_descriptor_manager.cpp
         src/user/user_descriptor_managers/imgui_descriptor_manager.h
+        src/rendering/target/render_target.h
+        src/user/user_render_targets/main_scene_target.cpp
+        src/user/user_render_targets/main_scene_target.h
+        src/user/user_render_targets/imgui_target.cpp
+        src/user/user_render_targets/imgui_target.h
 )
 
 # Add ImGui source files with proper includes and links
