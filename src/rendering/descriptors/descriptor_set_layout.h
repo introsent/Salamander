@@ -1,9 +1,14 @@
+// descriptor_set_layout.h
 #pragma once
-#include "../core/context.h"
+#include "../../core/context.h"
+#include <vector>
+#include <vulkan/vulkan.h>
 
 class DescriptorSetLayout final {
 public:
-    DescriptorSetLayout(const Context* context);
+    DescriptorSetLayout(VkDevice device, VkDescriptorSetLayout layout);
+    ~DescriptorSetLayout();
+
     DescriptorSetLayout(const DescriptorSetLayout&) = delete;
     DescriptorSetLayout& operator=(const DescriptorSetLayout&) = delete;
     DescriptorSetLayout(DescriptorSetLayout&&) = delete;
@@ -12,8 +17,6 @@ public:
     VkDescriptorSetLayout handle() const { return m_layout; }
 
 private:
-    const Context* m_context;
+    VkDevice m_device;
     VkDescriptorSetLayout m_layout;
-
-    void createLayout();
 };
