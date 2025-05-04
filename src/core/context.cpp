@@ -224,7 +224,7 @@ void Context::createLogicalDevice() {
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 
-    // Setup Vulkan 1.3 features - this already includes Synchronization 2
+    // Setup Vulkan 1.3 features (this already includes Synchronization 2)
     VkPhysicalDeviceVulkan13Features features13{};
     features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     features13.synchronization2 = VK_TRUE;
