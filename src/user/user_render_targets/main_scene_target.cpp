@@ -7,7 +7,7 @@
 
 #include "../../executors/render_pass_executor.h"
 #include "../rendering/descriptors/descriptor_set_layout_builder.h"
-#include "../executors/main_scene_pass_executor.h"
+#include "../user_executors/main_scene_pass_executor.h"
 
 
 void MainSceneTarget::initialize(const SharedResources& shared) {
