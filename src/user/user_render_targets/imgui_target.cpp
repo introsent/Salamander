@@ -1,11 +1,7 @@
-﻿//
-// Created by minaj on 5/4/2025.
-//
-
-#include "imgui_target.h"
-#include "../user_executors/imgui_pass_executor.h"
-#include "../rendering/depth_format.h"
-#include "../rendering/descriptors/descriptor_set_layout_builder.h"
+﻿#include "imgui_target.h"
+#include "user_executors/imgui_pass_executor.h"
+#include "depth_format.h"
+#include "descriptors/descriptor_set_layout_builder.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 

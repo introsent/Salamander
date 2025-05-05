@@ -2,7 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "../deletion_queue.h"
+#include "deletion_queue.h"
 
 /* Stores the Vulkan instance and whether validation messages are enabled. If enabled,
    it sets up the debug messenger so that validation messages are forwarded to our callback. */

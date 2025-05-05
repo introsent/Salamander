@@ -1,5 +1,5 @@
 #include "command_manager.h"
-#include "../deletion_queue.h"
+#include "deletion_queue.h"
 #include <array>
 #include <stdexcept>
 

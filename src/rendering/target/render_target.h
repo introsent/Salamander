@@ -1,13 +1,13 @@
 ﻿#pragma once
-#include "../core/context.h"
-#include "../core/swap_chain.h"
-#include "../core/window.h"
-#include "../rendering/render_pass.h"
-#include "../resources/command_manager.h"
-#include "../resources/buffer_manager.h"
-#include "../resources/texture_manager.h"
-#include "../core/framebuffer_manager.h"
-#include "../executors/render_pass_executor.h"
+#include "context.h"
+#include "swap_chain.h"
+#include "window.h"
+#include "render_pass.h"
+#include "command_manager.h"
+#include "buffer_manager.h"
+#include "texture_manager.h"
+#include "framebuffer_manager.h"
+#include "render_pass_executor.h"
 
 class RenderPassExecutor;
 

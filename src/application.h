@@ -1,9 +1,7 @@
 #pragma once
-#include "deletion_queue.h"
-#include <string>
-#include "core/data_structures.h"
-#include "core/window.h"
-#include "core/context.h"
+#include "data_structures.h"
+#include "window.h"
+#include "context.h"
 #include "renderer.h"
 
 

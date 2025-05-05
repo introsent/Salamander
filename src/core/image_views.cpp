@@ -1,5 +1,5 @@
 #include "image_views.h"
-#include "../deletion_queue.h" 
+#include "deletion_queue.h" 
 #include <stdexcept>
 
 ImageViews::ImageViews(Context* context, const SwapChain* swapChain)

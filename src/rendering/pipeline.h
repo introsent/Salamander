@@ -1,8 +1,6 @@
 #pragma once
-#include <array>
-#include <string>
 #include "pipeline_config.h"
-#include "../core/context.h"
+#include "context.h"
 
 
 class Pipeline {
