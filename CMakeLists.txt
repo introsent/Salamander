@@ -174,9 +174,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
-     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/resources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/user
     ${CMAKE_CURRENT_SOURCE_DIR}/src/executors
+    ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
 # Shader compilation via glslc
@@ -217,6 +218,12 @@ add_dependencies(${PROJECT_NAME} CompileShaders)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/textures)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/models)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/include/config.h"
+        @ONLY
+)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/viking_room.png 
                ${CMAKE_CURRENT_BINARY_DIR}/textures/viking_room.png 
