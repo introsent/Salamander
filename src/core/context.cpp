@@ -43,33 +43,68 @@ bool Context::checkDeviceExtensionSupport(VkPhysicalDevice device) const {
 
 bool Context::isDeviceSuitable(VkPhysicalDevice device) const {
     QueueFamilyIndices indices = findQueueFamilies(device);
+
+    // Get device properties to check version
+    VkPhysicalDeviceProperties deviceProps;
+    vkGetPhysicalDeviceProperties(device, &deviceProps);
+
+    // Check for required extensions
     bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+    // Always check swap chain support if using presentation
     bool swapChainAdequate = false;
     if (extensionsSupported) {
         SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        swapChainAdequate = !swapChainSupport.formats.empty() &&
+                          !swapChainSupport.presentModes.empty();
     }
 
-    // Check for required features using VkPhysicalDeviceFeatures2
+    // Unified feature checking using Vulkan 1.3 structure
     VkPhysicalDeviceFeatures2 supportedFeatures2{};
     supportedFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
-    // Chain synchronization2 feature query
-    VkPhysicalDeviceSynchronization2FeaturesKHR supportedSync2Features{};
-    supportedSync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-    supportedFeatures2.pNext = &supportedSync2Features;
+    // For Vulkan 1.3+, use core features structure
+    VkPhysicalDeviceVulkan13Features vulkan13Features{};
+    vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+    // Chain structures based on version
+    if (deviceProps.apiVersion >= VK_MAKE_VERSION(1, 3, 0)) {
+        supportedFeatures2.pNext = &vulkan13Features;
+    } else {
+        // Fallback to KHR extensions if using older Vulkan
+        VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
+        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+
+        VkPhysicalDeviceDynamicRenderingFeaturesKHR dynRenderingFeatures{};
+        dynRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+
+        sync2Features.pNext = &dynRenderingFeatures;
+        supportedFeatures2.pNext = &sync2Features;
+    }
 
     vkGetPhysicalDeviceFeatures2(device, &supportedFeatures2);
 
-    return indices.isComplete() &&
+    // Feature validation
+    bool featuresSupported = true;
+    featuresSupported &= indices.isComplete();
+    featuresSupported &= (supportedFeatures2.features.samplerAnisotropy == VK_TRUE);
+
+    if (deviceProps.apiVersion >= VK_MAKE_VERSION(1, 3, 0)) {
+        featuresSupported &= (vulkan13Features.synchronization2 == VK_TRUE);
+        featuresSupported &= (vulkan13Features.dynamicRendering == VK_TRUE);
+    } else {
+        auto* sync2Features = reinterpret_cast<VkPhysicalDeviceSynchronization2FeaturesKHR*>(supportedFeatures2.pNext);
+        auto* dynRendering = reinterpret_cast<VkPhysicalDeviceDynamicRenderingFeaturesKHR*>(sync2Features->pNext);
+
+        featuresSupported &= (sync2Features->synchronization2 == VK_TRUE);
+        featuresSupported &= (dynRendering->dynamicRendering == VK_TRUE);
+    }
+
+    return featuresSupported &&
            extensionsSupported &&
-           swapChainAdequate &&
-           supportedFeatures2.features.samplerAnisotropy &&
-           supportedSync2Features.synchronization2;
+           swapChainAdequate;
 }
 
-/* Retrieves the required instance extensions.
-   If validation is enabled, adds the debug utils extension so that debug messages can be reported. */
 std::vector<const char*> Context::getRequiredExtensions(bool enableValidation) {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = nullptr;
