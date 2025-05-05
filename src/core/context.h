@@ -46,9 +46,6 @@ public:
 
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) const;
 
-    PFN_vkQueueSubmit2KHR vkQueueSubmit2KHR = nullptr;
-    PFN_vkCmdPipelineBarrier2KHR vkCmdPipelineBarrier2KHR = nullptr;
-
 private:
     void createInstance();
     void createSurface(Window* window);

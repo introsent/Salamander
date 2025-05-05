@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <memory>
 
+// REDUNDANT IF USING DYNAMIC RENDERING
 class RenderPass {
 public:
     // Configuration structure

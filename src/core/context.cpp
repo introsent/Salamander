@@ -263,15 +263,6 @@ void Context::createLogicalDevice() {
 
     vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
     vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &m_presentQueue);
-
-    vkQueueSubmit2KHR =
-      reinterpret_cast<PFN_vkQueueSubmit2KHR>(vkGetDeviceProcAddr(m_device, "vkQueueSubmit2KHR"));
-    vkCmdPipelineBarrier2KHR =
-        reinterpret_cast<PFN_vkCmdPipelineBarrier2KHR>(vkGetDeviceProcAddr(m_device, "vkCmdPipelineBarrier2KHR"));
-
-    if (!vkQueueSubmit2KHR || !vkCmdPipelineBarrier2KHR) {
-        throw std::runtime_error("Failed to load Synchronization2 functions!");
-    }
 }
 
 

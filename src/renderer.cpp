@@ -178,7 +178,7 @@ void Renderer::drawFrame() {
     };
 
     // Use actual function pointer from your context
-    if (m_context->vkQueueSubmit2KHR(m_context->graphicsQueue(), 1, &submitInfo2, currentFrame.inFlightFence) != VK_SUCCESS) {
+    if (vkQueueSubmit2(m_context->graphicsQueue(), 1, &submitInfo2, currentFrame.inFlightFence) != VK_SUCCESS) {
         throw std::runtime_error("Failed to submit command buffer!");
     }
 
