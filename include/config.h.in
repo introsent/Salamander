@@ -1,0 +1,4 @@
+﻿#pragma once
+
+#define SOURCE_RESOURCE_DIR "@CMAKE_SOURCE_DIR@"
+#define BUILD_RESOURCE_DIR "@CMAKE_BINARY_DIR@"
