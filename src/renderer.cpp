@@ -150,25 +150,25 @@ void Renderer::drawFrame() {
 
     // Submit command buffer
     VkCommandBuffer commandBufferHandle = currentFrame.commandBuffer->handle();
-    VkCommandBufferSubmitInfoKHR cmdSubmitInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR,
+    VkCommandBufferSubmitInfo cmdSubmitInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .commandBuffer = commandBufferHandle
     };
 
-    VkSemaphoreSubmitInfoKHR waitSemaphoreInfo{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
+    VkSemaphoreSubmitInfo waitSemaphoreInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = currentFrame.imageAvailableSemaphore,
-        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
     };
 
-    VkSemaphoreSubmitInfoKHR signalSemaphoreInfo{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
+    VkSemaphoreSubmitInfo signalSemaphoreInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = currentFrame.renderFinishedSemaphore,
-        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
     };
 
-    VkSubmitInfo2KHR submitInfo2{
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2_KHR,
+    VkSubmitInfo2 submitInfo2{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .waitSemaphoreInfoCount = 1,
         .pWaitSemaphoreInfos = &waitSemaphoreInfo,
         .commandBufferInfoCount = 1,

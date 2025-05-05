@@ -12,14 +12,6 @@ TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
     : m_device(device), m_allocator(allocator),
       m_commandManager(commandManager), m_bufferManager(bufferManager)
 {
-    // Load the function pointer
-    vkCmdPipelineBarrier2KHR =
-        reinterpret_cast<PFN_vkCmdPipelineBarrier2KHR>(
-            vkGetDeviceProcAddr(device, "vkCmdPipelineBarrier2KHR"));
-
-    if (!vkCmdPipelineBarrier2KHR) {
-        throw std::runtime_error("Failed to load vkCmdPipelineBarrier2KHR!");
-    }
 }
 
 ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
@@ -167,11 +159,11 @@ void TextureManager::transitionImageLayout(VkImage image, VkFormat format,
 {
     VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
 
-    VkImageMemoryBarrier2KHR barrier{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
-        .srcStageMask = VK_PIPELINE_STAGE_2_NONE_KHR,
+    VkImageMemoryBarrier2 barrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
         .srcAccessMask = 0,
-        .dstStageMask = VK_PIPELINE_STAGE_2_NONE_KHR,
+        .dstStageMask = VK_PIPELINE_STAGE_2_NONE,
         .dstAccessMask = 0,
         .oldLayout = oldLayout,
         .newLayout = newLayout,
@@ -191,29 +183,31 @@ void TextureManager::transitionImageLayout(VkImage image, VkFormat format,
     if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
         newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
     {
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT_KHR;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT_KHR;
-        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
     }
     else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
              newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
     {
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT_KHR;
-        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT_KHR;
-        barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT_KHR;
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
     }
     else {
         throw std::invalid_argument("Unsupported layout transition!");
     }
 
-    VkDependencyInfoKHR dependencyInfo{
-        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+    // Define a dependency (synchronization scope) between commands before and after the barrier.
+    VkDependencyInfo dependencyInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
         .imageMemoryBarrierCount = 1,
         .pImageMemoryBarriers = &barrier
     };
 
-    vkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
+    // Insert a memory barrier into the command buffer
+    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
 
     m_commandManager->endSingleTimeCommands(cmd);
 }
