@@ -1,6 +1,6 @@
 ﻿// descriptor_manager.cpp
 #include "main_descriptor_manager.h"
-#include "../deletion_queue.h"
+#include "deletion_queue.h"
 #include <stdexcept>
 
 MainDescriptorManager::MainDescriptorManager(

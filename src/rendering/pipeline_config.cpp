@@ -1,6 +1,5 @@
 #include "pipeline_config.h"
-#include "../core/data_structures.h"
-#include <cstring>
+#include "data_structures.h"
 
 PipelineConfigBuilder::PipelineConfigBuilder() {
     // Set default shader paths

@@ -3,7 +3,6 @@
 #include "buffer_manager.h"
 #include "vk_mem_alloc.h"
 #include <vulkan/vulkan.h>
-#include "../core/data_structures.h"
 
 class UniformBuffer final : public Buffer {
 public:

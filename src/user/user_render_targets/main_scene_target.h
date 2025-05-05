@@ -1,12 +1,12 @@
 ﻿#pragma once
-#include "../rendering/target/render_target.h"
-#include "../rendering/pipeline.h"
-#include "../rendering/descriptors/descriptor_set_layout.h"
-#include "../resources/vertex_buffer.h"
-#include "../resources/index_buffer.h"
-#include "../resources/uniform_buffer.h"
-#include "../user/user_descriptor_managers/main_descriptor_manager.h"
-#include "../core/data_structures.h"
+#include "target/render_target.h"
+#include "pipeline.h"
+#include "descriptors/descriptor_set_layout.h"
+#include "vertex_buffer.h"
+#include "index_buffer.h"
+#include "uniform_buffer.h"
+#include "user_descriptor_managers/main_descriptor_manager.h"
+#include "data_structures.h"
 
 class MainSceneTarget : public RenderTarget {
 public:
@@ -16,8 +16,8 @@ public:
     void cleanup() override;
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-    const std::string MODEL_PATH = "../models/viking_room.obj";
-    const std::string TEXTURE_PATH = "../textures/viking_room.png";
+    const std::string MODEL_PATH = "./models/viking_room.obj";
+    const std::string TEXTURE_PATH = "./textures/viking_room.png";
 private:
     void createPipeline();
     void createRenderingResources();
