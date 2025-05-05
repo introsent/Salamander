@@ -47,26 +47,28 @@ VkCommandBuffer CommandManager::beginSingleTimeCommands() const {
     return commandBuffer;
 }
 
+
 void CommandManager::endSingleTimeCommands(VkCommandBuffer commandBuffer) const {
-    // End recording the command buffer
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("Failed to record one-time command buffer!");
     }
 
-    // Submit the command buffer to the graphics queue
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
+    VkCommandBufferSubmitInfo commandBufferSubmitInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = commandBuffer
+    };
 
-    if (vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+    VkSubmitInfo2 submitInfo{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &commandBufferSubmitInfo
+    };
+
+    if (vkQueueSubmit2(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
         throw std::runtime_error("Failed to submit one-time command buffer!");
     }
 
-    // Wait for the queue to finish execution
     vkQueueWaitIdle(m_graphicsQueue);
-
-    // Free the command buffer
     vkFreeCommandBuffers(m_device, m_commandPoolManager->handle(), 1, &commandBuffer);
 }
 
