@@ -4,16 +4,22 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-
 #include <stdexcept>
-#include <cstring>
-
 #include "deletion_queue.h"
 
 TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
-                               CommandManager* commandManager, BufferManager* bufferManager)
+                             CommandManager* commandManager, BufferManager* bufferManager)
     : m_device(device), m_allocator(allocator),
-    m_commandManager(commandManager), m_bufferManager(bufferManager) {
+      m_commandManager(commandManager), m_bufferManager(bufferManager)
+{
+    // Load the function pointer
+    vkCmdPipelineBarrier2KHR =
+        reinterpret_cast<PFN_vkCmdPipelineBarrier2KHR>(
+            vkGetDeviceProcAddr(device, "vkCmdPipelineBarrier2KHR"));
+
+    if (!vkCmdPipelineBarrier2KHR) {
+        throw std::runtime_error("Failed to load vkCmdPipelineBarrier2KHR!");
+    }
 }
 
 ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
@@ -157,44 +163,57 @@ VkSampler TextureManager::createSampler() const {
 }
 
 void TextureManager::transitionImageLayout(VkImage image, VkFormat format,
-    VkImageLayout oldLayout, VkImageLayout newLayout) const
+                                         VkImageLayout oldLayout, VkImageLayout newLayout) const
 {
     VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
 
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = oldLayout;
-    barrier.newLayout = newLayout;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    VkImageMemoryBarrier2KHR barrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+        .srcStageMask = VK_PIPELINE_STAGE_2_NONE_KHR,
+        .srcAccessMask = 0,
+        .dstStageMask = VK_PIPELINE_STAGE_2_NONE_KHR,
+        .dstAccessMask = 0,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        }
+    };
 
-    VkPipelineStageFlags sourceStage;
-    VkPipelineStageFlags destinationStage;
-
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    // Common transitions for texture uploading
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+        newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT_KHR;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT_KHR;
+        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
     }
     else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-        newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+             newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    {
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT_KHR;
+        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT_KHR;
+        barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT_KHR;
     }
     else {
         throw std::invalid_argument("Unsupported layout transition!");
     }
 
-    vkCmdPipelineBarrier(cmd, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    VkDependencyInfoKHR dependencyInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &barrier
+    };
+
+    vkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
 
     m_commandManager->endSingleTimeCommands(cmd);
 }

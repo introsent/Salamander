@@ -39,6 +39,8 @@ private:
 
     std::vector<ManagedTexture> m_managedTextures;
 
+    PFN_vkCmdPipelineBarrier2KHR vkCmdPipelineBarrier2KHR = nullptr;
+
     void createImage(uint32_t width, uint32_t height, VkFormat format,
         VkImageTiling tiling, VkImageUsageFlags usage,
         VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation) const;
