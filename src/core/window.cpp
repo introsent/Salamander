@@ -1,7 +1,7 @@
 #include "window.h"
 #include <stdexcept>
 
-#include "../deletion_queue.h"
+#include "deletion_queue.h"
 
 Window::Window(int width, int height, const char* title)
     : m_width(width), m_height(height), m_resized(false), m_resizeCallback(nullptr) {

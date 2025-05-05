@@ -1,13 +1,13 @@
 ﻿#include "main_scene_target.h"
-#include "../core/data_structures.h"
-#include "../rendering/depth_format.h"
+#include "data_structures.h"
+#include "depth_format.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "../tiny_obj_loader.h"
+#include "tiny_obj_loader.h"
 
-#include "../../executors/render_pass_executor.h"
-#include "../rendering/descriptors/descriptor_set_layout_builder.h"
-#include "../user_executors/main_scene_pass_executor.h"
+#include "render_pass_executor.h"
+#include "descriptors/descriptor_set_layout_builder.h"
+#include "user_executors/main_scene_pass_executor.h"
 
 
 void MainSceneTarget::initialize(const SharedResources& shared) {
@@ -51,8 +51,8 @@ void MainSceneTarget::createPipeline() {
     colorBlending.blendConstants[3] = 0.0f;
 
     PipelineConfig pipelineConfig{
-        .vertShaderPath = "../shaders/shader_vert.spv",
-        .fragShaderPath = "../shaders/shader_frag.spv",
+        .vertShaderPath = "./shaders/shader_vert.spv",
+        .fragShaderPath = "./shaders/shader_frag.spv",
         .bindingDescription = Vertex::getBindingDescription(),
         .attributeDescriptions = Vertex::getAttributeDescriptions(),
 

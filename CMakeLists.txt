@@ -36,6 +36,7 @@ FetchContent_Declare(
     GIT_TAG 1.0.1
     GIT_SHALLOW ON
 )
+set(GLM_ENABLE_CXX_20 ON)
 
 # Fetch Vulkan Memory Allocator (VMA)
 FetchContent_Declare(
@@ -105,8 +106,8 @@ set(${PROJECT_NAME}_SOURCES
     "src/application.h" 
     "src/application.cpp" 
     "src/deletion_queue.h"
-    "src/imgui_wrapper.h" 
-    "src/imgui_wrapper.cpp"
+     
+    
     "src/executors/render_pass_executor.h"
     "src/user/user_executors/main_scene_pass_executor.cpp"
     "src/user/user_executors/main_scene_pass_executor.h"
@@ -168,8 +169,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${STB_INCLUDE_DIR}
     ${glfw_SOURCE_DIR}/include
     ${Vulkan_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/user
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/executors
 )
 
 # Shader compilation via glslc

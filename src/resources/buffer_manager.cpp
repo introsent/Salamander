@@ -1,7 +1,7 @@
 #include "buffer_manager.h"
 #include <stdexcept>
 #include "command_manager.h"
-#include "../deletion_queue.h"
+#include "deletion_queue.h"
 
 BufferManager::BufferManager(VkDevice device, VmaAllocator allocator, CommandManager* commandManager)
     : m_device(device), m_allocator(allocator), m_commandManager(commandManager) {

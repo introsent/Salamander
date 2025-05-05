@@ -1,17 +1,14 @@
 #include "renderer.h"
-#include "core/image_views.h"
-#include "rendering/depth_format.h"
-#include "rendering/descriptors/descriptor_set_layout.h"
+#include "image_views.h"
+#include "depth_format.h"
+#include "descriptors/descriptor_set_layout.h"
 #include "deletion_queue.h"
-
-
-#include "tiny_obj_loader.h"
 
 #include <chrono>
 #include <stdexcept>
 
-#include "../user/user_render_targets/main_scene_target.h"
-#include "../user/user_render_targets/imgui_target.h"
+#include "user_render_targets/main_scene_target.h"
+#include "user_render_targets/imgui_target.h"
 
 
 Renderer::Renderer(Context* context, Window* window, VmaAllocator allocator)

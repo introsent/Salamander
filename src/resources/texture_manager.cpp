@@ -3,12 +3,12 @@
 #include "command_manager.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "../stb_image.h"
+#include "stb_image.h"
 
 #include <stdexcept>
 #include <cstring>
 
-#include "../deletion_queue.h"
+#include "deletion_queue.h"
 
 TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
                                CommandManager* commandManager, BufferManager* bufferManager)

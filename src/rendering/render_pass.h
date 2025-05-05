@@ -1,5 +1,5 @@
 #pragma once
-#include "../core/context.h"
+#include "context.h"
 #include <vulkan/vulkan.h>
 #include <memory>
 
