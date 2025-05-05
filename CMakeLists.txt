@@ -36,6 +36,7 @@ FetchContent_Declare(
     GIT_TAG 1.0.1
     GIT_SHALLOW ON
 )
+set(GLM_ENABLE_CXX_20 ON)
 
 # Fetch Vulkan Memory Allocator (VMA)
 FetchContent_Declare(
@@ -173,6 +174,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
     ${CMAKE_CURRENT_SOURCE_DIR}/src/user
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/executors
 )
 
 # Shader compilation via glslc
