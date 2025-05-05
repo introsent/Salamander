@@ -7,7 +7,6 @@
 
 #include "window.h"
 #include "debug_messenger.h"
-#include "../deletion_queue.h"
 
 
 struct SwapChainSupportDetails {

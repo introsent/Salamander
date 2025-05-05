@@ -4,6 +4,8 @@
 #include <limits>
 #include <stdexcept>
 
+#include "deletion_queue.h"
+
 SwapChain::SwapChain(Context* context, Window* window)
     : m_context(context), m_window(window) {
     createSwapChain();

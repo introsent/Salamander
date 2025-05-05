@@ -1,7 +1,5 @@
 // descriptor_set_layout.h
 #pragma once
-#include "../../core/context.h"
-#include <vector>
 #include <vulkan/vulkan.h>
 
 class DescriptorSetLayout final {

@@ -1,7 +1,7 @@
 #pragma once
 #include "buffer.h"
 #include "buffer_manager.h"
-#include "../core/data_structures.h"
+#include "data_structures.h"
 #include "vk_mem_alloc.h"
 #include <vector>
 class VertexBuffer final : public Buffer {

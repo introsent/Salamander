@@ -1,5 +1,4 @@
 #include "vertex_buffer.h"
-
 #include "command_manager.h"
 
 VertexBuffer::VertexBuffer(BufferManager* bufferManager,

@@ -1,12 +1,11 @@
 #pragma once
-#include "core/context.h"
-#include "core/window.h"
-#include "../rendering/target/render_target.h"
+#include "context.h"
+#include "window.h"
+#include "target/render_target.h"
 #include <memory>
 #include <vector>
-#include "core/data_structures.h"
-#include "core/image_views.h"
-#include "rendering/depth_format.h"
+#include "image_views.h"
+#include "depth_format.h"
 
 class Renderer {
 public:

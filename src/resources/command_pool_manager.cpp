@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include "command_buffer.h"
-#include "../deletion_queue.h"
+#include "deletion_queue.h"
 
 CommandPoolManager::CommandPoolManager(
     VkDevice device,

@@ -3,6 +3,7 @@
 #include <vector>
 #include <set>
 #include <cstring>
+#include "deletion_queue.h"
 
 // Checks if all the requested validation layers are available on the system
 bool Context::checkValidationLayerSupport() const
@@ -112,7 +113,7 @@ void Context::createInstance() {
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "NoEngine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.apiVersion = VK_API_VERSION_1_3;
 
     auto extensions = getRequiredExtensions(m_enableValidation);
 

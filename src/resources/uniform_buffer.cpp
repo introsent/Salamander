@@ -2,6 +2,8 @@
 
 #include <chrono>
 
+#include "data_structures.h"
+
 UniformBuffer::UniformBuffer(BufferManager* bufferManager, VmaAllocator alloc, VkDeviceSize bufferSize)
     : Buffer(alloc) // Pass allocator to the base class
 {
