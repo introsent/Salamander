@@ -36,13 +36,30 @@ ManagedBuffer BufferManager::createBuffer(VkDeviceSize size, VkBufferUsageFlags 
     return managedBuffer;
 }
 
-void BufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const
-{
-    VkCommandBuffer commandBuffer = m_commandManager->beginSingleTimeCommands();
+void BufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const {
+    VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
 
-    VkBufferCopy copyRegion{};
-    copyRegion.size = size;
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+    // 1. Copy operation
+    VkBufferCopy copyRegion{ .size = size };
+    vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &copyRegion);
 
-    m_commandManager->endSingleTimeCommands(commandBuffer);
+    // 2. Critical barrier for SSBO/vertex access
+    VkBufferMemoryBarrier barrier{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = dstBuffer,
+        .offset = 0,
+        .size = size
+    };
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+        0, 0, nullptr, 1, &barrier, 0, nullptr
+    );
+
+    m_commandManager->endSingleTimeCommands(cmd);
 }

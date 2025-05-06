@@ -8,6 +8,7 @@
 #include "user_descriptor_managers/main_descriptor_manager.h"
 #include "data_structures.h"
 #include "config.h"
+#include "ssbo_buffer.h"
 
 class MainSceneTarget : public RenderTarget {
 public:
@@ -35,7 +36,10 @@ private:
 
     std::vector<Vertex> m_vertices;
     std::vector<uint32_t> m_indices;
-    VertexBuffer m_vertexBuffer;
+
+    SSBOBuffer m_ssboBuffer;
+    VkDeviceAddress m_deviceAddress {};
+
     IndexBuffer m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
     ManagedTexture m_texture;

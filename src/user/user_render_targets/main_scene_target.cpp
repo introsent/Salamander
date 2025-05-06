@@ -60,8 +60,6 @@ void MainSceneTarget::createPipeline() {
     PipelineConfig pipelineConfig{
         .vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/shader_vert.spv",
         .fragShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/shader_frag.spv",
-        .bindingDescription = Vertex::getBindingDescription(),
-        .attributeDescriptions = Vertex::getAttributeDescriptions(),
 
         .inputAssembly = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -126,7 +124,7 @@ void MainSceneTarget::createRenderingResources() {
     DynamicMainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
-        .vertexBuffer = m_vertexBuffer.handle(),
+        .vertexBufferAddress = m_deviceAddress,
         .indexBuffer = m_indexBuffer.handle(),
         .descriptorSets = m_descriptorManager->getDescriptorSets(),
         .indices = m_indices,
@@ -205,7 +203,7 @@ void MainSceneTarget::recreateSwapChain() {
     DynamicMainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
-        .vertexBuffer = m_vertexBuffer.handle(),
+        .vertexBufferAddress = m_deviceAddress,
         .indexBuffer = m_indexBuffer.handle(),
         .descriptorSets = m_descriptorManager->getDescriptorSets(),
         .indices = m_indices,
@@ -262,7 +260,11 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
 }
 
 void MainSceneTarget::createBuffers() {
-    m_vertexBuffer = VertexBuffer(m_shared->bufferManager, m_shared->commandManager, m_shared->allocator, m_vertices);
+    m_ssboBuffer = SSBOBuffer(m_shared->bufferManager, m_shared->commandManager, m_shared->allocator,
+                              m_vertices.data(), sizeof(Vertex) * m_vertices.size());
+
+    m_deviceAddress = m_ssboBuffer.getDeviceAddress(m_shared->context->device());
+
     m_indexBuffer = IndexBuffer(m_shared->bufferManager, m_shared->commandManager, m_shared->allocator, m_indices);
 
     VkDeviceSize bufferSize = sizeof(UniformBufferObject);

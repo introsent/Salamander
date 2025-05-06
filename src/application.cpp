@@ -34,7 +34,7 @@ void VulkanApplication::createAllocator() {
     allocatorInfo.physicalDevice = m_context->physicalDevice();
     allocatorInfo.device = m_context->device();
     allocatorInfo.instance = m_context->instance();
-
+    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     if (vmaCreateAllocator(&allocatorInfo, &m_allocator) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create VMA allocator!");
     }

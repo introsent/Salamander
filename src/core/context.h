@@ -71,14 +71,14 @@ private:
 
     // list of validation layers and device extensions.
     std::vector<const char*> m_validationLayers = {
-        "VK_LAYER_KHRONOS_validation"
-
+        "VK_LAYER_KHRONOS_validation",
     };
 
     std::vector<const char*> m_deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
+        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+        VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME
     };
 };

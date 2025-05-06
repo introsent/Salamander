@@ -1,5 +1,6 @@
 ﻿#include "dynamic_main_scene_executor.h"
 #include "image_transition_manager.h"
+#include "shared/shared_structs.h"
 
 DynamicMainSceneExecutor::DynamicMainSceneExecutor(Resources resources)
     : m_resources(std::move(resources))
@@ -50,6 +51,18 @@ void DynamicMainSceneExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) {
 void DynamicMainSceneExecutor::execute(VkCommandBuffer cmd) {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_resources.pipeline);
     setViewportAndScissor(cmd);
+
+    //PushConstants pushConstants{};
+    VkDeviceAddress vertexBufferAddress = m_resources.vertexBufferAddress;
+    vkCmdPushConstants(
+        cmd,
+        m_resources.pipelineLayout,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0,
+        sizeof( VkDeviceAddress),
+        &vertexBufferAddress
+    );
+
     bindBuffers(cmd);
     vkCmdDrawIndexed(cmd, static_cast<uint32_t>(m_resources.indices.size()), 1, 0, 0, 0);
 }
@@ -65,12 +78,6 @@ void DynamicMainSceneExecutor::end(VkCommandBuffer cmd) {
     );
 }
 
-void DynamicMainSceneExecutor::updateResources(SwapChain *swapChain, VkImageView depthView) {
-    m_resources.swapChain = swapChain;
-    m_resources.depthImageView = depthView;
-    m_resources.colorImageViews = swapChain->imagesViews();
-    m_resources.extent = swapChain->extent();
-}
 
 void DynamicMainSceneExecutor::setViewportAndScissor(VkCommandBuffer cmd) const {
     VkViewport viewport{
@@ -86,9 +93,7 @@ void DynamicMainSceneExecutor::setViewportAndScissor(VkCommandBuffer cmd) const 
 }
 
 void DynamicMainSceneExecutor::bindBuffers(VkCommandBuffer cmd) const {
-    VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &m_resources.vertexBuffer, &offset);
     vkCmdBindIndexBuffer(cmd, m_resources.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_resources.pipelineLayout, 0, 1, &m_resources.descriptorSets[0], 0, nullptr);
+             m_resources.pipelineLayout, 0, 1, &m_resources.descriptorSets[0], 0, nullptr);
 }

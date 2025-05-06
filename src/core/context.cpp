@@ -240,7 +240,7 @@ SwapChainSupportDetails Context::querySwapChainSupport(VkPhysicalDevice device) 
 /* Creates a logical device from the selected physical device.
    Also retrieves the graphics and presentation queues from the created device. */
 void Context::createLogicalDevice() {
-    QueueFamilyIndices indices = findQueueFamilies(m_physicalDevice);
+  QueueFamilyIndices indices = findQueueFamilies(m_physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(),
@@ -256,33 +256,34 @@ void Context::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    // Enable Vulkan 1.2+ features (including bufferDeviceAddress)
+    // ============ Vulkan 1.2 features ============
     VkPhysicalDeviceVulkan12Features features12{};
     features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    features12.bufferDeviceAddress = VK_TRUE;  // for vertex pulling
+    features12.bufferDeviceAddress = VK_TRUE;    // For buffer references
+    features12.runtimeDescriptorArray = VK_TRUE; // For GL_EXT_buffer_reference
+    features12.scalarBlockLayout = VK_TRUE;     // For GL_EXT_scalar_block_layout
 
-    // Vulkan 1.3 features (dynamic rendering, etc.)
+    // ============ Vulkan 1.3 features ============
     VkPhysicalDeviceVulkan13Features features13{};
     features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    features13.synchronization2 = VK_TRUE; // for synchronization 2
-    features13.dynamicRendering = VK_TRUE;  // for dynamic rendering
-    features13.pNext = nullptr;  // End of chain
+    features13.synchronization2 = VK_TRUE;
+    features13.dynamicRendering = VK_TRUE;
 
-    // Link the chain: features12 → features13
-    features12.pNext = &features13;
-
-    // Base device features (anisotropy, etc.)
+    // ============ Base device features ============
     VkPhysicalDeviceFeatures2 deviceFeatures2{};
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
-    deviceFeatures2.pNext = &features12;  // deviceFeatures2 -> features12 -> features13
+    deviceFeatures2.features.shaderInt64 = VK_TRUE; // For 64-bit addresses
 
+    // ============ Feature chain ============
+    features12.pNext = &features13;     // 1.2-> 1.3
+    deviceFeatures2.pNext = &features12; // Base -> 1.2 -> 1.3
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.pNext = &deviceFeatures2;  // Use pNext for extended features
+    createInfo.pNext = &deviceFeatures2; // Attach feature chain
     createInfo.enabledExtensionCount = static_cast<uint32_t>(m_deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = m_deviceExtensions.data();
 
