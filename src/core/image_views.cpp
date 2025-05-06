@@ -2,25 +2,25 @@
 #include "deletion_queue.h" 
 #include <stdexcept>
 
-ImageViews::ImageViews(Context* context, const SwapChain* swapChain)
-    : m_context(context), m_format(swapChain->format()) {
-    createImageViews(swapChain);
+ImageViews::ImageViews(Context* context, VkFormat format, const std::vector<VkImage>& images)
+    : m_context(context), m_format(format) {
+    createImageViews(images);
 }
 
-void ImageViews::recreate(const SwapChain* swapChain) {
+void ImageViews::recreate(VkFormat format, const std::vector<VkImage>& images) {
     cleanup(); // immediately destroy old ones
-    m_format = swapChain->format();
-    createImageViews(swapChain);
+    m_format = format;
+    createImageViews(images);
 }
 
-void ImageViews::createImageViews(const SwapChain* swapChain) {
-    const auto& images = swapChain->images();
-    m_imageViews.resize(images.size());
+void ImageViews::createImageViews(const std::vector<VkImage>& images) {
+    const auto& localImages = images;
+    m_imageViews.resize(localImages.size());
 
     for (size_t i = 0; i < images.size(); i++) {
         VkImageViewCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.image = images[i];
+        createInfo.image = localImages[i];
         createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         createInfo.format = m_format;
         createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;

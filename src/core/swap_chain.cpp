@@ -9,12 +9,13 @@
 SwapChain::SwapChain(Context* context, Window* window)
     : m_context(context), m_window(window) {
     createSwapChain();
+    createImageViews();
 }
 
 void SwapChain::recreate() {
-    vkDeviceWaitIdle(m_context->device());
     cleanup();
     createSwapChain();
+    m_imageViews->recreate(m_imageFormat, m_images);
 }
 
 void SwapChain::createSwapChain() {
@@ -74,6 +75,10 @@ void SwapChain::createSwapChain() {
 
     m_imageFormat = surfaceFormat.format;
     m_extent = extent;
+}
+
+void SwapChain::createImageViews() {
+    m_imageViews = std::make_unique<ImageViews>(m_context, m_imageFormat, m_images);
 }
 
 void SwapChain::cleanup() {

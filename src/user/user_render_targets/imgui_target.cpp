@@ -6,7 +6,7 @@
 #include "imgui_impl_vulkan.h"
 
 void ImGuiTarget::initialize(const SharedResources &shared) {
-    m_shared = shared;
+    m_shared = &shared;
 
     createDescriptors();
     createRenderingResources();
@@ -20,16 +20,22 @@ void ImGuiTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 }
 
 void ImGuiTarget::recreateSwapChain() {
-    m_framebuffers = m_shared.framebufferManager->createFramebuffersForRenderPass(m_renderPass->handle());
 
-    ImGuiPassExecutor::Resources imguiResources{
-        .framebuffers = m_framebuffers.framebuffers,
-        .extent = m_shared.swapChain->extent(),
-        .imguiContext = ImGui::GetCurrentContext()
+    VkExtent2D newExtent = m_shared->swapChain->extent();
+    ImGuiPassExecutor::Resources resources{
+        .extent = newExtent,
+        .swapchainImageViews = m_shared->swapChain->imagesViews(),
+        .depthImageView = m_shared->depthImageView
     };
-    m_executor = std::make_unique<ImGuiPassExecutor>(m_renderPass.get(), imguiResources);
 
-    ImGui_ImplVulkan_SetMinImageCount(m_shared.swapChain->images().size());
+    m_executor = std::make_unique<ImGuiPassExecutor>(std::move(resources));
+
+    // Update ImGui display size
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2(static_cast<float>(resources.extent.width),
+                           static_cast<float>(resources.extent.height));
+
+    ImGui_ImplVulkan_SetMinImageCount(m_shared->swapChain->images().size());
 }
 
 void ImGuiTarget::cleanup() {
@@ -38,35 +44,21 @@ void ImGuiTarget::cleanup() {
 
 void ImGuiTarget::createRenderingResources()
 {
-    RenderPass::Config imguiPassConfig{
-        .colorFormat = m_shared.swapChain->format(),
-        .depthFormat = DepthFormat(m_shared.context->physicalDevice()).handle(),
-        .colorLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-        .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .colorInitialLayout =  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .colorFinalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        .depthLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-        .depthStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .depthInitialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        .depthFinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    };
-    m_renderPass = RenderPass::create(m_shared.context, imguiPassConfig);
-
     initializeImGui();
 
-    m_framebuffers = m_shared.framebufferManager->createFramebuffersForRenderPass(m_renderPass->handle());
-
     // ImGui pass executor
-    ImGuiPassExecutor::Resources imguiResources{
-        .framebuffers = m_framebuffers.framebuffers,
-        .extent = m_shared.swapChain->extent(),
-        .imguiContext = ImGui::GetCurrentContext()
+    ImGuiPassExecutor::Resources resources{
+        .extent = m_shared->swapChain->extent(),
+        .swapchainImageViews = m_shared->swapChain->imagesViews(),
+        .depthImageView = m_shared->depthImageView
     };
-    m_executor = std::make_unique<ImGuiPassExecutor>(m_renderPass.get(), imguiResources);
+
+    m_executor = std::make_unique<ImGuiPassExecutor>(std::move(resources));
+
 }
 
 void ImGuiTarget::createDescriptors() {
-    m_descriptorManager = std::make_unique<ImGuiDescriptorManager>(m_shared.context->device());
+    m_descriptorManager = std::make_unique<ImGuiDescriptorManager>(m_shared->context->device());
 }
 
 void ImGuiTarget::initializeImGui() {
@@ -75,25 +67,36 @@ void ImGuiTarget::initializeImGui() {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    ImGui_ImplGlfw_InitForVulkan(m_shared.window->handle(), true);
+    ImGui_ImplGlfw_InitForVulkan(m_shared->window->handle(), true);
 
     ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = m_shared.context->instance();
-    init_info.PhysicalDevice = m_shared.context->physicalDevice();
-    init_info.Device = m_shared.context->device();
-    init_info.QueueFamily = m_shared.context->findQueueFamilies(m_shared.context->physicalDevice()).graphicsFamily.value();
-    init_info.Queue = m_shared.context->graphicsQueue();
+    init_info.Instance = m_shared->context->instance();
+    init_info.PhysicalDevice = m_shared->context->physicalDevice();
+    init_info.Device = m_shared->context->device();
+    init_info.QueueFamily = m_shared->context->findQueueFamilies(m_shared->context->physicalDevice()).graphicsFamily.value();
+    init_info.Queue = m_shared->context->graphicsQueue();
+    init_info.PipelineCache = VK_NULL_HANDLE;
     init_info.DescriptorPool = m_descriptorManager->getPool();
-    init_info.MinImageCount = m_shared.swapChain->images().size();
-    init_info.ImageCount =  m_shared.swapChain->images().size();
+    init_info.MinImageCount = m_shared->swapChain->images().size();
+    init_info.ImageCount =  m_shared->swapChain->images().size();
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    init_info.RenderPass = m_renderPass->handle();
+    init_info.Allocator = nullptr;
+    init_info.UseDynamicRendering = true;
+
+    VkFormat attachmentFormat = m_shared->swapChain->format();
+    VkPipelineRenderingCreateInfo renderingInfo = {};
+    renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachmentFormats = &attachmentFormat;
+    renderingInfo.depthAttachmentFormat = m_shared->depthFormat;
+    init_info.PipelineRenderingCreateInfo = renderingInfo;
+
 
     ImGui_ImplVulkan_Init(&init_info);
 
     // Upload ImGui fonts
-    auto commandBuffer = m_shared.commandManager->beginSingleTimeCommands();
+    auto commandBuffer = m_shared->commandManager->beginSingleTimeCommands();
     ImGui_ImplVulkan_CreateFontsTexture();
-    m_shared.commandManager->endSingleTimeCommands(commandBuffer);
+    m_shared->commandManager->endSingleTimeCommands(commandBuffer);
     ImGui_ImplVulkan_DestroyFontsTexture();
 }

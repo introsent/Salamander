@@ -7,12 +7,13 @@
 class ImGuiPassExecutor : public RenderPassExecutor {
 public:
     struct Resources {
-        std::vector<VkFramebuffer>& framebuffers;
         VkExtent2D extent;
-        ImGuiContext* imguiContext;
+        std::vector<VkImageView> swapchainImageViews;
+        VkImageView depthImageView;  // Optional
     };
 
-    ImGuiPassExecutor(RenderPass* renderPass, Resources resources);
+
+    ImGuiPassExecutor(Resources resources);
     ~ImGuiPassExecutor() override = default;
 
     void begin(VkCommandBuffer cmd, uint32_t imageIndex) override;

@@ -20,10 +20,12 @@ public:
         CommandManager* commandManager;
         BufferManager* bufferManager;
         TextureManager* textureManager;
-        FramebufferManager* framebufferManager;
         uint32_t currentFrame;
         VmaAllocator allocator;
+        VkImageView depthImageView;
+        VkFormat depthFormat;
     };
+
 
     virtual ~RenderTarget() = default;
     
@@ -33,8 +35,6 @@ public:
     virtual void cleanup() = 0;
 
 protected:
-    SharedResources m_shared = {};
-    std::unique_ptr<RenderPass> m_renderPass;
-    FramebufferManager::FramebufferSet m_framebuffers;
+    const SharedResources* m_shared = nullptr;
     std::unique_ptr<RenderPassExecutor> m_executor;
 };

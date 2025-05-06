@@ -66,9 +66,44 @@ ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, V
     return m_managedTextures.back();
 }
 
+void TextureManager::transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout,
+    VkImageLayout newLayout, VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
+    VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const {
+
+    VkImageMemoryBarrier2 barrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask = srcStageMask,
+        .srcAccessMask = srcAccessMask,
+        .dstStageMask = dstStageMask,
+        .dstAccessMask = dstAccessMask,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        }
+    };
+
+    VkDependencyInfo dependencyInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &barrier
+    };
+
+    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+
+};
+
+
 void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat format,
-    VkImageTiling tiling, VkImageUsageFlags usage,
-    VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation) const
+                                 VkImageTiling tiling, VkImageUsageFlags usage,
+                                 VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation) const
 {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;

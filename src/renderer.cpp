@@ -74,7 +74,6 @@ void Renderer::createCommandBuffers() {
 
 void Renderer::initializeSharedResources() {
     m_swapChain = std::make_unique<SwapChain>(m_context, m_window);
-    m_imageViews = std::make_unique<ImageViews>(m_context, m_swapChain.get());
     m_depthFormat = std::make_unique<DepthFormat>(m_context->physicalDevice());
 
     m_commandManager = std::make_unique<CommandManager>(
@@ -91,9 +90,10 @@ void Renderer::initializeSharedResources() {
         m_context->device(), m_allocator, m_commandManager.get(), m_bufferManager.get()
     );
 
+    VkExtent2D extent = m_swapChain->extent();
     m_depthImage = m_textureManager->createTexture(
-       m_swapChain->extent().width,
-       m_swapChain->extent().height,
+       extent.width,
+       extent.height,
        m_depthFormat->handle(),
        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
        VMA_MEMORY_USAGE_GPU_ONLY,
@@ -101,13 +101,18 @@ void Renderer::initializeSharedResources() {
        false
    );
 
-    m_framebufferManager = std::make_unique<FramebufferManager>(
-        m_context,
-        &m_imageViews->views(),
-        m_swapChain->extent(),
-        m_depthImage.view
-    );
 
+    //SharedResources:
+    //    Context* context;
+    //    Window* window;
+    //    SwapChain* swapChain;
+    //    CommandManager* commandManager;
+    //    BufferManager* bufferManager;
+    //    TextureManager* textureManager;
+    //    uint32_t currentFrame;
+    //    VmaAllocator allocator;
+    //    VkImageView depthImageView;
+    //};
     m_sharedResources = {
         .context = m_context,
         .window = m_window,
@@ -115,9 +120,10 @@ void Renderer::initializeSharedResources() {
         .commandManager = m_commandManager.get(),
         .bufferManager = m_bufferManager.get(),
         .textureManager = m_textureManager.get(),
-        .framebufferManager = m_framebufferManager.get(),
         .currentFrame = m_currentFrame,
-        .allocator = m_allocator
+        .allocator = m_allocator,
+        .depthImageView = m_depthImage.view,
+        .depthFormat = m_depthFormat->handle()
     };
 }
 
@@ -125,8 +131,10 @@ void Renderer::initializeSharedResources() {
 void Renderer::drawFrame() {
     Frame& currentFrame = m_frames[m_currentFrame];
 
+    // Wait for fence before doing anything
     vkWaitForFences(m_context->device(), 1, &currentFrame.inFlightFence, VK_TRUE, UINT64_MAX);
 
+    // Try to acquire next image
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(
         m_context->device(),
@@ -137,24 +145,24 @@ void Renderer::drawFrame() {
         &imageIndex
     );
 
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        return;
+    }
+
     vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
+
+    // Reset and record command buffer
     currentFrame.commandBuffer->reset();
     currentFrame.commandBuffer->begin();
 
-    // Execute all render targets
+    m_sharedResources.currentFrame = m_currentFrame;
     for (auto& target : m_renderTargets) {
         target->render(currentFrame.commandBuffer->handle(), imageIndex);
     }
 
     currentFrame.commandBuffer->end();
 
-    // Submit command buffer
-    VkCommandBuffer commandBufferHandle = currentFrame.commandBuffer->handle();
-    VkCommandBufferSubmitInfo cmdSubmitInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-        .commandBuffer = commandBufferHandle
-    };
-
+    // Set up Vulkan Synchronization 2 structures
     VkSemaphoreSubmitInfo waitSemaphoreInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = currentFrame.imageAvailableSemaphore,
@@ -164,72 +172,79 @@ void Renderer::drawFrame() {
     VkSemaphoreSubmitInfo signalSemaphoreInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = currentFrame.renderFinishedSemaphore,
-        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
     };
 
-    VkSubmitInfo2 submitInfo2{
+    VkCommandBufferSubmitInfo cmdBufferInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = currentFrame.commandBuffer->handle()
+    };
+
+    VkSubmitInfo2 submitInfo{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .waitSemaphoreInfoCount = 1,
         .pWaitSemaphoreInfos = &waitSemaphoreInfo,
         .commandBufferInfoCount = 1,
-        .pCommandBufferInfos = &cmdSubmitInfo,
+        .pCommandBufferInfos = &cmdBufferInfo,
         .signalSemaphoreInfoCount = 1,
         .pSignalSemaphoreInfos = &signalSemaphoreInfo
     };
 
-    // Use actual function pointer from your context
-    if (vkQueueSubmit2(m_context->graphicsQueue(), 1, &submitInfo2, currentFrame.inFlightFence) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to submit command buffer!");
+    if (vkQueueSubmit2(m_context->graphicsQueue(), 1, &submitInfo, currentFrame.inFlightFence) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to submit draw command buffer!");
     }
 
-    // Present the frame
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-    // Create a temporary array for the semaphore we want to wait on
-    VkSemaphore waitSemaphore = currentFrame.renderFinishedSemaphore;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &waitSemaphore;
-
-    VkSwapchainKHR swapChains[] = { m_swapChain->handle() };
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = &imageIndex;
+    VkSwapchainKHR swapChain = m_swapChain->handle();
+    VkPresentInfoKHR presentInfo{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &currentFrame.renderFinishedSemaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &swapChain,
+        .pImageIndices = &imageIndex
+    };
 
     result = vkQueuePresentKHR(m_context->presentQueue(), &presentInfo);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_framebufferResized) {
         m_framebufferResized = false;
         recreateSwapChain();
     }
-    else if (result != VK_SUCCESS) {
-        throw std::runtime_error("failed to present swap chain image!");
-    }
 
     m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::recreateSwapChain() {
-    vkDeviceWaitIdle(m_context->device());
-    m_swapChain->recreate();
-    m_imageViews->recreate(m_swapChain.get());
 
-    // Recreate depth image and update framebuffer manager.
+void Renderer::recreateSwapChain() {
+    // Wait for all operations to complete
+    vkDeviceWaitIdle(m_context->device());
+
+
+    // Recreate swapchain
+    m_swapChain->recreate();
+
+    VkExtent2D newExtent = m_swapChain->extent();
+    // Recreate depth image
     m_depthImage = m_textureManager->createTexture(
-        m_swapChain->extent().width,
-        m_swapChain->extent().height,
+        newExtent.width,
+        newExtent.height,
         m_depthFormat->handle(),
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
         VK_IMAGE_ASPECT_DEPTH_BIT,
         false
     );
-    m_framebufferManager->recreate(&m_imageViews->views(),
-        m_swapChain->extent(),
-        m_depthImage.view);
 
+    // Update shared resources
+    m_sharedResources.depthImageView = m_depthImage.view;
+    m_sharedResources.swapChain = m_swapChain.get();
+
+    // Recreate targets
     for (auto& target : m_renderTargets) {
         target->recreateSwapChain();
     }
+
+    // Reset current frame
+    m_currentFrame = 0;
 }
 
 void Renderer::markFramebufferResized() {
