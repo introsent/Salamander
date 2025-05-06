@@ -129,6 +129,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_executors/dynamic_main_scene_executor.cpp
         src/user/user_executors/dynamic_main_scene_executor.h
         src/rendering/image_transition_manager.h
+        src/resources/ssbo_buffer.cpp
+        src/resources/ssbo_buffer.h
 )
 
 # Add ImGui source files with proper includes and links
