@@ -9,15 +9,6 @@ DynamicMainSceneExecutor::DynamicMainSceneExecutor(Resources resources)
 void DynamicMainSceneExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) {
     m_currentImageIndex = imageIndex;
 
-    // Get current swapchain extent
-    VkExtent2D currentExtent = m_resources.swapChain->extent();
-    if (currentExtent.width != m_resources.extent.width ||
-        currentExtent.height != m_resources.extent.height) {
-        // Update our stored extent
-        m_resources.extent = currentExtent;
-        }
-
-
     // Transition color attachment
     ImageTransitionManager::transitionColorAttachment(
         cmd,

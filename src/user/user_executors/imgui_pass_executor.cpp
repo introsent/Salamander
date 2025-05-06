@@ -10,14 +10,10 @@ ImGuiPassExecutor::ImGuiPassExecutor(Resources resources)
 
 void ImGuiPassExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex)
 {
-    VkImageView colorView = m_resources.swapchainImageViews[imageIndex];
-
-    VkExtent2D renderArea = m_resources.extent;
-
     // Color attachment
     VkRenderingAttachmentInfo colorAttachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = colorView,
+        .imageView = m_resources.swapchainImageViews[imageIndex],
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -35,7 +31,7 @@ void ImGuiPassExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex)
 
     VkRenderingInfo renderingInfo{
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea = {{0, 0}, renderArea},
+        .renderArea = {{0, 0}, m_resources.extent},
         .layerCount = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorAttachment,

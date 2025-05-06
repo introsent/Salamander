@@ -218,15 +218,13 @@ void Renderer::recreateSwapChain() {
     // Wait for all operations to complete
     vkDeviceWaitIdle(m_context->device());
 
-
     // Recreate swapchain
     m_swapChain->recreate();
 
-    VkExtent2D newExtent = m_swapChain->extent();
     // Recreate depth image
     m_depthImage = m_textureManager->createTexture(
-        newExtent.width,
-        newExtent.height,
+        m_swapChain->extent().width,
+        m_swapChain->extent().height,
         m_depthFormat->handle(),
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
@@ -234,17 +232,13 @@ void Renderer::recreateSwapChain() {
         false
     );
 
-    // Update shared resources
+    // Update depth image
     m_sharedResources.depthImageView = m_depthImage.view;
-    m_sharedResources.swapChain = m_swapChain.get();
 
     // Recreate targets
     for (auto& target : m_renderTargets) {
         target->recreateSwapChain();
     }
-
-    // Reset current frame
-    m_currentFrame = 0;
 }
 
 void Renderer::markFramebufferResized() {
