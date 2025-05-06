@@ -256,19 +256,26 @@ void Context::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
+    // Enable Vulkan 1.2+ features (including bufferDeviceAddress)
+    VkPhysicalDeviceVulkan12Features features12{};
+    features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    features12.bufferDeviceAddress = VK_TRUE;  // for vertex pulling
+
+    // Vulkan 1.3 features (dynamic rendering, etc.)
+    VkPhysicalDeviceVulkan13Features features13{};
+    features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    features13.synchronization2 = VK_TRUE; // for synchronization 2
+    features13.dynamicRendering = VK_TRUE;  // for dynamic rendering
+    features13.pNext = nullptr;  // End of chain
+
+    // Link the chain: features12 → features13
+    features12.pNext = &features13;
+
+    // Base device features (anisotropy, etc.)
     VkPhysicalDeviceFeatures2 deviceFeatures2{};
     deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
-
-    // Setup Vulkan 1.3 features (this already includes Synchronization 2)
-    VkPhysicalDeviceVulkan13Features features13{};
-    features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    features13.synchronization2 = VK_TRUE;
-    features13.dynamicRendering = VK_TRUE;
-    features13.pNext = nullptr;  // End of chain
-
-    // Link the chain
-    deviceFeatures2.pNext = &features13;
+    deviceFeatures2.pNext = &features12;  // deviceFeatures2 -> features12 -> features13
 
 
     VkDeviceCreateInfo createInfo{};
