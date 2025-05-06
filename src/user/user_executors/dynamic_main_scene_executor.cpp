@@ -12,7 +12,9 @@ void DynamicMainSceneExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) {
     // Transition color attachment
     ImageTransitionManager::transitionColorAttachment(
         cmd,
-        m_resources.swapChain->getCurrentImage(imageIndex)
+        m_resources.swapChain->getCurrentImage(imageIndex),
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
 
     m_colorAttachment = {
@@ -57,7 +59,9 @@ void DynamicMainSceneExecutor::end(VkCommandBuffer cmd) {
 
     ImageTransitionManager::transitionToPresent(
         cmd,
-        m_resources.swapChain->getCurrentImage(m_currentImageIndex)
+        m_resources.swapChain->getCurrentImage(m_currentImageIndex),
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     );
 }
 

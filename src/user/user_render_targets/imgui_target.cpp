@@ -90,7 +90,6 @@ void ImGuiTarget::initializeImGui() {
     renderingInfo.depthAttachmentFormat = m_shared->depthFormat;
     init_info.PipelineRenderingCreateInfo = renderingInfo;
 
-
     ImGui_ImplVulkan_Init(&init_info);
 
     // Upload ImGui fonts

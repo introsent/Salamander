@@ -8,14 +8,14 @@ class MainScenePassExecutor : public RenderPassExecutor
 {
 public:
     struct Resources {
-        VkPipeline pipeline;
-        VkPipelineLayout pipelineLayout;
-        VkBuffer vertexBuffer;
-        VkBuffer indexBuffer;
-        std::vector<VkDescriptorSet> descriptorSets;
-        std::vector<uint32_t> indices;
-        std::vector<VkFramebuffer>& framebuffers;
-        VkExtent2D extent;
+        VkPipeline                      pipeline;
+        VkPipelineLayout                pipelineLayout;
+        VkBuffer                        vertexBuffer;
+        VkBuffer                        indexBuffer;
+        std::vector<VkDescriptorSet>    descriptorSets;
+        std::vector<uint32_t>           indices;
+        std::vector<VkFramebuffer>&     framebuffers;
+        VkExtent2D                      extent;
     };
 
     MainScenePassExecutor(RenderPass* renderPass, Resources resources);

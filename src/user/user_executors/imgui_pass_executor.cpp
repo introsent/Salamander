@@ -39,39 +39,23 @@ void ImGuiPassExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex)
     };
 
     vkCmdBeginRendering(cmd, &renderingInfo);
-
-    // Set viewport and scissor to match render area
-    VkViewport viewport{
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = static_cast<float>(m_resources.extent.width),
-        .height = static_cast<float>(m_resources.extent.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-    };
-    vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-    VkRect2D scissor{
-        .offset = {0, 0},
-        .extent = m_resources.extent
-    };
-    vkCmdSetScissor(cmd, 0, 1, &scissor);
 }
+
 
 void ImGuiPassExecutor::execute(VkCommandBuffer cmd)
 {
+    setViewportAndScissor(cmd);
     // Start the Dear ImGui frame
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // Your ImGui drawing code here
+    // ImGui drawing here
     ImGui::ShowDemoWindow();
 
     // Render ImGui
     ImGui::Render();
     if (ImDrawData* drawData = ImGui::GetDrawData()) {
-        // Use updated render function for dynamic rendering
         ImGui_ImplVulkan_RenderDrawData(drawData, cmd, VK_NULL_HANDLE);
     }
 }
@@ -79,5 +63,18 @@ void ImGuiPassExecutor::execute(VkCommandBuffer cmd)
 void ImGuiPassExecutor::end(VkCommandBuffer cmd)
 {
     vkCmdEndRendering(cmd);
+}
+
+void ImGuiPassExecutor::setViewportAndScissor(VkCommandBuffer cmd) const {
+    VkViewport viewport{
+        0.0f, 0.0f,
+        static_cast<float>(m_resources.extent.width),
+        static_cast<float>(m_resources.extent.height),
+        0.0f, 1.0f
+    };
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    VkRect2D scissor{{0, 0}, m_resources.extent};
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
 }
 

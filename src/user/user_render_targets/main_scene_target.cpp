@@ -8,12 +8,10 @@
 #include "render_pass_executor.h"
 #include "descriptors/descriptor_set_layout_builder.h"
 #include "user_executors/dynamic_main_scene_executor.h"
-#include "user_executors/main_scene_pass_executor.h"
 
 
 void MainSceneTarget::initialize(const SharedResources& shared) {
     m_shared = &shared;
-
 
     // Resources
     m_texture = m_shared->textureManager->loadTexture(TEXTURE_PATH);
@@ -26,7 +24,7 @@ void MainSceneTarget::initialize(const SharedResources& shared) {
 
 void MainSceneTarget::createPipeline() {
     // Define dynamic states
-    static const std::array<VkDynamicState, 2> dynamicStates = {
+    static constexpr std::array<VkDynamicState, 2> dynamicStates = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
     };
@@ -35,9 +33,9 @@ void MainSceneTarget::createPipeline() {
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.blendEnable = VK_FALSE;
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                         VK_COLOR_COMPONENT_G_BIT |
-                                         VK_COLOR_COMPONENT_B_BIT |
-                                         VK_COLOR_COMPONENT_A_BIT;
+                                          VK_COLOR_COMPONENT_G_BIT |
+                                          VK_COLOR_COMPONENT_B_BIT |
+                                          VK_COLOR_COMPONENT_A_BIT;
 
     // Create color blend state
     VkPipelineColorBlendStateCreateInfo colorBlending{};
@@ -123,9 +121,6 @@ void MainSceneTarget::createPipeline() {
 }
 
 void MainSceneTarget::createRenderingResources() {
-
-    m_pipeline.reset();
-
     createPipeline();
 
     DynamicMainSceneExecutor::Resources mainResources{
@@ -202,6 +197,7 @@ void MainSceneTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     m_executor->end(commandBuffer);
 }
 
+
 void MainSceneTarget::recreateSwapChain() {
     vkDeviceWaitIdle(m_shared->context->device());
 
@@ -224,9 +220,6 @@ void MainSceneTarget::recreateSwapChain() {
     // Create new executor
     m_executor = std::make_unique<DynamicMainSceneExecutor>(mainResources);
 }
-
-
-
 
 void MainSceneTarget::cleanup() {
     vkDeviceWaitIdle(m_shared->context->device());
