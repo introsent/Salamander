@@ -21,9 +21,8 @@ void ImGuiTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 
 void ImGuiTarget::recreateSwapChain() {
 
-    VkExtent2D newExtent = m_shared->swapChain->extent();
     ImGuiPassExecutor::Resources resources{
-        .extent = newExtent,
+        .extent =  m_shared->swapChain->extent(),
         .swapchainImageViews = m_shared->swapChain->imagesViews(),
         .depthImageView = m_shared->depthImageView
     };

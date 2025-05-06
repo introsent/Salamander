@@ -205,8 +205,6 @@ void MainSceneTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 void MainSceneTarget::recreateSwapChain() {
     vkDeviceWaitIdle(m_shared->context->device());
 
-    VkExtent2D newExtent = m_shared->swapChain->extent();
-
     // Create new executor with updated resources, using the newly updated depth view from shared resources
     DynamicMainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
@@ -215,7 +213,7 @@ void MainSceneTarget::recreateSwapChain() {
         .indexBuffer = m_indexBuffer.handle(),
         .descriptorSets = m_descriptorManager->getDescriptorSets(),
         .indices = m_indices,
-        .extent = newExtent,
+        .extent = m_shared->swapChain->extent(),
         .colorImageViews = m_shared->swapChain->imagesViews(),
         .depthImageView = m_shared->depthImageView,  // Use the updated depth view from shared resources
         .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
@@ -225,12 +223,6 @@ void MainSceneTarget::recreateSwapChain() {
 
     // Create new executor
     m_executor = std::make_unique<DynamicMainSceneExecutor>(mainResources);
-
-    // Make sure depthImageView is synchronized between shared resources and executor
-    static_cast<DynamicMainSceneExecutor*>(m_executor.get())->updateResources(
-        m_shared->swapChain,
-        m_shared->depthImageView  // Explicitly update with the new depth view
-    );
 }
 
 
