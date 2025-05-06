@@ -6,18 +6,18 @@
 class DynamicMainSceneExecutor : public RenderPassExecutor {
 public:
     struct Resources {
-        VkPipeline pipeline;
-        VkPipelineLayout pipelineLayout;
-        VkBuffer vertexBuffer;
-        VkBuffer indexBuffer;
-        std::vector<VkDescriptorSet> descriptorSets;
-        std::vector<uint32_t> indices;
-        VkExtent2D extent;
-        std::vector<VkImageView> colorImageViews;
-        VkImageView depthImageView;
-        VkClearValue clearColor;
-        VkClearValue clearDepth;
-        SwapChain* swapChain;
+        VkPipeline                      pipeline;
+        VkPipelineLayout                pipelineLayout;
+        VkBuffer                        vertexBuffer;
+        VkBuffer                        indexBuffer;
+        std::vector<VkDescriptorSet>    descriptorSets;
+        std::vector<uint32_t>           indices;
+        VkExtent2D                      extent;
+        std::vector<VkImageView>        colorImageViews;
+        VkImageView                     depthImageView;
+        VkClearValue                    clearColor;
+        VkClearValue                    clearDepth;
+        SwapChain*                      swapChain;
     };
 
     explicit DynamicMainSceneExecutor(Resources resources);
