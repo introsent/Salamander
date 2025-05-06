@@ -44,10 +44,8 @@ private:
     std::unique_ptr<CommandManager> m_commandManager;
     std::unique_ptr<BufferManager> m_bufferManager;
     std::unique_ptr<TextureManager> m_textureManager;
-    std::unique_ptr<FramebufferManager> m_framebufferManager;
 
     // Images
-    std::unique_ptr<ImageViews> m_imageViews;
     std::unique_ptr<DepthFormat> m_depthFormat;
     ManagedTexture m_depthImage;
 

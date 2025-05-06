@@ -3,30 +3,66 @@
 #include <imgui_impl_glfw.h>
 #include <array>
 
-ImGuiPassExecutor::ImGuiPassExecutor(RenderPass* renderPass, Resources resources)
-    : m_renderPass(renderPass)
-    , m_resources(std::move(resources)) 
+ImGuiPassExecutor::ImGuiPassExecutor(Resources resources)
+    : m_resources(std::move(resources))
 {
 }
 
-void ImGuiPassExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) 
+void ImGuiPassExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex)
 {
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = m_renderPass->handle();
-    renderPassInfo.framebuffer = m_resources.framebuffers[imageIndex];
-    renderPassInfo.renderArea = {{0, 0}, m_resources.extent};
+    VkImageView colorView = m_resources.swapchainImageViews[imageIndex];
 
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
+    VkExtent2D renderArea = m_resources.extent;
 
-    vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    // Color attachment
+    VkRenderingAttachmentInfo colorAttachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = colorView,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}}
+    };
+
+    // Depth attachment
+    VkRenderingAttachmentInfo depthAttachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = m_resources.depthImageView,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE
+    };
+
+    VkRenderingInfo renderingInfo{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {{0, 0}, renderArea},
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachment,
+        .pDepthAttachment = &depthAttachment
+    };
+
+    vkCmdBeginRendering(cmd, &renderingInfo);
+
+    // Set viewport and scissor to match render area
+    VkViewport viewport{
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = static_cast<float>(m_resources.extent.width),
+        .height = static_cast<float>(m_resources.extent.height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    VkRect2D scissor{
+        .offset = {0, 0},
+        .extent = m_resources.extent
+    };
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
 }
 
-void ImGuiPassExecutor::execute(VkCommandBuffer cmd) 
+void ImGuiPassExecutor::execute(VkCommandBuffer cmd)
 {
     // Start the Dear ImGui frame
     ImGui_ImplVulkan_NewFrame();
@@ -35,16 +71,17 @@ void ImGuiPassExecutor::execute(VkCommandBuffer cmd)
 
     // Your ImGui drawing code here
     ImGui::ShowDemoWindow();
-    // Add other ImGui windows/widgets as needed
 
     // Render ImGui
     ImGui::Render();
     if (ImDrawData* drawData = ImGui::GetDrawData()) {
-        ImGui_ImplVulkan_RenderDrawData(drawData, cmd);
+        // Use updated render function for dynamic rendering
+        ImGui_ImplVulkan_RenderDrawData(drawData, cmd, VK_NULL_HANDLE);
     }
 }
 
-void ImGuiPassExecutor::end(VkCommandBuffer cmd) 
+void ImGuiPassExecutor::end(VkCommandBuffer cmd)
 {
-    vkCmdEndRenderPass(cmd);
+    vkCmdEndRendering(cmd);
 }
+

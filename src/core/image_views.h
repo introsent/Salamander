@@ -1,21 +1,20 @@
 #pragma once
 #include "context.h"
-#include "swap_chain.h"
 #include <vector>
 
 class ImageViews final {
 public:
-    ImageViews(Context* context, const SwapChain* swapChain);
+    ImageViews(Context* context, VkFormat format, const std::vector<VkImage>& images);
     ImageViews(const ImageViews&) = delete;
     ImageViews& operator=(const ImageViews&) = delete;
     ImageViews(ImageViews&&) = delete;
     ImageViews& operator=(ImageViews&&) = delete;
 
     const std::vector<VkImageView>& views() const { return m_imageViews; }
-    void recreate(const SwapChain* swapChain);
+    void recreate(VkFormat format, const std::vector<VkImage>& images);
 
 private:
-    void createImageViews(const SwapChain* swapChain);
+    void createImageViews(const std::vector<VkImage>& images);
     void cleanup();
 
     Context* m_context;

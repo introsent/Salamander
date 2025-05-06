@@ -7,7 +7,6 @@ class Pipeline {
 public:
     Pipeline(
         Context* context,
-        VkRenderPass renderPass,
         VkDescriptorSetLayout descriptorSetLayout,
         const PipelineConfig& config
     );
@@ -27,5 +26,4 @@ private:
     Context* m_context;
     VkPipeline m_pipeline;
     VkPipelineLayout m_pipelineLayout;
-    VkRenderPass m_renderPass;
 };

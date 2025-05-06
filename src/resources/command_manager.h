@@ -40,6 +40,7 @@ public:
         const std::vector<uint32_t>& indices
     );
 
+
     // Accessors
     VkDevice device() const { return m_device; }
     VkQueue graphicsQueue() const { return m_graphicsQueue; }

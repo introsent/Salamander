@@ -35,6 +35,9 @@ struct PipelineConfig {
 
     // Dynamic state
     VkPipelineDynamicStateCreateInfo dynamicState{};
+
+    //Rendering info
+    VkPipelineRenderingCreateInfo rendering{};
 };
 
 

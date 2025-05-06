@@ -20,10 +20,9 @@ static std::vector<char> readFile(const std::string& filename) {
 
 Pipeline::Pipeline(
     Context* context,
-    VkRenderPass renderPass,
     VkDescriptorSetLayout descriptorSetLayout,
     const PipelineConfig& config
-) : m_context(context), m_renderPass(renderPass) {
+) : m_context(context){
     createPipelineLayout(descriptorSetLayout);
 
     auto vertCode = readFile(config.vertShaderPath);
@@ -55,6 +54,8 @@ Pipeline::Pipeline(
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(config.attributeDescriptions.size());
     vertexInputInfo.pVertexAttributeDescriptions = config.attributeDescriptions.data();
 
+    VkPipelineRenderingCreateInfo renderingInfo = config.rendering;
+
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
@@ -68,9 +69,7 @@ Pipeline::Pipeline(
     pipelineInfo.pColorBlendState = &config.colorBlending;
     pipelineInfo.pDynamicState = &config.dynamicState;
     pipelineInfo.layout = m_pipelineLayout;
-    pipelineInfo.renderPass = m_renderPass;
-    pipelineInfo.subpass = 0;
-    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineInfo.pNext = &renderingInfo;
 
     if (vkCreateGraphicsPipelines(
         m_context->device(),

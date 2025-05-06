@@ -7,15 +7,16 @@
 
 #include "render_pass_executor.h"
 #include "descriptors/descriptor_set_layout_builder.h"
+#include "user_executors/dynamic_main_scene_executor.h"
 #include "user_executors/main_scene_pass_executor.h"
 
 
 void MainSceneTarget::initialize(const SharedResources& shared) {
-    m_shared = shared;
+    m_shared = &shared;
 
 
     // Resources
-    m_texture = m_shared.textureManager->loadTexture(TEXTURE_PATH);
+    m_texture = m_shared->textureManager->loadTexture(TEXTURE_PATH);
     loadModel(MODEL_PATH);
 
     createBuffers();
@@ -49,6 +50,14 @@ void MainSceneTarget::createPipeline() {
     colorBlending.blendConstants[1] = 0.0f;
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
+
+    VkFormat colorFormat = m_shared->swapChain->format();
+    VkPipelineRenderingCreateInfo renderingInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+        .colorAttachmentCount = 1,
+        .pColorAttachmentFormats = &colorFormat,
+        .depthAttachmentFormat = m_shared->depthFormat
+    };
 
     PipelineConfig pipelineConfig{
         .vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/shader_vert.spv",
@@ -101,52 +110,44 @@ void MainSceneTarget::createPipeline() {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
             .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
             .pDynamicStates = dynamicStates.data()
-        }
+        },
+
+        .rendering = renderingInfo
     };
 
     m_pipeline = std::make_unique<Pipeline>(
-        m_shared.context,
-        m_renderPass->handle(),
+        m_shared->context,
         m_descriptorLayout->handle(),
         pipelineConfig
     );
 }
 
 void MainSceneTarget::createRenderingResources() {
-    // Render Pass
-    RenderPass::Config config{
-        .colorFormat = m_shared.swapChain->format(),
-        .depthFormat = DepthFormat(m_shared.context->physicalDevice()).handle(),
-        .colorLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .colorInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .colorFinalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .depthLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .depthStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .depthInitialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .depthFinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    };
-    m_renderPass = RenderPass::create(m_shared.context, config);
+
+    m_pipeline.reset();
 
     createPipeline();
 
-    m_framebuffers = m_shared.framebufferManager->createFramebuffersForRenderPass(m_renderPass->handle());
-
-    MainScenePassExecutor::Resources mainResources{
+    DynamicMainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
         .vertexBuffer = m_vertexBuffer.handle(),
         .indexBuffer = m_indexBuffer.handle(),
         .descriptorSets = m_descriptorManager->getDescriptorSets(),
         .indices = m_indices,
-        .framebuffers = m_framebuffers.framebuffers,
-        .extent = m_shared.swapChain->extent()
-    };
-    m_executor = std::make_unique<MainScenePassExecutor>(m_renderPass.get(), mainResources);
+        .extent = m_shared->swapChain->extent(),
+        .colorImageViews = m_shared->swapChain->imagesViews(),
+        .depthImageView = m_shared->depthImageView,
+        .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
+        .clearDepth = {.depthStencil = {1.0f, 0}},
+        .swapChain = m_shared->swapChain
+        };
+
+    m_executor = std::make_unique<DynamicMainSceneExecutor>(mainResources);
 }
 
 void MainSceneTarget::createDescriptors() {
-    DescriptorSetLayoutBuilder layoutBuilder(m_shared.context->device());
+    DescriptorSetLayoutBuilder layoutBuilder(m_shared->context->device());
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
         .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -158,7 +159,7 @@ void MainSceneTarget::createDescriptors() {
     };
 
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
-        m_shared.context->device(),
+        m_shared->context->device(),
         m_descriptorLayout->handle(),
         poolSizes,
         MAX_FRAMES_IN_FLIGHT
@@ -202,28 +203,46 @@ void MainSceneTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 }
 
 void MainSceneTarget::recreateSwapChain() {
-    m_framebuffers = m_shared.framebufferManager->createFramebuffersForRenderPass(m_renderPass->handle());
+    vkDeviceWaitIdle(m_shared->context->device());
 
-    MainScenePassExecutor::Resources mainResources{
+    VkExtent2D newExtent = m_shared->swapChain->extent();
+
+    // Create new executor with updated resources, using the newly updated depth view from shared resources
+    DynamicMainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
         .vertexBuffer = m_vertexBuffer.handle(),
         .indexBuffer = m_indexBuffer.handle(),
         .descriptorSets = m_descriptorManager->getDescriptorSets(),
         .indices = m_indices,
-        .framebuffers = m_framebuffers.framebuffers,
-        .extent = m_shared.swapChain->extent()
+        .extent = newExtent,
+        .colorImageViews = m_shared->swapChain->imagesViews(),
+        .depthImageView = m_shared->depthImageView,  // Use the updated depth view from shared resources
+        .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
+        .clearDepth = {.depthStencil = {1.0f, 0}},
+        .swapChain = m_shared->swapChain
     };
-    m_executor = std::make_unique<MainScenePassExecutor>(m_renderPass.get(), mainResources);
+
+    // Create new executor
+    m_executor = std::make_unique<DynamicMainSceneExecutor>(mainResources);
+
+    // Make sure depthImageView is synchronized between shared resources and executor
+    static_cast<DynamicMainSceneExecutor*>(m_executor.get())->updateResources(
+        m_shared->swapChain,
+        m_shared->depthImageView  // Explicitly update with the new depth view
+    );
 }
 
+
+
+
 void MainSceneTarget::cleanup() {
-    vkDeviceWaitIdle(m_shared.context->device());
+    vkDeviceWaitIdle(m_shared->context->device());
     m_uniformBuffers.clear();
 }
 
 void MainSceneTarget::updateUniformBuffers() const {
-    m_uniformBuffers[m_shared.currentFrame].update(m_shared.swapChain->extent());
+    m_uniformBuffers[m_shared->currentFrame].update(m_shared->swapChain->extent());
 }
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {
@@ -258,13 +277,13 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
 }
 
 void MainSceneTarget::createBuffers() {
-    m_vertexBuffer = VertexBuffer(m_shared.bufferManager, m_shared.commandManager, m_shared.allocator, m_vertices);
-    m_indexBuffer = IndexBuffer(m_shared.bufferManager, m_shared.commandManager, m_shared.allocator, m_indices);
+    m_vertexBuffer = VertexBuffer(m_shared->bufferManager, m_shared->commandManager, m_shared->allocator, m_vertices);
+    m_indexBuffer = IndexBuffer(m_shared->bufferManager, m_shared->commandManager, m_shared->allocator, m_indices);
 
     VkDeviceSize bufferSize = sizeof(UniformBufferObject);
     m_uniformBuffers.clear();
     m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        m_uniformBuffers.emplace_back(m_shared.bufferManager, m_shared.allocator, bufferSize);
+        m_uniformBuffers.emplace_back(m_shared->bufferManager, m_shared->allocator, bufferSize);
     }
 }

@@ -1,7 +1,11 @@
 // swap_chain.h
 #pragma once
+#include <memory>
+
 #include "context.h"
 #include <vector>
+
+#include "image_views.h"
 
 
 class SwapChain final {
@@ -17,9 +21,15 @@ public:
     VkExtent2D extent() const { return m_extent; }
     VkFormat format() const { return m_imageFormat; }
     const std::vector<VkImage>& images() const { return m_images; }
+    std::vector<VkImageView> imagesViews() const { return m_imageViews.get()->views(); }
+    VkImage getCurrentImage(uint32_t imageIndex) const {
+        return m_images[imageIndex];
+    }
+
 
 private:
     void createSwapChain();
+    void createImageViews();
     void cleanup();
 
     static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
@@ -32,4 +42,5 @@ private:
     VkFormat m_imageFormat;
     VkExtent2D m_extent;
     std::vector<VkImage> m_images;
+    std::unique_ptr<ImageViews> m_imageViews;
 };

@@ -29,6 +29,12 @@ public:
         VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
         VkImageAspectFlags aspect, bool createSampler = false);
 
+    void transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image,
+    VkImageLayout oldLayout, VkImageLayout newLayout,
+    VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
+    VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const;
+
+
     const std::vector<ManagedTexture>& getTextures() const { return m_managedTextures; }
 
 private:
