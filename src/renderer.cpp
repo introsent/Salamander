@@ -11,10 +11,10 @@
 #include "user_render_targets/imgui_target.h"
 
 
-Renderer::Renderer(Context* context, Window* window, VmaAllocator allocator)
+Renderer::Renderer(Context* context, Window* window, VmaAllocator allocator, Camera* camera)
     : m_context(context), m_window(window), m_allocator(allocator) {
 
-    initializeSharedResources();
+    initializeSharedResources(camera);
 
     // Create targets
     m_renderTargets.push_back(std::make_unique<MainSceneTarget>());
@@ -72,7 +72,7 @@ void Renderer::createCommandBuffers() {
     }
 }
 
-void Renderer::initializeSharedResources() {
+void Renderer::initializeSharedResources(Camera* camera) {
     m_swapChain = std::make_unique<SwapChain>(m_context, m_window);
     m_depthFormat = std::make_unique<DepthFormat>(m_context->physicalDevice());
 
@@ -123,7 +123,8 @@ void Renderer::initializeSharedResources() {
         .currentFrame = m_currentFrame,
         .allocator = m_allocator,
         .depthImageView = m_depthImage.view,
-        .depthFormat = m_depthFormat->handle()
+        .depthFormat = m_depthFormat->handle(),
+        .camera = camera
     };
 }
 
