@@ -7,8 +7,8 @@ PipelineConfigBuilder::PipelineConfigBuilder() {
     config.fragShaderPath = "./shaders/shader_frag.spv";
 
     // Set default vertex input info
-    config.bindingDescription = Vertex::getBindingDescription();
-    config.attributeDescriptions = Vertex::getAttributeDescriptions();
+    //config.bindingDescription = Vertex::getBindingDescription();
+    //config.attributeDescriptions = Vertex::getAttributeDescriptions();
 
     // Input assembly defaults
     config.inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
