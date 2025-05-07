@@ -5,7 +5,7 @@
 #include "ssbo_buffer.h"
 #include "swap_chain.h"
 
-class DynamicMainSceneExecutor : public RenderPassExecutor {
+class MainSceneExecutor : public RenderPassExecutor {
 public:
     struct Resources {
         VkPipeline                      pipeline;
@@ -23,7 +23,7 @@ public:
 
     };
 
-    explicit DynamicMainSceneExecutor(Resources resources);
+    explicit MainSceneExecutor(Resources resources);
 
     void begin(VkCommandBuffer cmd, uint32_t imageIndex) override;
     void execute(VkCommandBuffer cmd) override;

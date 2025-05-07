@@ -109,9 +109,7 @@ set(${PROJECT_NAME}_SOURCES
      
     
     "src/executors/render_pass_executor.h"
-    "src/user/user_executors/main_scene_pass_executor.cpp"
-    "src/user/user_executors/main_scene_pass_executor.h"
-    "src/user/user_executors/imgui_pass_executor.cpp"
+        "src/user/user_executors/imgui_pass_executor.cpp"
     "src/user/user_executors/imgui_pass_executor.h"
     "src/rendering/descriptors/descriptor_set_layout_builder.cpp"
     "src/rendering/descriptors/descriptor_set_layout_builder.h"
@@ -126,8 +124,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_render_targets/main_scene_target.h
         src/user/user_render_targets/imgui_target.cpp
         src/user/user_render_targets/imgui_target.h
-        src/user/user_executors/dynamic_main_scene_executor.cpp
-        src/user/user_executors/dynamic_main_scene_executor.h
+        src/user/user_executors/main_scene_executor.cpp
+        src/user/user_executors/main_scene_executor.h
         src/rendering/image_transition_manager.h
         src/resources/ssbo_buffer.cpp
         src/resources/ssbo_buffer.h

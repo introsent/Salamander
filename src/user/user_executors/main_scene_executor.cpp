@@ -1,13 +1,13 @@
-﻿#include "dynamic_main_scene_executor.h"
+﻿#include "main_scene_executor.h"
 #include "image_transition_manager.h"
 #include "shared/shared_structs.h"
 
-DynamicMainSceneExecutor::DynamicMainSceneExecutor(Resources resources)
+MainSceneExecutor::MainSceneExecutor(Resources resources)
     : m_resources(std::move(resources))
 {
 }
 
-void DynamicMainSceneExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) {
+void MainSceneExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) {
     m_currentImageIndex = imageIndex;
 
     // Transition color attachment
@@ -48,7 +48,7 @@ void DynamicMainSceneExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) {
     vkCmdBeginRendering(cmd, &renderingInfo);
 }
 
-void DynamicMainSceneExecutor::execute(VkCommandBuffer cmd) {
+void MainSceneExecutor::execute(VkCommandBuffer cmd) {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_resources.pipeline);
     setViewportAndScissor(cmd);
 
@@ -67,7 +67,7 @@ void DynamicMainSceneExecutor::execute(VkCommandBuffer cmd) {
     vkCmdDrawIndexed(cmd, static_cast<uint32_t>(m_resources.indices.size()), 1, 0, 0, 0);
 }
 
-void DynamicMainSceneExecutor::end(VkCommandBuffer cmd) {
+void MainSceneExecutor::end(VkCommandBuffer cmd) {
     vkCmdEndRendering(cmd);
 
     ImageTransitionManager::transitionToPresent(
@@ -79,7 +79,7 @@ void DynamicMainSceneExecutor::end(VkCommandBuffer cmd) {
 }
 
 
-void DynamicMainSceneExecutor::setViewportAndScissor(VkCommandBuffer cmd) const {
+void MainSceneExecutor::setViewportAndScissor(VkCommandBuffer cmd) const {
     VkViewport viewport{
         0.0f, 0.0f,
         static_cast<float>(m_resources.extent.width),
@@ -92,7 +92,7 @@ void DynamicMainSceneExecutor::setViewportAndScissor(VkCommandBuffer cmd) const 
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 }
 
-void DynamicMainSceneExecutor::bindBuffers(VkCommandBuffer cmd) const {
+void MainSceneExecutor::bindBuffers(VkCommandBuffer cmd) const {
     vkCmdBindIndexBuffer(cmd, m_resources.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
              m_resources.pipelineLayout, 0, 1, &m_resources.descriptorSets[0], 0, nullptr);

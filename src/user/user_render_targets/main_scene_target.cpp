@@ -7,7 +7,7 @@
 
 #include "render_pass_executor.h"
 #include "descriptors/descriptor_set_layout_builder.h"
-#include "user_executors/dynamic_main_scene_executor.h"
+#include "user_executors/main_scene_executor.h"
 
 
 void MainSceneTarget::initialize(const SharedResources& shared) {
@@ -121,7 +121,7 @@ void MainSceneTarget::createPipeline() {
 void MainSceneTarget::createRenderingResources() {
     createPipeline();
 
-    DynamicMainSceneExecutor::Resources mainResources{
+    MainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
         .vertexBufferAddress = m_deviceAddress,
@@ -136,7 +136,7 @@ void MainSceneTarget::createRenderingResources() {
         .swapChain = m_shared->swapChain
         };
 
-    m_executor = std::make_unique<DynamicMainSceneExecutor>(mainResources);
+    m_executor = std::make_unique<MainSceneExecutor>(mainResources);
 }
 
 void MainSceneTarget::createDescriptors() {
@@ -200,7 +200,7 @@ void MainSceneTarget::recreateSwapChain() {
     vkDeviceWaitIdle(m_shared->context->device());
 
     // Create new executor with updated resources, using the newly updated depth view from shared resources
-    DynamicMainSceneExecutor::Resources mainResources{
+    MainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
         .vertexBufferAddress = m_deviceAddress,
@@ -216,7 +216,7 @@ void MainSceneTarget::recreateSwapChain() {
     };
 
     // Create new executor
-    m_executor = std::make_unique<DynamicMainSceneExecutor>(mainResources);
+    m_executor = std::make_unique<MainSceneExecutor>(mainResources);
 }
 
 void MainSceneTarget::cleanup() {
