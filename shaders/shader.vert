@@ -10,18 +10,18 @@ struct Vertex {
     vec2 texCoord;
 };
 
-
 // Push constant
 layout(push_constant) uniform PushConstants {
     uint64_t vertexBufferAddress; // 8 bytes
 } pushConstants;
 
-
 // Declare VertexBuffer with scalar packing
+// With scalar packing, alignment follows scalar rules, meaning types are aligned only to their base component size
 layout(buffer_reference, scalar) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
-// UBO (std140 for C++ alignment)
+
+// UBO
 layout(binding = 0) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
