@@ -18,7 +18,7 @@ layout(push_constant) uniform PushConstants {
 
 
 // Declare VertexBuffer with scalar packing
-layout(buffer_reference, scalar, std430) readonly buffer VertexBuffer {
+layout(buffer_reference, std430) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
 // UBO (std140 for C++ alignment)
