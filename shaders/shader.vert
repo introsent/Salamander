@@ -5,9 +5,9 @@
 
 // Define Vertex structure with scalar alignment
 struct Vertex {
-    vec3 pos;
-    vec3 color;
-    vec2 texCoord;
+    vec4 pos;
+    vec4 color;
+    vec4 texCoord;
 };
 
 
@@ -36,7 +36,7 @@ void main() {
     VertexBuffer vertexBuffer = VertexBuffer(pushConstants.vertexBufferAddress);
     Vertex v = vertexBuffer.vertices[gl_VertexIndex];
 
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(v.pos, 1.0);
-    fragColor = v.color;
-    fragTexCoord = v.texCoord;
+    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(v.pos.xyz, 1.0);
+    fragColor = v.color.rgb;
+    fragTexCoord = v.texCoord.xy;
 }
