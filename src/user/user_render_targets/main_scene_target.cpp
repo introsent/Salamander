@@ -149,7 +149,7 @@ void MainSceneTarget::createDescriptors() {
 
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT /** 68*/}
     };
 
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
@@ -231,33 +231,32 @@ void MainSceneTarget::updateUniformBuffers() const {
 
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {
-    tinyobj::attrib_t attrib;
-    std::vector<tinyobj::shape_t> shapes;
-    std::vector<tinyobj::material_t> materials;
-    std::string warn, err;
-    if (!LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath.c_str())) {
-        throw std::runtime_error(warn + err);
+    GLTFModel gltfModel;
+    if (!GLTFLoader::LoadFromFile(modelPath, gltfModel)) {
+        throw std::runtime_error("Failed to load GLTF model");
     }
-    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-    for (const auto& shape : shapes) {
-        for (const auto& index : shape.mesh.indices) {
-            Vertex vertex{};
-            vertex.pos = {
-                attrib.vertices[3 * index.vertex_index + 0],
-                attrib.vertices[3 * index.vertex_index + 1],
-                attrib.vertices[3 * index.vertex_index + 2]
-            };
-            vertex.texCoord = {
-                attrib.texcoords[2 * index.texcoord_index + 0],
-                1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-            };
-            vertex.color = { 1.0f, 1.0f, 1.0f};
-            if (uniqueVertices.count(vertex) == 0) {
-                uniqueVertices[vertex] = static_cast<uint32_t>(m_vertices.size());
-                m_vertices.push_back(vertex);
-            }
-            m_indices.push_back(uniqueVertices[vertex]);
+
+    // Load materials and textures
+    m_modelTextures.resize(gltfModel.materials.size());
+    for (size_t i = 0; i < gltfModel.materials.size(); ++i) {
+        if (gltfModel.materials[i].baseColorTexture >= 0) {
+            const auto& texInfo = gltfModel.textures[gltfModel.materials[i].baseColorTexture];
+            m_modelTextures[i] = m_shared->textureManager->loadTexture(texInfo.uri);
         }
+    }
+    // Store geometry data
+    m_vertices = gltfModel.vertices;
+    m_indices = gltfModel.indices;
+
+    // Convert GLTFPrimitive to GLTFPrimitiveData
+    m_primitives.clear();
+    m_primitives.reserve(gltfModel.primitives.size());
+    for (const auto& srcPrim : gltfModel.primitives) {
+        m_primitives.push_back({
+            .indexOffset = srcPrim.indexOffset,
+            .indexCount = srcPrim.indexCount,
+            .materialIndex = srcPrim.materialIndex
+        });
     }
 }
 

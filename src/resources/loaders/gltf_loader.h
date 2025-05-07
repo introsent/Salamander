@@ -17,12 +17,17 @@ struct GLTFPrimitive {
 struct GLTFMaterial {
     int baseColorTexture = -1;
 };
+struct GLTFTexture {
+    std::string uri;
+};
+
 
 struct GLTFModel {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<GLTFPrimitive> primitives;
     std::vector<GLTFMaterial> materials;
+    std::vector<GLTFTexture> textures;
 };
 
 class GLTFLoader {

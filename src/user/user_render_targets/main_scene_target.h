@@ -22,14 +22,14 @@ public:
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/viking_room.obj";
     const std::string TEXTURE_PATH = std::string(SOURCE_RESOURCE_DIR) + "/textures/viking_room.png";
 private:
-    struct PrimitiveData {
-        SSBOBuffer vertexBuffer;
-        IndexBuffer indexBuffer;
-        VkDeviceAddress vertexBufferAddress;
+    struct GLTFPrimitiveData {
+        uint32_t indexOffset;
         uint32_t indexCount;
         int materialIndex;
     };
 
+    std::vector<GLTFPrimitiveData> m_primitives;
+    std::vector<ManagedTexture> m_modelTextures;
 
     void createPipeline();
     void createRenderingResources();

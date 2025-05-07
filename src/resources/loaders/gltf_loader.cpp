@@ -110,5 +110,13 @@ bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
         }
     }
 
+    // Process textures
+    for (const auto& tex : model.textures) {
+        const auto& image = model.images[tex.source];
+        GLTFTexture texture;
+        texture.uri = image.uri;
+        outModel.textures.push_back(texture);
+    }
+
     return true;
 }
