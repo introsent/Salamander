@@ -5,8 +5,8 @@
 #include "renderer.h"
 
 
-constexpr uint32_t WIDTH = 800;
-constexpr uint32_t HEIGHT = 600;
+constexpr uint32_t WIDTH = 1100;
+constexpr uint32_t HEIGHT = 900;
 
 class VulkanApplication {
 public:

@@ -50,8 +50,17 @@ void ImGuiPassExecutor::execute(VkCommandBuffer cmd)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // ImGui drawing here
-    ImGui::ShowDemoWindow();
+    // Replace ImGui::ShowDemoWindow(); with:
+    ImGui::Begin("Stats");
+
+    // Show FPS (frames per second)
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::Text("FPS: %.1f", io.Framerate);
+
+    // Optionally show frame time
+    ImGui::Text("Frame Time: %.3f ms/frame", 1000.0f / io.Framerate);
+
+    ImGui::End();
 
     // Render ImGui
     ImGui::Render();
