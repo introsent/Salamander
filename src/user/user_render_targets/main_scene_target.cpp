@@ -1,6 +1,7 @@
 ﻿#include "main_scene_target.h"
 #include "data_structures.h"
 #include "depth_format.h"
+#include "loaders/gltf_loader.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -227,6 +228,7 @@ void MainSceneTarget::cleanup() {
 void MainSceneTarget::updateUniformBuffers() const {
     m_uniformBuffers[m_shared->currentFrame].update(m_shared->swapChain->extent(), m_shared->camera);
 }
+
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {
     tinyobj::attrib_t attrib;

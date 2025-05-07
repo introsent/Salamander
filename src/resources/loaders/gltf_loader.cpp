@@ -1,112 +1,112 @@
 ﻿// gltf_loader.cpp
 #include "gltf_loader.h"
-#include <unordered_map>
+#include <tiny_gltf.h>
+#include <glm/gtc/type_ptr.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
 
-#include "glm/gtc/type_ptr.hpp"
-
 namespace {
-    struct VertexHash {
-        size_t operator()(const GLTFVertex& v) const {
-            size_t seed = 0;
-            auto combine = [&seed](auto val) {
-                seed ^= std::hash<decltype(val)>{}(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            };
+    void ProcessPrimitive(
+        const tinygltf::Model& model,
+        const tinygltf::Primitive& primitive,
+        GLTFModel& result,
+        size_t& vertexOffset,
+        size_t& indexOffset)
+    {
+        GLTFPrimitive primData;
+        primData.vertexOffset = static_cast<uint32_t>(vertexOffset);
+        primData.indexOffset = static_cast<uint32_t>(indexOffset);
+        primData.materialIndex = primitive.material;
 
-            combine(v.pos.x); combine(v.pos.y); combine(v.pos.z);
-            combine(v.texCoord.x); combine(v.texCoord.y);
-            // Add more fields if needed
-            return seed;
+        // Get accessors
+        const auto& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
+        const auto& texAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+
+        // Get buffer data
+        const auto& posView = model.bufferViews[posAccessor.bufferView];
+        const auto& texView = model.bufferViews[texAccessor.bufferView];
+
+        const float* positions = reinterpret_cast<const float*>(
+            &model.buffers[posView.buffer].data[posView.byteOffset + posAccessor.byteOffset]);
+        const float* texCoords = reinterpret_cast<const float*>(
+            &model.buffers[texView.buffer].data[texView.byteOffset + texAccessor.byteOffset]);
+
+        // Process vertices
+        const size_t vertexCount = posAccessor.count;
+        for (size_t i = 0; i < vertexCount; ++i) {
+            Vertex v{};
+            v.pos = glm::make_vec3(&positions[3 * i]);
+            v.texCoord = glm::make_vec2(&texCoords[2 * i]);
+            v.texCoord.y = 1.0f - v.texCoord.y; // Flip Y
+            v.color = glm::vec3(1.0f);
+            result.vertices.push_back(v);
         }
-    };
 
-    bool loadGLTFModel(tinygltf::Model& model, const std::string& path) {
-        tinygltf::TinyGLTF loader;
-        std::string err, warn;
+        // Process indices
+        const auto& indexAccessor = model.accessors[primitive.indices];
+        const auto& indexView = model.bufferViews[indexAccessor.bufferView];
+        const void* indexData = &model.buffers[indexView.buffer].data[indexView.byteOffset + indexAccessor.byteOffset];
 
-        bool success = path.ends_with(".glb") ?
-            loader.LoadBinaryFromFile(&model, &err, &warn, path) :
-            loader.LoadASCIIFromFile(&model, &err, &warn, path);
+        primData.indexCount = static_cast<uint32_t>(indexAccessor.count);
+        primData.vertexCount = static_cast<uint32_t>(vertexCount);
 
-        if (!warn.empty()) { /* handle warning */ }
-        if (!err.empty()) { /* handle error */ }
+        switch (indexAccessor.componentType) {
+            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+                const uint16_t* src = static_cast<const uint16_t*>(indexData);
+                for (size_t i = 0; i < indexAccessor.count; ++i) {
+                    result.indices.push_back(src[i]);
+                }
+                break;
+            }
+            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
+                const uint32_t* src = static_cast<const uint32_t*>(indexData);
+                for (size_t i = 0; i < indexAccessor.count; ++i) {
+                    result.indices.push_back(src[i]);
+                }
+                break;
+            }
+            default:
+                throw std::runtime_error("Unsupported index type");
+        }
 
-        return success;
+        result.primitives.push_back(primData);
+        vertexOffset += vertexCount;
+        indexOffset += indexAccessor.count;
     }
 }
 
-bool GLTFLoader::loadFromFile(const std::string& path, GLTFModel& outModel) {
+bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
     tinygltf::Model model;
-    if (!loadGLTFModel(model, path)) return false;
+    tinygltf::TinyGLTF loader;
+    std::string err, warn;
+
+    bool success = path.find(".glb") != std::string::npos ?
+        loader.LoadBinaryFromFile(&model, &err, &warn, path) :
+        loader.LoadASCIIFromFile(&model, &err, &warn, path);
+
+    if (!success) return false;
+
+    // Clear output model
+    outModel = GLTFModel{};
 
     // Process materials
     for (const auto& mat : model.materials) {
         GLTFMaterial material;
-        material.baseColorTexture = mat.pbrMetallicRoughness.baseColorTexture.index;
+        if (mat.pbrMetallicRoughness.baseColorTexture.index >= 0) {
+            material.baseColorTexture = model.textures[mat.pbrMetallicRoughness.baseColorTexture.index].source;
+        }
         outModel.materials.push_back(material);
     }
 
     // Process meshes
+    size_t vertexOffset = 0;
+    size_t indexOffset = 0;
     for (const auto& mesh : model.meshes) {
         for (const auto& prim : mesh.primitives) {
-            GLTFPrimitive primitive;
-            primitive.materialIndex = prim.material;
-
-            // Get accessors
-            const auto& posAccessor = model.accessors[prim.attributes.at("POSITION")];
-            const auto& texAccessor = model.accessors[prim.attributes.at("TEXCOORD_0")];
-            const auto& normalAccessor = model.accessors[prim.attributes.at("NORMAL")];
-
-            // Get buffer views
-            const auto& posView = model.bufferViews[posAccessor.bufferView];
-            const auto& texView = model.bufferViews[texAccessor.bufferView];
-            const auto& normalView = model.bufferViews[normalAccessor.bufferView];
-
-            // Get raw data pointers
-            const float* positions = reinterpret_cast<const float*>(
-                &model.buffers[posView.buffer].data[posView.byteOffset + posAccessor.byteOffset]);
-            const float* texCoords = reinterpret_cast<const float*>(
-                &model.buffers[texView.buffer].data[texView.byteOffset + texAccessor.byteOffset]);
-            const float* normals = reinterpret_cast<const float*>(
-                &model.buffers[normalView.buffer].data[normalView.byteOffset + normalAccessor.byteOffset]);
-
-            // Process indices
-            const auto& indexAccessor = model.accessors[prim.indices];
-            const auto& indexView = model.bufferViews[indexAccessor.bufferView];
-            const void* indexData = &model.buffers[indexView.buffer].data[indexView.byteOffset + indexAccessor.byteOffset];
-
-            std::unordered_map<GLTFVertex, uint32_t, VertexHash> uniqueVertices;
-
-            for (size_t i = 0; i < indexAccessor.count; ++i) {
-                uint32_t index = 0;
-                switch (indexAccessor.componentType) {
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-                        index = static_cast<const uint16_t*>(indexData)[i];
-                        break;
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-                        index = static_cast<const uint32_t*>(indexData)[i];
-                        break;
-                    default:
-                        throw std::runtime_error("Unsupported index type");
-                }
-
-                GLTFVertex vertex{};
-                vertex.pos = glm::make_vec3(&positions[3 * index]);
-                vertex.texCoord = glm::make_vec2(&texCoords[2 * index]);
-                vertex.normal = glm::make_vec3(&normals[3 * index]);
-                vertex.color = glm::vec4(1.0f); // Default color
-
-                if (!uniqueVertices.contains(vertex)) {
-                    uniqueVertices[vertex] = static_cast<uint32_t>(primitive.vertices.size());
-                    primitive.vertices.push_back(vertex);
-                }
-                primitive.indices.push_back(uniqueVertices[vertex]);
-            }
-
-            outModel.primitives.push_back(primitive);
+            if (prim.mode != TINYGLTF_MODE_TRIANGLES) continue;
+            ProcessPrimitive(model, prim, outModel, vertexOffset, indexOffset);
         }
     }
 
