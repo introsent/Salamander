@@ -2,43 +2,30 @@
 #pragma once
 #include <vector>
 #include <glm/glm.hpp>
-#include <tiny_gltf.h>
+#include <string>
 
-struct GLTFVertex {
-    glm::vec3 pos;
-    glm::vec3 normal;
-    glm::vec2 texCoord;
-    glm::vec4 tangent;
-    glm::vec4 color;
-
-    bool operator==(GLTFVertex const& other) const {
-        return pos == other.pos
-            && normal   == other.normal
-            && texCoord == other.texCoord
-            && tangent == other.tangent
-            && color == other.color;
-            // && … compare any other fields …
-    }
-};
+#include "data_structures.h"
 
 struct GLTFPrimitive {
-    std::vector<GLTFVertex> vertices;
-    std::vector<uint32_t> indices;
-    int materialIndex = -1;
+    uint32_t vertexOffset;
+    uint32_t vertexCount;
+    uint32_t indexOffset;
+    uint32_t indexCount;
+    int materialIndex;
 };
 
 struct GLTFMaterial {
     int baseColorTexture = -1;
-    // Add more PBR properties as needed
 };
 
 struct GLTFModel {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
     std::vector<GLTFPrimitive> primitives;
     std::vector<GLTFMaterial> materials;
-    // Add more model-level data as needed
 };
 
 class GLTFLoader {
 public:
-    static bool loadFromFile(const std::string& path, GLTFModel& outModel);
+    static bool LoadFromFile(const std::string& path, GLTFModel& outModel);
 };

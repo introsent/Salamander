@@ -9,6 +9,7 @@
 #include "data_structures.h"
 #include "config.h"
 #include "ssbo_buffer.h"
+#include "loaders/gltf_loader.h"
 
 class MainSceneTarget : public RenderTarget {
 public:
@@ -21,6 +22,15 @@ public:
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/viking_room.obj";
     const std::string TEXTURE_PATH = std::string(SOURCE_RESOURCE_DIR) + "/textures/viking_room.png";
 private:
+    struct PrimitiveData {
+        SSBOBuffer vertexBuffer;
+        IndexBuffer indexBuffer;
+        VkDeviceAddress vertexBufferAddress;
+        uint32_t indexCount;
+        int materialIndex;
+    };
+
+
     void createPipeline();
     void createRenderingResources();
     void createDescriptors();
@@ -39,6 +49,7 @@ private:
 
     SSBOBuffer m_ssboBuffer;
     VkDeviceAddress m_deviceAddress {};
+
 
     IndexBuffer m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
