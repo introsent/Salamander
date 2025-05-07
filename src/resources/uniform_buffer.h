@@ -4,6 +4,8 @@
 #include "vk_mem_alloc.h"
 #include <vulkan/vulkan.h>
 
+#include "camera/camera.h"
+
 class UniformBuffer final : public Buffer {
 public:
    
@@ -17,7 +19,7 @@ public:
     UniformBuffer& operator=(const UniformBuffer&) = delete;
     ~UniformBuffer() override;
 
-    void update(VkExtent2D extent) const;
+    void update(VkExtent2D extent, Camera*) const;
 
 protected:
     void* mapped = nullptr;

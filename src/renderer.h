@@ -11,7 +11,7 @@ class Renderer {
 public:
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-    Renderer(Context* context, Window* window, VmaAllocator allocator);
+    Renderer(Context* context, Window* window, VmaAllocator allocator, Camera* camera);
     ~Renderer();
 
     void drawFrame();
@@ -29,7 +29,7 @@ private:
     void createSyncObjects();
     void createCommandBuffers();
     void cleanup();
-    void initializeSharedResources();
+    void initializeSharedResources(Camera* camera);
 
     Context* m_context;
     Window* m_window;

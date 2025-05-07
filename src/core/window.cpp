@@ -30,6 +30,39 @@ Window::Window(int width, int height, const char* title)
     glfwSetFramebufferSizeCallback(m_window, Window::framebufferResizeCallback);
 }
 
+
+void Window::setupInputCallbacks() {
+    glfwSetWindowUserPointer(m_window, this);
+
+    glfwSetCursorPosCallback(m_window, [](GLFWwindow* window, double xpos, double ypos) {
+        Window* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if (self && self->m_camera) {
+            if (self->m_firstMouse) {
+                self->m_lastX = xpos;
+                self->m_lastY = ypos;
+                self->m_firstMouse = false;
+            }
+
+            float xoffset = xpos - self->m_lastX;
+            float yoffset = self->m_lastY - ypos; // Reversed y-coordinates
+            self->m_lastX = xpos;
+            self->m_lastY = ypos;
+
+            self->m_camera->ProcessMouseMovement(xoffset, yoffset);
+        }
+    });
+
+    glfwSetScrollCallback(m_window, [](GLFWwindow* window, double xoffset, double yoffset) {
+        Window* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if (self && self->m_camera) {
+            self->m_camera->ProcessMouseScroll(yoffset);
+        }
+    });
+
+    glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+
 void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
     auto* win = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
     if (win) {

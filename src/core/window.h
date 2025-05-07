@@ -5,6 +5,8 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
+#include "camera/camera.h"
+
 class Window final {
 public:
     Window(int width, int height, const char* title);
@@ -32,6 +34,9 @@ public:
         m_resizeCallback = callback;
     }
 
+    void setCamera(Camera* camera) { m_camera = camera; }
+    void setupInputCallbacks();
+
 private:
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
     void handleResize(int width, int height);
@@ -41,4 +46,13 @@ private:
     int m_height;
     bool m_resized;
     std::function<void()> m_resizeCallback;
+
+
+    Camera* m_camera = nullptr;
+    double m_lastX = 0.0;
+    double m_lastY = 0.0;
+    bool m_firstMouse = true;
+
+    static void mouseCallback(GLFWwindow* window, double xpos, double ypos);
+    static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 };

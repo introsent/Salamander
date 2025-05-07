@@ -14,7 +14,7 @@ public:
 private:
     void createWindowAndContext();
     void createAllocator();
-    void mainLoop() const;
+    void mainLoop();
 
     static bool enableValidationLayers() {
 #ifdef NDEBUG
@@ -29,5 +29,12 @@ private:
     std::unique_ptr<Context> m_context;
     VmaAllocator m_allocator{ VK_NULL_HANDLE };
     std::unique_ptr<Renderer> m_renderer;
+
+    // Camera
+    Camera m_camera;
+
+    float m_deltaTime = 0.0f;
+    float m_lastFrameTime = 0.0f;
+
 };
 

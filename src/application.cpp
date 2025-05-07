@@ -5,10 +5,17 @@
 
 void VulkanApplication::run() {
     createWindowAndContext();
+
+    // Setup camera
+    m_window->setCamera(&m_camera);
+    m_window->setupInputCallbacks();
+    // Initialize camera with starting position
+    m_camera = Camera(glm::vec3(2.0f, 2.0f, 2.0f));
+
     createAllocator();
 
     // Create renderer and register its cleanup
-    m_renderer = std::make_unique<Renderer>(m_context.get(), m_window.get(), m_allocator);
+    m_renderer = std::make_unique<Renderer>(m_context.get(), m_window.get(), m_allocator, &m_camera);
 
     // On window resize callback, notify renderer
     m_window->setResizeCallback([this]() {
@@ -44,10 +51,15 @@ void VulkanApplication::createAllocator() {
         });
 }
 
-void VulkanApplication::mainLoop() const {
+void VulkanApplication::mainLoop() {
     while (!m_window->shouldClose()) {
+        float currentFrame = glfwGetTime();  // GLFW's high-resolution timer
+        m_deltaTime = currentFrame - m_lastFrameTime;
+        m_lastFrameTime = currentFrame;
+
         m_window->pollEvents();
         try {
+            m_camera.ProcessKeyboard(m_window->handle() , m_deltaTime);
             m_renderer->drawFrame();
         }
         catch (const std::runtime_error& e) {

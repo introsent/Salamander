@@ -24,6 +24,7 @@ public:
         VmaAllocator allocator;
         VkImageView depthImageView;
         VkFormat depthFormat;
+        Camera* camera;
     };
 
 

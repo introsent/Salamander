@@ -225,7 +225,7 @@ void MainSceneTarget::cleanup() {
 }
 
 void MainSceneTarget::updateUniformBuffers() const {
-    m_uniformBuffers[m_shared->currentFrame].update(m_shared->swapChain->extent());
+    m_uniformBuffers[m_shared->currentFrame].update(m_shared->swapChain->extent(), m_shared->camera);
 }
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {
