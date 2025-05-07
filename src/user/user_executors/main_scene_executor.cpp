@@ -94,6 +94,7 @@ void MainSceneExecutor::setViewportAndScissor(VkCommandBuffer cmd) const {
 
 void MainSceneExecutor::bindBuffers(VkCommandBuffer cmd) const {
     vkCmdBindIndexBuffer(cmd, m_resources.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
              m_resources.pipelineLayout, 0, 1, &m_resources.descriptorSets[0], 0, nullptr);
 }
