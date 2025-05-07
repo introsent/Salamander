@@ -3,11 +3,11 @@
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 #extension GL_EXT_scalar_block_layout : require
 
-// Define Vertex structure with scalar alignment
+// Define Vertex structure
 struct Vertex {
-    vec4 pos;
-    vec4 color;
-    vec4 texCoord;
+    vec3 pos;
+    vec3 color;
+    vec2 texCoord;
 };
 
 
@@ -18,7 +18,7 @@ layout(push_constant) uniform PushConstants {
 
 
 // Declare VertexBuffer with scalar packing
-layout(buffer_reference, std430) readonly buffer VertexBuffer {
+layout(buffer_reference, scalar) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
 // UBO (std140 for C++ alignment)
@@ -36,7 +36,7 @@ void main() {
     VertexBuffer vertexBuffer = VertexBuffer(pushConstants.vertexBufferAddress);
     Vertex v = vertexBuffer.vertices[gl_VertexIndex];
 
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(v.pos.xyz, 1.0);
-    fragColor = v.color.rgb;
-    fragTexCoord = v.texCoord.xy;
+    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(v.pos, 1.0);
+    fragColor = v.color;
+    fragTexCoord = v.texCoord;
 }
