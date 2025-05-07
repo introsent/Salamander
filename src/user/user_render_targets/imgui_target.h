@@ -2,7 +2,6 @@
 #include "target/render_target.h"
 #include "pipeline.h"
 #include "descriptors/descriptor_set_layout.h"
-#include "index_buffer.h"
 #include "user_descriptor_managers/imgui_descriptor_manager.h"
 
 class ImGuiTarget : public RenderTarget {

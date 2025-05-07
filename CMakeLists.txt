@@ -56,9 +56,12 @@ set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path 
 # Set the project source files
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
-    "src/vma_impl.cpp"
-    "src/stb_image.h"
-    "src/tiny_obj_loader.h"
+    "src/includes/vma_impl.cpp"
+    "src/includes/stb_image.h"
+    "src/includes/tiny_obj_loader.h"
+    "src/includes/tiny_gltf.h"
+    "src/includes/stb_image_write.h"
+    "src/includes/json.hpp"
     "src/core/window.h"
     "src/core/window.cpp" 
     "src/core/context.h" 
@@ -106,31 +109,31 @@ set(${PROJECT_NAME}_SOURCES
     "src/application.h" 
     "src/application.cpp" 
     "src/deletion_queue.h"
-     
-    
     "src/executors/render_pass_executor.h"
-        "src/user/user_executors/imgui_pass_executor.cpp"
+    "src/user/user_executors/imgui_pass_executor.cpp"
     "src/user/user_executors/imgui_pass_executor.h"
     "src/rendering/descriptors/descriptor_set_layout_builder.cpp"
     "src/rendering/descriptors/descriptor_set_layout_builder.h"
-        src/rendering/descriptors/descriptor_pool_builder.cpp
-        src/rendering/descriptors/descriptor_pool_builder.h
-        src/user/user_descriptor_managers/main_descriptor_manager.cpp
-        src/user/user_descriptor_managers/main_descriptor_manager.h
-        src/user/user_descriptor_managers/imgui_descriptor_manager.cpp
-        src/user/user_descriptor_managers/imgui_descriptor_manager.h
-        src/rendering/target/render_target.h
-        src/user/user_render_targets/main_scene_target.cpp
-        src/user/user_render_targets/main_scene_target.h
-        src/user/user_render_targets/imgui_target.cpp
-        src/user/user_render_targets/imgui_target.h
-        src/user/user_executors/main_scene_executor.cpp
-        src/user/user_executors/main_scene_executor.h
-        src/rendering/image_transition_manager.h
-        src/resources/ssbo_buffer.cpp
-        src/resources/ssbo_buffer.h
-        src/rendering/camera/camera.cpp
-        src/rendering/camera/camera.h
+    src/rendering/descriptors/descriptor_pool_builder.cpp
+    src/rendering/descriptors/descriptor_pool_builder.h
+    src/user/user_descriptor_managers/main_descriptor_manager.cpp
+    src/user/user_descriptor_managers/main_descriptor_manager.h
+    src/user/user_descriptor_managers/imgui_descriptor_manager.cpp
+    src/user/user_descriptor_managers/imgui_descriptor_manager.h
+    src/rendering/target/render_target.h
+    src/user/user_render_targets/main_scene_target.cpp
+    src/user/user_render_targets/main_scene_target.h
+    src/user/user_render_targets/imgui_target.cpp
+    src/user/user_render_targets/imgui_target.h
+    src/user/user_executors/main_scene_executor.cpp
+    src/user/user_executors/main_scene_executor.h
+    src/rendering/image_transition_manager.h
+    src/resources/ssbo_buffer.cpp
+    src/resources/ssbo_buffer.h
+    src/rendering/camera/camera.cpp
+    src/rendering/camera/camera.h
+        src/resources/loaders/gltf_loader.cpp
+        src/resources/loaders/gltf_loader.h
 )
 
 # Add ImGui source files with proper includes and links
@@ -182,6 +185,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/user
     ${CMAKE_CURRENT_SOURCE_DIR}/src/executors
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/includes
     ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
@@ -236,4 +240,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/viking_room.png
                
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/viking_room.obj
                ${CMAKE_CURRENT_BINARY_DIR}/models/viking_room.obj
+               ${CMAKE_CURRENT_BINARY_DIR}/models/sponza/Sponza.gltf
                COPYONLY)
+
+file(GLOB JPG_FILES "${CMAKE_CURRENT_SOURCE_DIR}/models/sponza/*.jpg")
+foreach(jpg_file ${JPG_FILES})
+    get_filename_component(filename ${jpg_file} NAME)
+    configure_file(${jpg_file}
+            ${CMAKE_CURRENT_BINARY_DIR}/models/sponza/${filename}
+            COPYONLY)
+endforeach()

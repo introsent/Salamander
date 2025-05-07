@@ -28,3 +28,10 @@ struct UniformBufferObject {
     glm::mat4 view;
     glm::mat4 proj;
 };
+
+
+struct RenderObject {
+    uint32_t firstIndex;
+    uint32_t indexCount;
+    int32_t textureID;
+};
