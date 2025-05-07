@@ -1,28 +1,34 @@
 ﻿#include "camera.h"
-Camera::Camera(glm::vec3 position,
-          glm::vec3 up,
-          float yaw, float pitch)
-       : Position(position), WorldUp(up), Yaw(yaw), Pitch(pitch),
-         MovementSpeed(5.0f), MouseSensitivity(0.1f), Zoom(45.0f) {
-       updateCameraVectors();
-   }
 
-// Get view matrix using glm::lookAt
-glm::mat4 Camera::GetViewMatrix() const {
-    return glm::lookAt(Position, Position + Front, Up);
+// Сonstructor: look-at target
+Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 worldUp)
+    : Position(position), WorldUp(worldUp) {
+    // Compute initial Front vector
+    Front = glm::normalize(target - position);
+    // Derive Euler angles from Front
+    Pitch = glm::degrees(asin(Front.z));
+    Yaw   = -glm::degrees(atan2(Front.y, Front.x));
+    updateCameraVectors();
 }
 
-// Get projection matrix adjusted for Vulkan (Y flipped)
+// Constructor: custom yaw/pitch
+Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch)
+    : Position(position), WorldUp(worldUp), Yaw(yaw), Pitch(pitch) {
+    updateCameraVectors();
+}
+glm::mat4 Camera::GetViewMatrix() const {
+    return glm::lookAt(Position, Position + Front, WorldUp);
+}
+
 glm::mat4 Camera::GetProjectionMatrix(float aspectRatio) const {
-    glm::mat4 proj = glm::perspective(
-        glm::radians(Zoom), aspectRatio, 0.1f, 100.0f);
-    proj[1][1] *= -1.0f; // Flip Y-axis for Vulkan
+    glm::mat4 proj = glm::perspective(glm::radians(Zoom), aspectRatio, 0.1f, 10.0f);
+    proj[1][1] *= -1.0f;
     return proj;
 }
 
-// Process keyboard input (WASD)
 void Camera::ProcessKeyboard(GLFWwindow* window, float deltaTime) {
     float velocity = MovementSpeed * deltaTime;
+
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         velocity *= 3.0f;
 
@@ -34,38 +40,49 @@ void Camera::ProcessKeyboard(GLFWwindow* window, float deltaTime) {
         Position -= Right * velocity;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         Position += Right * velocity;
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        Position += Up * velocity;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+        Position -= Up * velocity;
 }
 
-// Process mouse input for rotation
-void Camera::ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch) {
+
+void Camera::ProcessMouseMovement(float xoffset, float yoffset) {
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
 
     Yaw += xoffset;
     Pitch += yoffset;
 
-    if (constrainPitch) {
-        if (Pitch > 89.0f) Pitch = 89.0f;
-        if (Pitch < -89.0f) Pitch = -89.0f;
-    }
+    if (Pitch > 89.0f) Pitch = 89.0f;
+    if (Pitch < -89.0f) Pitch = -89.0f;
 
     updateCameraVectors();
 }
 
-// Process mouse scroll for zoom (optional)
+void Camera::ProcessVerticalMovement(float yoffset) {
+    float velocity = yoffset * MouseSensitivity * 0.25f;
+    Position += WorldUp * velocity;
+}
+
+void Camera::ProcessHorizontalMovement(float yoffset) {
+    float velocity = yoffset * MouseSensitivity * 0.25f;
+    Position += Front * velocity;
+}
+
 void Camera::ProcessMouseScroll(float yoffset) {
     Zoom -= yoffset;
     if (Zoom < 1.0f) Zoom = 1.0f;
     if (Zoom > 45.0f) Zoom = 45.0f;
 }
-
 void Camera::updateCameraVectors() {
+    // Recalculate Front from Euler angles
     glm::vec3 front;
     front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    front.y = sin(glm::radians(Pitch));
-    front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+    front.y = -sin(glm::radians(Yaw)) * cos(glm::radians(Pitch)); // Yaw affects X/Y plane
+    front.z = sin(glm::radians(Pitch));
     Front = glm::normalize(front);
-
+    // Recalculate Right and Up
     Right = glm::normalize(glm::cross(Front, WorldUp));
-    Up = glm::normalize(glm::cross(Right, Front));
+    Up    = glm::normalize(glm::cross(Right, Front));
 }
