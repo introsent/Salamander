@@ -241,7 +241,7 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
     for (size_t i = 0; i < gltfModel.materials.size(); ++i) {
         if (gltfModel.materials[i].baseColorTexture >= 0) {
             const auto& texInfo = gltfModel.textures[gltfModel.materials[i].baseColorTexture];
-            m_modelTextures[i] = m_shared->textureManager->loadTexture(texInfo.uri);
+            m_modelTextures[i] = m_shared->textureManager->loadTexture( std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri);
         }
     }
     // Store geometry data
