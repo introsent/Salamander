@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "deletion_queue.h"
+#include "shared/shared_structs.h"
 
 static std::vector<char> readFile(const std::string& filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -104,9 +105,9 @@ void Pipeline::createShaderModule(const std::vector<char>& code, VkShaderModule*
 
 void Pipeline::createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout) {
     VkPushConstantRange pushConstantRange{
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT, // Must match the shader stage
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
         .offset = 0,
-        .size = sizeof(uint64_t)
+        .size = sizeof(PushConstants)
     };
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};

@@ -22,12 +22,6 @@ public:
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";
     const std::string TEXTURE_PATH = std::string(SOURCE_RESOURCE_DIR) + "/textures/viking_room.png";
 private:
-    struct GLTFPrimitiveData {
-        uint32_t indexOffset;
-        uint32_t indexCount;
-        int materialIndex;
-    };
-
     std::vector<GLTFPrimitiveData> m_primitives;
     std::vector<ManagedTexture> m_modelTextures;
 
@@ -54,4 +48,12 @@ private:
     IndexBuffer m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
     ManagedTexture m_texture;
+
+
+    struct FrameData {
+        VkDescriptorBufferInfo bufferInfo;
+        std::vector<VkDescriptorImageInfo> imageInfos;
+    };
+    std::array<FrameData, MAX_FRAMES_IN_FLIGHT> m_frameData;
+
 };

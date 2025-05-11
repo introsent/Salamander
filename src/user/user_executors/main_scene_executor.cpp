@@ -1,5 +1,9 @@
 ﻿#include "main_scene_executor.h"
+
+#include <iostream>
+
 #include "image_transition_manager.h"
+#include "loaders/gltf_loader.h"
 #include "shared/shared_structs.h"
 
 MainSceneExecutor::MainSceneExecutor(Resources resources)
@@ -51,21 +55,36 @@ void MainSceneExecutor::begin(VkCommandBuffer cmd, uint32_t imageIndex) {
 void MainSceneExecutor::execute(VkCommandBuffer cmd) {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_resources.pipeline);
     setViewportAndScissor(cmd);
-
-    //PushConstants pushConstants{};
-    VkDeviceAddress vertexBufferAddress = m_resources.vertexBufferAddress;
-    vkCmdPushConstants(
-        cmd,
-        m_resources.pipelineLayout,
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0,
-        sizeof( VkDeviceAddress),
-        &vertexBufferAddress
-    );
-
     bindBuffers(cmd);
-    vkCmdDrawIndexed(cmd, static_cast<uint32_t>(m_resources.indices.size()), 1, 0, 0, 0);
+
+    for (const auto& primitive : m_resources.primitives) {
+        PushConstants pc = {
+            .vertexBufferAddress = m_resources.vertexBufferAddress,
+            .indexOffset = primitive.indexOffset,
+            .materialIndex = primitive.materialIndex,
+            .modelScale = globalScale
+        };
+
+        vkCmdPushConstants(
+            cmd,
+            m_resources.pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(PushConstants),
+            &pc
+        );
+
+        vkCmdDrawIndexed(
+            cmd,
+            primitive.indexCount,
+            1,
+            primitive.indexOffset,
+            0,
+            0
+        );
+    }
 }
+
 
 void MainSceneExecutor::end(VkCommandBuffer cmd) {
     vkCmdEndRendering(cmd);
@@ -96,5 +115,8 @@ void MainSceneExecutor::bindBuffers(VkCommandBuffer cmd) const {
     vkCmdBindIndexBuffer(cmd, m_resources.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-             m_resources.pipelineLayout, 0, 1, &m_resources.descriptorSets[0], 0, nullptr);
+        m_resources.pipelineLayout, 0, 1,
+        &m_resources.descriptorSets[m_resources.currentFrame],  // Use currentFrame
+        0, nullptr);
+
 }

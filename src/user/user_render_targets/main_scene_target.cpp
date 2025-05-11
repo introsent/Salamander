@@ -109,6 +109,7 @@ void MainSceneTarget::createPipeline() {
             .pDynamicStates = dynamicStates.data()
         },
 
+
         .rendering = renderingInfo
     };
 
@@ -134,22 +135,32 @@ void MainSceneTarget::createRenderingResources() {
         .depthImageView = m_shared->depthImageView,
         .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
         .clearDepth = {.depthStencil = {1.0f, 0}},
-        .swapChain = m_shared->swapChain
+        .swapChain = m_shared->swapChain,
+        .primitives = m_primitives,
+        .currentFrame = m_shared->currentFrame
         };
 
     m_executor = std::make_unique<MainSceneExecutor>(mainResources);
 }
 
 void MainSceneTarget::createDescriptors() {
+    auto textureCount = static_cast<uint32_t>(m_modelTextures.size());
+
+    // Add a check here:
+    if (textureCount == 0) {
+        throw std::runtime_error("No textures were loaded!");
+    }
+
+
     DescriptorSetLayoutBuilder layoutBuilder(m_shared->context->device());
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-        .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, textureCount)
         .build();
 
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT /** 68*/}
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textureCount}
     };
 
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
@@ -159,28 +170,46 @@ void MainSceneTarget::createDescriptors() {
         MAX_FRAMES_IN_FLIGHT
     );
 
-    // Update descriptor sets
+    struct FrameData {
+        VkDescriptorBufferInfo bufferInfo;
+        std::vector<VkDescriptorImageInfo> imageInfos;
+    };
+
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = m_uniformBuffers[i].handle();
-        bufferInfo.range = sizeof(UniformBufferObject);
+        // Initialize buffer info for this frame
+        m_frameData[i].bufferInfo = {
+            .buffer = m_uniformBuffers[i].handle(),
+            .offset = 0,
+            .range = sizeof(UniformBufferObject)
+        };
 
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = m_texture.view;
-        imageInfo.sampler = m_texture.sampler;
+        // Initialize image infos for this frame
+        m_frameData[i].imageInfos.clear();
+        for (const auto& texture : m_modelTextures) {
+            m_frameData[i].imageInfos.push_back(VkDescriptorImageInfo{
+                .sampler = texture.sampler,
+                .imageView = texture.view,
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            });
+        }
 
+
+        // Build descriptor updates
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates;
-        updates.push_back(MainDescriptorManager::DescriptorUpdateInfo{
+        updates.push_back({
             .binding = 0,
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .bufferInfo = bufferInfo,
+            .bufferInfo = &m_frameData[i].bufferInfo,
+            .descriptorCount = 1,
             .isImage = false
         });
-        updates.push_back(MainDescriptorManager::DescriptorUpdateInfo{
+
+        updates.push_back({
             .binding = 1,
             .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = imageInfo,
+            .imageInfo = m_frameData[i].imageInfos.data(),
+            .descriptorCount = static_cast<uint32_t>(m_frameData[i].imageInfos.size()),
             .isImage = true
         });
 
@@ -213,7 +242,10 @@ void MainSceneTarget::recreateSwapChain() {
         .depthImageView = m_shared->depthImageView,  // Use the updated depth view from shared resources
         .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
         .clearDepth = {.depthStencil = {1.0f, 0}},
-        .swapChain = m_shared->swapChain
+        .swapChain = m_shared->swapChain,
+        .primitives = m_primitives,
+        .currentFrame = m_shared->currentFrame
+
     };
 
     // Create new executor
@@ -236,14 +268,22 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
         throw std::runtime_error("Failed to load GLTF model");
     }
 
-    // Load materials and textures
-    m_modelTextures.resize(gltfModel.materials.size());
-    for (size_t i = 0; i < gltfModel.materials.size(); ++i) {
-        if (gltfModel.materials[i].baseColorTexture >= 0) {
-            const auto& texInfo = gltfModel.textures[gltfModel.materials[i].baseColorTexture];
-            m_modelTextures[i] = m_shared->textureManager->loadTexture( std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri);
+    // Clear existing textures
+    m_modelTextures.clear();
+
+    // First, load all unique textures
+    std::unordered_map<int, size_t> textureIndexMap;  // Maps texture index to array index
+    for (const auto& material : gltfModel.materials) {
+        if (material.baseColorTexture >= 0) {
+            if (textureIndexMap.find(material.baseColorTexture) == textureIndexMap.end()) {
+                const auto& texInfo = gltfModel.textures[material.baseColorTexture];
+                std::string texturePath = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
+                m_modelTextures.push_back(m_shared->textureManager->loadTexture(texturePath));
+                textureIndexMap[material.baseColorTexture] = m_modelTextures.size() - 1;
+            }
         }
     }
+
     // Store geometry data
     m_vertices = gltfModel.vertices;
     m_indices = gltfModel.indices;
@@ -252,13 +292,21 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
     m_primitives.clear();
     m_primitives.reserve(gltfModel.primitives.size());
     for (const auto& srcPrim : gltfModel.primitives) {
+        // Map the material's texture index to our array index
+        uint32_t textureIndex = 0; // Default texture index
+        if (srcPrim.materialIndex >= 0 &&
+            gltfModel.materials[srcPrim.materialIndex].baseColorTexture >= 0) {
+            textureIndex = textureIndexMap[gltfModel.materials[srcPrim.materialIndex].baseColorTexture];
+            }
+
         m_primitives.push_back({
             .indexOffset = srcPrim.indexOffset,
             .indexCount = srcPrim.indexCount,
-            .materialIndex = srcPrim.materialIndex
+            .materialIndex = textureIndex  // Use the mapped texture index
         });
     }
 }
+
 
 void MainSceneTarget::createBuffers() {
     m_ssboBuffer = SSBOBuffer(m_shared->bufferManager, m_shared->commandManager, m_shared->allocator,

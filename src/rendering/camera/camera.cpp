@@ -1,8 +1,9 @@
 ﻿#include "camera.h"
 
 // Сonstructor: look-at target
-Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 worldUp)
-    : Position(position), WorldUp(worldUp) {
+Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 worldUp, float roll)
+    : Position(position), WorldUp(worldUp), Roll(roll)
+ {
     // Compute initial Front vector
     Front = glm::normalize(target - position);
     // Derive Euler angles from Front
@@ -12,16 +13,16 @@ Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 worldUp)
 }
 
 // Constructor: custom yaw/pitch
-Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch)
-    : Position(position), WorldUp(worldUp), Yaw(yaw), Pitch(pitch) {
+Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, float roll)
+    : Position(position), WorldUp(worldUp), Yaw(yaw), Pitch(pitch), Roll(roll) {
     updateCameraVectors();
 }
 glm::mat4 Camera::GetViewMatrix() const {
-    return glm::lookAt(Position, Position + Front, WorldUp);
+    return glm::lookAt(Position, Position + Front, Up);
 }
 
 glm::mat4 Camera::GetProjectionMatrix(float aspectRatio) const {
-    glm::mat4 proj = glm::perspective(glm::radians(Zoom), aspectRatio, 0.1f, 10.0f);
+    glm::mat4 proj = glm::perspective(glm::radians(Zoom), aspectRatio, 0.1f, 100.0f);
     proj[1][1] *= -1.0f;
     return proj;
 }
@@ -51,8 +52,8 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset) {
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
 
-    Yaw += xoffset;
-    Pitch += yoffset;
+    Yaw += yoffset;
+    Pitch += xoffset;
 
     if (Pitch > 89.0f) Pitch = 89.0f;
     if (Pitch < -89.0f) Pitch = -89.0f;
@@ -76,13 +77,29 @@ void Camera::ProcessMouseScroll(float yoffset) {
     if (Zoom > 45.0f) Zoom = 45.0f;
 }
 void Camera::updateCameraVectors() {
-    // Recalculate Front from Euler angles
+    // Calculate the front vector
     glm::vec3 front;
+    // Yaw rotates around Z axis, Pitch rotates around Right vector
     front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    front.y = -sin(glm::radians(Yaw)) * cos(glm::radians(Pitch)); // Yaw affects X/Y plane
-    front.z = sin(glm::radians(Pitch));
+    front.y = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+    front.z = sin(glm::radians(Pitch));  // Negative because pitch up should look up
     Front = glm::normalize(front);
-    // Recalculate Right and Up
-    Right = glm::normalize(glm::cross(Front, WorldUp));
-    Up    = glm::normalize(glm::cross(Right, Front));
+
+
+    // First calculate the base Right and Up vectors (before roll)
+    glm::vec3 baseRight = glm::normalize(glm::cross(Front, WorldUp));
+    glm::vec3 baseUp = glm::normalize(glm::cross(baseRight, Front));
+
+    if (Roll != 0.0f) {
+        // Create rotation matrix around Front vector for roll
+        float rollRad = glm::radians(Roll);
+        glm::mat4 rollMatrix = glm::rotate(glm::mat4(1.0f), rollRad, Front);
+
+        // Apply roll rotation to the base vectors
+        Right = glm::vec3(rollMatrix * glm::vec4(baseRight, 0.0f));
+        Up = glm::vec3(rollMatrix * glm::vec4(baseUp, 0.0f));
+    } else {
+        Right = baseRight;
+        Up = baseUp;
+    }
 }

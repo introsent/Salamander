@@ -182,7 +182,8 @@ VkSampler TextureManager::createSampler() const {
     VkDevice deviceCopy = m_device;
     VkSampler samplerCopy = sampler;
 
-    DeletionQueue::get().pushFunction("Sampler", [deviceCopy, samplerCopy]() {
+    static int samplerIndex = 0;
+    DeletionQueue::get().pushFunction("Sampler_" + std::to_string( samplerIndex++), [deviceCopy, samplerCopy]() {
         vkDestroySampler(deviceCopy, samplerCopy, nullptr);
         });
 

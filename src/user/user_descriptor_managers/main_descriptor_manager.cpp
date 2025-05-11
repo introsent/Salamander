@@ -51,12 +51,12 @@ void MainDescriptorManager::updateDescriptorSet(
         writeSet.dstSet = m_descriptorSets[setIndex];
         writeSet.dstBinding = info.binding;
         writeSet.descriptorType = info.type;
-        writeSet.descriptorCount = 1;
-        
+        writeSet.descriptorCount = info.descriptorCount; // Use struct's descriptorCount
+
         if (info.isImage) {
-            writeSet.pImageInfo = &info.imageInfo;
+            writeSet.pImageInfo = info.imageInfo; // Directly assign the pointer
         } else {
-            writeSet.pBufferInfo = &info.bufferInfo;
+            writeSet.pBufferInfo = info.bufferInfo; // Directly assign the pointer
         }
 
         descriptorWrites.push_back(writeSet);
