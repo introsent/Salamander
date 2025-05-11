@@ -4,6 +4,8 @@
 #include "loaders/gltf_loader.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
+#include <iostream>
+
 #include "tiny_obj_loader.h"
 
 #include "render_pass_executor.h"
@@ -262,25 +264,26 @@ void MainSceneTarget::updateUniformBuffers() const {
 }
 
 
+
 void MainSceneTarget::loadModel(const std::string& modelPath) {
     GLTFModel gltfModel;
     if (!GLTFLoader::LoadFromFile(modelPath, gltfModel)) {
         throw std::runtime_error("Failed to load GLTF model");
     }
 
-    // Clear existing textures
+    // Clear existing textures and create a texture index mapping
     m_modelTextures.clear();
+    std::unordered_map<std::string, size_t> texturePathToIndex;
 
-    // First, load all unique textures
-    std::unordered_map<int, size_t> textureIndexMap;  // Maps texture index to array index
-    for (const auto& material : gltfModel.materials) {
-        if (material.baseColorTexture >= 0) {
-            if (textureIndexMap.find(material.baseColorTexture) == textureIndexMap.end()) {
-                const auto& texInfo = gltfModel.textures[material.baseColorTexture];
-                std::string texturePath = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
-                m_modelTextures.push_back(m_shared->textureManager->loadTexture(texturePath));
-                textureIndexMap[material.baseColorTexture] = m_modelTextures.size() - 1;
-            }
+    // First, load all textures and maintain their original order
+    for (const auto& texInfo : gltfModel.textures) {
+        std::string texturePath = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
+//
+        // Check if we already loaded this texture
+        auto it = texturePathToIndex.find(texturePath);
+        if (it == texturePathToIndex.end()) {
+            texturePathToIndex[texturePath] = m_modelTextures.size();
+            m_modelTextures.push_back(m_shared->textureManager->loadTexture(texturePath));
         }
     }
 
@@ -288,23 +291,34 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
     m_vertices = gltfModel.vertices;
     m_indices = gltfModel.indices;
 
-    // Convert GLTFPrimitive to GLTFPrimitiveData
+    // Convert primitives, maintaining correct texture indices
     m_primitives.clear();
     m_primitives.reserve(gltfModel.primitives.size());
+
     for (const auto& srcPrim : gltfModel.primitives) {
-        // Map the material's texture index to our array index
         uint32_t textureIndex = 0; // Default texture index
-        if (srcPrim.materialIndex >= 0 &&
-            gltfModel.materials[srcPrim.materialIndex].baseColorTexture >= 0) {
-            textureIndex = textureIndexMap[gltfModel.materials[srcPrim.materialIndex].baseColorTexture];
+
+        if (srcPrim.materialIndex >= 0) {
+            const auto& material = gltfModel.materials[srcPrim.materialIndex];
+            if (material.baseColorTexture >= 0) {
+                // Get the texture URI
+                const auto& texInfo = gltfModel.textures[material.baseColorTexture];
+                std::string texturePath = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
+                // Get the correct index from our mapping
+                textureIndex = texturePathToIndex[texturePath];
             }
+        }
 
         m_primitives.push_back({
             .indexOffset = srcPrim.indexOffset,
             .indexCount = srcPrim.indexCount,
-            .materialIndex = textureIndex  // Use the mapped texture index
+            .materialIndex = textureIndex
         });
     }
+
+    // Debug print
+    std::cout << "Loaded textures count: " << m_modelTextures.size() << std::endl;
+    std::cout << "Primitives count: " << m_primitives.size() << std::endl;
 }
 
 
