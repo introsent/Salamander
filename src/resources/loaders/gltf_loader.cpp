@@ -110,8 +110,9 @@ bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
     // Process materials
     for (const auto& mat : model.materials) {
         GLTFMaterial material;
+        material.baseColorTexture = -1; // Default value for no texture
         if (mat.pbrMetallicRoughness.baseColorTexture.index >= 0) {
-            material.baseColorTexture = model.textures[mat.pbrMetallicRoughness.baseColorTexture.index].source;
+            material.baseColorTexture = mat.pbrMetallicRoughness.baseColorTexture.index;
         }
         outModel.materials.push_back(material);
     }
