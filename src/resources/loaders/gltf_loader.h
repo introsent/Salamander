@@ -11,7 +11,7 @@ struct GLTFPrimitive {
     uint32_t vertexCount;
     uint32_t indexOffset;
     uint32_t indexCount;
-    int materialIndex;
+    uint32_t materialIndex;
 };
 
 struct GLTFMaterial {
@@ -21,6 +21,7 @@ struct GLTFTexture {
     std::string uri;
 };
 
+inline glm::vec3 globalScale{1.0f, 1.0f, 1.0f};
 
 struct GLTFModel {
     std::vector<Vertex> vertices;

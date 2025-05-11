@@ -2,6 +2,7 @@
 #include "render_pass_executor.h"
 #include <vector>
 
+#include "data_structures.h"
 #include "ssbo_buffer.h"
 #include "swap_chain.h"
 
@@ -20,7 +21,8 @@ public:
         VkClearValue                    clearColor;
         VkClearValue                    clearDepth;
         SwapChain*                      swapChain;
-
+        std::vector<GLTFPrimitiveData>  primitives;
+        uint32_t                        currentFrame;
     };
 
     explicit MainSceneExecutor(Resources resources);

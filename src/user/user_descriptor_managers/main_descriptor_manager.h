@@ -9,9 +9,10 @@ public:
         uint32_t binding;
         VkDescriptorType type;
         union {
-            VkDescriptorBufferInfo bufferInfo;
-            VkDescriptorImageInfo imageInfo;
+            VkDescriptorBufferInfo* bufferInfo;
+            VkDescriptorImageInfo* imageInfo;
         };
+        uint32_t descriptorCount;
         bool isImage;
     };
 

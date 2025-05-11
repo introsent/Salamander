@@ -5,6 +5,7 @@
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <iostream>
 #include <tiny_gltf.h>
 
 namespace {
@@ -19,6 +20,7 @@ namespace {
         primData.vertexOffset = static_cast<uint32_t>(vertexOffset);
         primData.indexOffset = static_cast<uint32_t>(indexOffset);
         primData.materialIndex = primitive.material;
+
 
         // Get accessors
         const auto& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
@@ -39,7 +41,7 @@ namespace {
             Vertex v{};
             v.pos = glm::make_vec3(&positions[3 * i]);
             v.texCoord = glm::make_vec2(&texCoords[2 * i]);
-            v.texCoord.y = 1.0f - v.texCoord.y; // Flip Y
+           // v.texCoord.y = 1.0f - v.texCoord.y; // Flip Y
             v.color = glm::vec3(1.0f);
             result.vertices.push_back(v);
         }
@@ -56,17 +58,18 @@ namespace {
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
                 const uint16_t* src = static_cast<const uint16_t*>(indexData);
                 for (size_t i = 0; i < indexAccessor.count; ++i) {
-                    result.indices.push_back(src[i]);
+                    result.indices.push_back(src[i] + vertexOffset); // Add vertexOffset
                 }
                 break;
             }
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
                 const uint32_t* src = static_cast<const uint32_t*>(indexData);
                 for (size_t i = 0; i < indexAccessor.count; ++i) {
-                    result.indices.push_back(src[i]);
+                    result.indices.push_back(src[i] + vertexOffset); // Add vertexOffset
                 }
                 break;
             }
+
             default:
                 throw std::runtime_error("Unsupported index type");
         }
@@ -90,6 +93,19 @@ bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
 
     // Clear output model
     outModel = GLTFModel{};
+
+    // Find the first node with a mesh and get its scale
+    for (const auto& node : model.nodes) {
+        if (node.mesh >= 0 && !node.scale.empty()) {
+            // Update global scale with the node's scale
+            globalScale = glm::vec3(
+                static_cast<float>(node.scale[0]),
+                static_cast<float>(node.scale[1]),
+                static_cast<float>(node.scale[2])
+            );
+            break;  // Use the first mesh node's scale
+        }
+    }
 
     // Process materials
     for (const auto& mat : model.materials) {
@@ -117,6 +133,7 @@ bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
         texture.uri = image.uri;
         outModel.textures.push_back(texture);
     }
+    std::cout << "Total textures loaded: " << outModel.textures.size() << std::endl;
 
     return true;
 }

@@ -35,3 +35,10 @@ struct RenderObject {
     uint32_t indexCount;
     int32_t textureID;
 };
+
+
+struct GLTFPrimitiveData {
+    uint32_t indexOffset;
+    uint32_t indexCount;
+    uint32_t materialIndex;
+};
