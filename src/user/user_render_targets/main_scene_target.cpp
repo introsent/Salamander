@@ -578,7 +578,6 @@ void MainSceneTarget::createDescriptors() {
 }
 
 void MainSceneTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-    updateUniformBuffers();
     m_executor->begin(commandBuffer, imageIndex);
     m_executor->execute(commandBuffer);
     m_executor->end(commandBuffer);

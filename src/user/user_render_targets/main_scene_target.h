@@ -18,6 +18,8 @@ public:
     void recreateSwapChain() override;
     void cleanup() override;
 
+    void updateUniformBuffers() const override;
+
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";
 
@@ -45,7 +47,6 @@ private:
     void loadModel(const std::string& path);
     void createBuffers();
     // Updates
-    void updateUniformBuffers() const;
 
     // Pipelines
     std::unique_ptr<Pipeline> m_lightingPipeline;  // Renamed from m_pipeline

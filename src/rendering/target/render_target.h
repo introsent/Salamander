@@ -35,6 +35,7 @@ public:
     virtual void render(VkCommandBuffer commandBuffer, uint32_t imageIndex) = 0;
     virtual void recreateSwapChain() = 0;
     virtual void cleanup() = 0;
+    virtual void updateUniformBuffers() const = 0;
 
 protected:
     const SharedResources* m_shared = nullptr;
