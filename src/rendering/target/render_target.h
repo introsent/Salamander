@@ -23,6 +23,7 @@ public:
         uint32_t currentFrame;
         VmaAllocator allocator;
         VkImageView depthImageView;
+        VkImage depthImage;
         VkFormat depthFormat;
         Camera* camera;
     };

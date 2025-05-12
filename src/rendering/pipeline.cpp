@@ -27,26 +27,36 @@ Pipeline::Pipeline(
     createPipelineLayout(descriptorSetLayout);
 
     auto vertCode = readFile(config.vertShaderPath);
-    auto fragCode = readFile(config.fragShaderPath);
+    std::vector<char> fragCode;
+    bool hasFragmentShader = !config.fragShaderPath.empty();
+    if (hasFragmentShader) {
+        fragCode = readFile(config.fragShaderPath); // optional because of depth pre-pass
+    }
+
+    VkPipelineShaderStageCreateInfo shaderStages[2];
+    uint32_t shaderStageCount = 1;
 
     VkShaderModule vertShaderModule;
-    VkShaderModule fragShaderModule;
     createShaderModule(vertCode, &vertShaderModule);
-    createShaderModule(fragCode, &fragShaderModule);
 
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = vertShaderModule;
-    vertShaderStageInfo.pName = "main";
+    shaderStages[0] = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = vertShaderModule,
+        .pName = "main"
+    };
 
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragShaderModule;
-    fragShaderStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+    VkShaderModule fragShaderModule;
+    if (hasFragmentShader) {
+        createShaderModule(fragCode, &fragShaderModule);
+        shaderStages[1] = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = fragShaderModule,
+            .pName = "main"
+        };
+        shaderStageCount++;
+    }
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -57,7 +67,7 @@ Pipeline::Pipeline(
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
+    pipelineInfo.stageCount = shaderStageCount;
     pipelineInfo.pStages = shaderStages;
     pipelineInfo.pVertexInputState = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState = &config.inputAssembly;
@@ -84,12 +94,15 @@ Pipeline::Pipeline(
     VkDevice   deviceCopy = m_context->device();
     VkPipeline pipelineCopy = m_pipeline;
 
-    DeletionQueue::get().pushFunction("Pipeline", [deviceCopy, pipelineCopy]() {
+    static int pipelineID = 0;
+    DeletionQueue::get().pushFunction("Pipeline" + std::to_string(pipelineID++), [deviceCopy, pipelineCopy]() {
         vkDestroyPipeline(deviceCopy, pipelineCopy, nullptr);
         });
 
     vkDestroyShaderModule(m_context->device(), vertShaderModule, nullptr);
-    vkDestroyShaderModule(m_context->device(), fragShaderModule, nullptr);
+    if (hasFragmentShader) {
+        vkDestroyShaderModule(m_context->device(), fragShaderModule, nullptr);
+    }
 }
 
 void Pipeline::createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule) {
@@ -117,6 +130,7 @@ void Pipeline::createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout) {
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
+
     if (vkCreatePipelineLayout(m_context->device(), &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout");
     }
@@ -124,7 +138,8 @@ void Pipeline::createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout) {
     VkDevice         deviceCopy = m_context->device();
     VkPipelineLayout layoutCopy = m_pipelineLayout;
 
-    DeletionQueue::get().pushFunction("PipelineLayout", [deviceCopy, layoutCopy]() {
+    static int pipelineLayoutID = 0;
+    DeletionQueue::get().pushFunction("PipelineLayout_" + std::to_string(pipelineLayoutID++), [deviceCopy, layoutCopy]() {
         vkDestroyPipelineLayout(deviceCopy, layoutCopy, nullptr);
         });
 }

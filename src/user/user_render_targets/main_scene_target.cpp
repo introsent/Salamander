@@ -95,11 +95,11 @@ void MainSceneTarget::createPipeline() {
 
         .depthStencil = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-            .depthTestEnable = VK_TRUE,
-            .depthWriteEnable = VK_TRUE,
-            .depthCompareOp = VK_COMPARE_OP_LESS,
+            .depthTestEnable  = VK_TRUE,
+            .depthWriteEnable = VK_FALSE,              // don’t overwrite pre-pass
+            .depthCompareOp   = VK_COMPARE_OP_EQUAL,   // pass when depths match
             .depthBoundsTestEnable = VK_FALSE,
-            .stencilTestEnable = VK_FALSE
+            .stencilTestEnable    = VK_FALSE,
         },
 
         .colorBlendAttachments = { colorBlendAttachment },
@@ -122,12 +122,107 @@ void MainSceneTarget::createPipeline() {
     );
 }
 
+void MainSceneTarget::createDepthPrepassPipeline() {
+    // Dynamic states (viewport and scissor)
+    static constexpr std::array<VkDynamicState, 2> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    // Configure dynamic rendering for depth-only
+    VkPipelineRenderingCreateInfo renderingInfo{};
+    renderingInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    renderingInfo.colorAttachmentCount   = 0;                   // no color
+    renderingInfo.pColorAttachmentFormats = nullptr;
+    renderingInfo.depthAttachmentFormat  = m_shared->depthFormat;
+
+    // Build pipeline configuration
+    PipelineConfig config{};
+
+    // Shaders
+    config.vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/shader_vert.spv";
+    config.fragShaderPath.clear();  // no fragment stage
+
+    // Input assembly
+    config.inputAssembly = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE
+    };
+
+    // Viewport and scissor
+    config.viewportState = {
+        .sType          = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount  = 1,
+        .scissorCount   = 1
+    };
+
+    // Rasterizer
+    config.rasterizer = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable        = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .cullMode                = VK_CULL_MODE_BACK_BIT,
+        .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable         = VK_FALSE,
+        .lineWidth               = 1.0f
+    };
+
+    // Multisampling
+    config.multisampling = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable   = VK_FALSE
+    };
+
+    // Depth/stencil: enable depth test & write, compare Less
+    config.depthStencil = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable       = VK_TRUE,
+        .depthWriteEnable      = VK_TRUE,
+        .depthCompareOp        = VK_COMPARE_OP_LESS,
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable     = VK_FALSE
+    };
+
+    // Color blending: none
+    config.colorBlendAttachments.clear();
+    config.colorBlending = {
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable   = VK_FALSE,
+        .logicOp         = VK_LOGIC_OP_COPY,
+        .attachmentCount = 0,
+        .pAttachments    = nullptr
+    };
+
+    // Dynamic state
+    config.dynamicState = {
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .pDynamicStates    = dynamicStates.data()
+    };
+
+    // Hook in rendering info
+    config.rendering = renderingInfo;
+
+    // Create the pipeline using a shared descriptor layout (vertex UBO, etc.)
+    m_depthPrepassPipeline = std::make_unique<Pipeline>(
+        m_shared->context,
+        m_descriptorLayout->handle(),
+        config
+    );
+}
+
 void MainSceneTarget::createRenderingResources() {
     createPipeline();
+    createDepthPrepassPipeline();
 
     MainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
+        .depthPipeline = m_depthPrepassPipeline->handle(),
+        .depthPipelineLayout = m_depthPrepassPipeline->layout(),
         .vertexBufferAddress = m_deviceAddress,
         .indexBuffer = m_indexBuffer.handle(),
         .descriptorSets = m_descriptorManager->getDescriptorSets(),
@@ -135,6 +230,7 @@ void MainSceneTarget::createRenderingResources() {
         .extent = m_shared->swapChain->extent(),
         .colorImageViews = m_shared->swapChain->imagesViews(),
         .depthImageView = m_shared->depthImageView,
+        .depthImage  = m_shared->depthImage,
         .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
         .clearDepth = {.depthStencil = {1.0f, 0}},
         .swapChain = m_shared->swapChain,
@@ -235,6 +331,8 @@ void MainSceneTarget::recreateSwapChain() {
     MainSceneExecutor::Resources mainResources{
         .pipeline = m_pipeline->handle(),
         .pipelineLayout = m_pipeline->layout(),
+        .depthPipeline = m_depthPrepassPipeline->handle(),
+        .depthPipelineLayout = m_depthPrepassPipeline->layout(),
         .vertexBufferAddress = m_deviceAddress,
         .indexBuffer = m_indexBuffer.handle(),
         .descriptorSets = m_descriptorManager->getDescriptorSets(),

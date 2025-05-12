@@ -26,6 +26,7 @@ private:
     std::vector<ManagedTexture> m_modelTextures;
 
     void createPipeline();
+    void createDepthPrepassPipeline();
     void createRenderingResources();
     void createDescriptors();
     void loadModel(const std::string& path);
@@ -34,22 +35,28 @@ private:
     // Updates
     void updateUniformBuffers() const;
 
+    // Main pipeline
     std::unique_ptr<Pipeline> m_pipeline;
     std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
 
+    // Depth pre-pass pipeline
+    std::unique_ptr<Pipeline>      m_depthPrepassPipeline;
+
+    // Vertices and indices of initial model
     std::vector<Vertex> m_vertices;
     std::vector<uint32_t> m_indices;
 
+    // Vertex buffer (vertex pulling)
     SSBOBuffer m_ssboBuffer;
     VkDeviceAddress m_deviceAddress {};
 
-
+    // Model
     IndexBuffer m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
     ManagedTexture m_texture;
 
-
+    // Framedata
     struct FrameData {
         VkDescriptorBufferInfo bufferInfo;
         std::vector<VkDescriptorImageInfo> imageInfos;
