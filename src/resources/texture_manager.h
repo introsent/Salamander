@@ -34,7 +34,6 @@ public:
     VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
     VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const;
 
-
     const std::vector<ManagedTexture>& getTextures() const { return m_managedTextures; }
 
 private:
