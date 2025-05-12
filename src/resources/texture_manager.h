@@ -13,7 +13,16 @@ struct ManagedTexture {
     VmaAllocation allocation = nullptr;
     VkImageView view = VK_NULL_HANDLE;
     VkSampler sampler = VK_NULL_HANDLE; // Optional (only for sampled images)
+    std::string id; // Unique identifier for recreation
+    uint32_t width = 0; // Store dimensions for debugging
+    uint32_t height = 0;
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    VkImageUsageFlags usage = 0;
+    VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_UNKNOWN;
+    VkImageAspectFlags aspect = 0;
+    bool hasSampler = false;
 };
+
 
 class TextureManager {
 public:
@@ -36,6 +45,10 @@ public:
 
     const std::vector<ManagedTexture>& getTextures() const { return m_managedTextures; }
 
+    // Static method to access samplerIndex
+    static int getSamplerIndex() { return samplerIndex; }
+    static void incrementSamplerIndex() { samplerIndex++; }
+
 private:
     VkDevice m_device;
     VmaAllocator m_allocator;
@@ -55,4 +68,6 @@ private:
         VkImageLayout oldLayout, VkImageLayout newLayout) const;
     void copyBufferToImage(VkBuffer buffer, VkImage image,
         uint32_t width, uint32_t height) const;
+
+    static int samplerIndex;
 };

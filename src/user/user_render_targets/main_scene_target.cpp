@@ -11,6 +11,7 @@
 
 void MainSceneTarget::initialize(const SharedResources& shared) {
     m_shared = &shared;
+    createGBufferSampler();
     createGBufferAttachments();
     loadModel(MODEL_PATH);
     createBuffers();
@@ -18,10 +19,7 @@ void MainSceneTarget::initialize(const SharedResources& shared) {
     createRenderingResources();
 }
 
-void MainSceneTarget::createGBufferAttachments() {
-    const auto& extent = m_shared->swapChain->extent();
-    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
+void MainSceneTarget::createGBufferSampler() {
     // Create sampler for G-buffer textures
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -44,6 +42,19 @@ void MainSceneTarget::createGBufferAttachments() {
     if (vkCreateSampler(m_shared->context->device(), &samplerInfo, nullptr, &m_gBufferSampler) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create G-buffer sampler");
     }
+
+    VkDevice deviceCopy = m_shared->context->device();
+    VkSampler samplerCopy = m_gBufferSampler;
+    DeletionQueue::get().pushFunction("Sampler_" + std::to_string( TextureManager::getSamplerIndex()), [deviceCopy, samplerCopy]() {
+        vkDestroySampler(deviceCopy, samplerCopy, nullptr);
+        });
+    TextureManager::incrementSamplerIndex();
+}
+
+void MainSceneTarget::createGBufferAttachments() {
+
+    const auto& extent = m_shared->swapChain->extent();
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
     // Create albedo (RGBA8)
     {
@@ -88,6 +99,53 @@ void MainSceneTarget::createGBufferAttachments() {
         m_paramTexture.image = p.image;
         m_paramTexture.allocation = p.allocation;
         m_paramTexture.view  = p.view;
+    }
+}
+
+
+void MainSceneTarget::updateLightingDescriptors() {
+    VkDescriptorImageInfo albedoInfo = {
+        .sampler = m_gBufferSampler,
+        .imageView = m_albedoTexture.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+    VkDescriptorImageInfo normalInfo = {
+        .sampler = m_gBufferSampler,
+        .imageView = m_normalTexture.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+    VkDescriptorImageInfo paramsInfo = {
+        .sampler = m_gBufferSampler,
+        .imageView = m_paramTexture.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+
+    std::vector<MainDescriptorManager::DescriptorUpdateInfo> lightingUpdates = {
+        {
+            .binding = 1,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo = &albedoInfo,
+            .descriptorCount = 1,
+            .isImage = true
+        },
+        {
+            .binding = 2,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo = &normalInfo,
+            .descriptorCount = 1,
+            .isImage = true
+        },
+        {
+            .binding = 3,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo = &paramsInfo,
+            .descriptorCount = 1,
+            .isImage = true
+        }
+    };
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_lightingDescriptorManager->updateDescriptorSet(i, lightingUpdates);
     }
 }
 
@@ -526,8 +584,12 @@ void MainSceneTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     m_executor->end(commandBuffer);
 }
 
+
 void MainSceneTarget::recreateSwapChain() {
     vkDeviceWaitIdle(m_shared->context->device());
+
+    createGBufferAttachments();
+    updateLightingDescriptors();
 
     MainSceneExecutor::Resources mainResources{
         .lightingPipeline = m_lightingPipeline->handle(),
@@ -538,16 +600,19 @@ void MainSceneTarget::recreateSwapChain() {
         .gBufferPipelineLayout = m_gBufferPipeline->layout(),
         .vertexBufferAddress = m_deviceAddress,
         .indexBuffer = m_indexBuffer.handle(),
-        .gBufferDescriptorSets = m_gBufferDescriptorManager->getDescriptorSets(),
-        .lightingDescriptorSets = m_lightingDescriptorManager->getDescriptorSets(),
+        .gBufferDescriptorSets = m_gBufferDescriptorManager->getDescriptorSets(),  // For depth and G-buffer
+        .lightingDescriptorSets = m_lightingDescriptorManager->getDescriptorSets(),  // For lighting
         .indices = m_indices,
         .extent = m_shared->swapChain->extent(),
         .colorImageViews = m_shared->swapChain->imagesViews(),
         .depthImageView = m_shared->depthImageView,
         .depthImage = m_shared->depthImage,
         .gBufferAlbedoImage = m_albedoTexture.image,
+        .gBufferAlbedoView = m_albedoTexture.view,
         .gBufferNormalImage = m_normalTexture.image,
+        .gBufferNormalView = m_normalTexture.view,
         .gBufferParamsImage = m_paramTexture.image,
+        .gBufferParamsView = m_paramTexture.view,
         .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
         .clearDepth = {.depthStencil = {1.0f, 0}},
         .swapChain = m_shared->swapChain,

@@ -6,7 +6,8 @@ DescriptorSetLayout::DescriptorSetLayout(VkDevice device, VkDescriptorSetLayout 
     : m_device(device)
     , m_layout(layout)
 {
-    DeletionQueue::get().pushFunction("DescriptorSetLayout", [device = m_device, layout = m_layout]() {
+    static int layoutIndex = 0;
+    DeletionQueue::get().pushFunction("DescriptorSetLayout_" + std::to_string(layoutIndex++), [device = m_device, layout = m_layout]() {
         vkDestroyDescriptorSetLayout(device, layout, nullptr);
     });
 }

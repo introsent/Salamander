@@ -21,7 +21,8 @@ MainDescriptorManager::MainDescriptorManager(
         throw std::runtime_error("Failed to create descriptor pool");
     }
 
-    DeletionQueue::get().pushFunction("DescriptorPool", [device, pool = m_pool]() {
+    static int poolIndex = 0;
+    DeletionQueue::get().pushFunction("DescriptorPool_" + std::to_string(poolIndex++), [device, pool = m_pool]() {
         vkDestroyDescriptorPool(device, pool, nullptr);
     });
 
