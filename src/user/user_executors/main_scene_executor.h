@@ -11,6 +11,8 @@ public:
     struct Resources {
         VkPipeline                      pipeline;
         VkPipelineLayout                pipelineLayout;
+        VkPipeline                      depthPipeline;
+        VkPipelineLayout                depthPipelineLayout;
         uint64_t                        vertexBufferAddress;
         VkBuffer                        indexBuffer;
         std::vector<VkDescriptorSet>    descriptorSets;
@@ -18,6 +20,7 @@ public:
         VkExtent2D                      extent;
         std::vector<VkImageView>        colorImageViews;
         VkImageView                     depthImageView;
+        VkImage                         depthImage;
         VkClearValue                    clearColor;
         VkClearValue                    clearDepth;
         SwapChain*                      swapChain;
@@ -34,6 +37,7 @@ public:
 private:
     void setViewportAndScissor(VkCommandBuffer cmd) const;
     void bindBuffers(VkCommandBuffer cmd) const;
+    void drawPrimitives(VkCommandBuffer cmd) const;
 
     Resources m_resources;
     VkRenderingAttachmentInfo m_colorAttachment{};

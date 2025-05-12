@@ -123,6 +123,7 @@ void Renderer::initializeSharedResources(Camera* camera) {
         .currentFrame = m_currentFrame,
         .allocator = m_allocator,
         .depthImageView = m_depthImage.view,
+        .depthImage = m_depthImage.image,
         .depthFormat = m_depthFormat->handle(),
         .camera = camera
     };
