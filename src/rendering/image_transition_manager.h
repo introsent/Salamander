@@ -52,10 +52,10 @@ public:
     }
 
     static void transitionDepthAttachment(
-    VkCommandBuffer cmd,
-    VkImage     image,
-    VkImageLayout oldLayout,
-    VkImageLayout newLayout)
+        VkCommandBuffer cmd,
+        VkImage image,
+        VkImageLayout oldLayout,
+        VkImageLayout newLayout)
     {
         VkImageMemoryBarrier2 barrier{
             .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -82,6 +82,34 @@ public:
             .pImageMemoryBarriers    = &barrier
         };
         vkCmdPipelineBarrier2(cmd, &depInfo);
+    }
+
+    static void transitionToShaderRead(
+        VkCommandBuffer cmd,
+        VkImage image,
+        VkImageLayout oldLayout,
+        VkImageLayout newLayout)
+    {
+        VkImageMemoryBarrier2 barrier{
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask       = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_READ_BIT,
+            .oldLayout           = oldLayout,
+            .newLayout           = newLayout,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = image,
+            .subresourceRange    = {
+                .aspectMask       = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel     = 0,
+                .levelCount       = 1,
+                .baseArrayLayer   = 0,
+                .layerCount       = 1
+            }
+        };
+        executeBarrier(cmd, barrier);
     }
 
 private:

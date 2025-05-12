@@ -98,7 +98,7 @@ void TextureManager::transitionSwapChainLayout(VkCommandBuffer cmd, VkImage imag
 
     vkCmdPipelineBarrier2(cmd, &dependencyInfo);
 
-};
+}
 
 
 void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat format,

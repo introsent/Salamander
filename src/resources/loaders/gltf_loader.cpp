@@ -25,15 +25,30 @@ namespace {
         // Get accessors
         const auto& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
         const auto& texAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+        const auto& normAccessor = model.accessors[primitive.attributes.at("NORMAL")];
 
         // Get buffer data
         const auto& posView = model.bufferViews[posAccessor.bufferView];
         const auto& texView = model.bufferViews[texAccessor.bufferView];
+        const auto& normView = model.bufferViews[normAccessor.bufferView];
+
 
         const float* positions = reinterpret_cast<const float*>(
             &model.buffers[posView.buffer].data[posView.byteOffset + posAccessor.byteOffset]);
         const float* texCoords = reinterpret_cast<const float*>(
             &model.buffers[texView.buffer].data[texView.byteOffset + texAccessor.byteOffset]);
+        const float* normals = reinterpret_cast<const float*>(
+        &model.buffers[normView.buffer].data[normView.byteOffset + normAccessor.byteOffset]);
+
+        bool hasTangents = primitive.attributes.find("TANGENT") != primitive.attributes.end();
+        const float* tangents = nullptr;
+        if (hasTangents) {
+            const auto& tanAccessor = model.accessors[primitive.attributes.at("TANGENT")];
+            const auto& tanView =  model.bufferViews[tanAccessor.bufferView];
+            tangents = reinterpret_cast<const float*>(
+                &model.buffers[tanView.buffer].data[tanView.byteOffset + tanAccessor.byteOffset]);
+        }
+
 
         // Process vertices
         const size_t vertexCount = posAccessor.count;
@@ -41,8 +56,13 @@ namespace {
             Vertex v{};
             v.pos = glm::make_vec3(&positions[3 * i]);
             v.texCoord = glm::make_vec2(&texCoords[2 * i]);
-           // v.texCoord.y = 1.0f - v.texCoord.y; // Flip Y
-            v.color = glm::vec3(1.0f);
+            v.normal   = glm::make_vec3(&normals[3*i]);
+            if (hasTangents) {
+                v.tangent = glm::make_vec4(&tangents[4*i]);
+            }
+            else {
+                v.tangent = glm::vec4(1,0,0,1);
+            }
             result.vertices.push_back(v);
         }
 
@@ -114,6 +134,12 @@ bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
         if (mat.pbrMetallicRoughness.baseColorTexture.index >= 0) {
             material.baseColorTexture = mat.pbrMetallicRoughness.baseColorTexture.index;
         }
+        if (mat.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0) {
+            material.metallicRoughnessTexture =
+                mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+        }
+        material.roughnessFactor = static_cast<float>(mat.pbrMetallicRoughness.roughnessFactor);
+        material.metallicFactor  = static_cast<float>(mat.pbrMetallicRoughness.metallicFactor);
         outModel.materials.push_back(material);
     }
 

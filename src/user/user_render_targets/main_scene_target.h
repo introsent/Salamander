@@ -20,13 +20,23 @@ public:
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";
-    const std::string TEXTURE_PATH = std::string(SOURCE_RESOURCE_DIR) + "/textures/viking_room.png";
+
 private:
+    // G-Buffer attachments
+    ManagedTexture m_albedoTexture;
+    ManagedTexture m_normalTexture;
+    ManagedTexture m_paramTexture;
+
+    VkSampler      m_gBufferSampler = VK_NULL_HANDLE;
+
+    void createGBufferAttachments();
+
     std::vector<GLTFPrimitiveData> m_primitives;
     std::vector<ManagedTexture> m_modelTextures;
 
-    void createPipeline();
+    void createLightingPipeline();  // Renamed from createPipeline
     void createDepthPrepassPipeline();
+    void createGBufferPipeline();
     void createRenderingResources();
     void createDescriptors();
     void loadModel(const std::string& path);
@@ -35,13 +45,16 @@ private:
     // Updates
     void updateUniformBuffers() const;
 
-    // Main pipeline
-    std::unique_ptr<Pipeline> m_pipeline;
-    std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
-    std::unique_ptr<MainDescriptorManager> m_descriptorManager;
+    // Pipelines
+    std::unique_ptr<Pipeline> m_lightingPipeline;  // Renamed from m_pipeline
+    std::unique_ptr<Pipeline> m_depthPrepassPipeline;
+    std::unique_ptr<Pipeline> m_gBufferPipeline;
 
-    // Depth pre-pass pipeline
-    std::unique_ptr<Pipeline>      m_depthPrepassPipeline;
+    // Descriptor layouts and managers
+    std::unique_ptr<DescriptorSetLayout> m_gBufferDescriptorLayout;  // For depth and G-buffer passes
+    std::unique_ptr<MainDescriptorManager> m_gBufferDescriptorManager;
+    std::unique_ptr<DescriptorSetLayout> m_lightingDescriptorLayout;  // For lighting pass
+    std::unique_ptr<MainDescriptorManager> m_lightingDescriptorManager;
 
     // Vertices and indices of initial model
     std::vector<Vertex> m_vertices;
@@ -54,7 +67,6 @@ private:
     // Model
     IndexBuffer m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
-    ManagedTexture m_texture;
 
     // Framedata
     struct FrameData {
@@ -62,5 +74,4 @@ private:
         std::vector<VkDescriptorImageInfo> imageInfos;
     };
     std::array<FrameData, MAX_FRAMES_IN_FLIGHT> m_frameData;
-
 };
