@@ -54,13 +54,13 @@ void VulkanApplication::createAllocator() {
 
 void VulkanApplication::mainLoop() {
     while (!m_window->shouldClose()) {
-        float currentFrame = glfwGetTime();  // GLFW's high-resolution timer
-        m_deltaTime = currentFrame - m_lastFrameTime;
+        float currentFrame = glfwGetTime();
+        m_deltaTime = std::min(std::max(currentFrame - m_lastFrameTime, 0.001f), 0.1f);
         m_lastFrameTime = currentFrame;
 
         m_window->pollEvents();
         try {
-            m_camera.ProcessKeyboard(m_window->handle() , m_deltaTime);
+            m_camera.ProcessKeyboard(m_window->handle(), m_deltaTime);
             m_renderer->drawFrame();
         }
         catch (const std::runtime_error& e) {

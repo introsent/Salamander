@@ -153,6 +153,11 @@ void Renderer::drawFrame() {
 
     vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
 
+    m_sharedResources.currentFrame = m_currentFrame;
+    for (auto& target : m_renderTargets) {
+        target->updateUniformBuffers(); // Move update here
+    }
+
     // Reset and record command buffer
     currentFrame.commandBuffer->reset();
     currentFrame.commandBuffer->begin();

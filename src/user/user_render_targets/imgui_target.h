@@ -10,6 +10,7 @@ public:
     void render(VkCommandBuffer commandBuffer, uint32_t imageIndex) override;
     void recreateSwapChain() override;
     void cleanup() override;
+    void updateUniformBuffers() const override {};
 
 private:
     void createRenderingResources();
