@@ -7,6 +7,9 @@
 #include <stdexcept>
 #include "deletion_queue.h"
 
+// Define and initialize static member
+int TextureManager::samplerIndex = 0;
+
 TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
                              CommandManager* commandManager, BufferManager* bufferManager)
     : m_device(device), m_allocator(allocator),
@@ -67,8 +70,8 @@ ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, V
 }
 
 void TextureManager::transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout,
-    VkImageLayout newLayout, VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
-    VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const {
+                                               VkImageLayout newLayout, VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
+                                               VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const {
 
     VkImageMemoryBarrier2 barrier{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -182,7 +185,6 @@ VkSampler TextureManager::createSampler() const {
     VkDevice deviceCopy = m_device;
     VkSampler samplerCopy = sampler;
 
-    static int samplerIndex = 0;
     DeletionQueue::get().pushFunction("Sampler_" + std::to_string( samplerIndex++), [deviceCopy, samplerCopy]() {
         vkDestroySampler(deviceCopy, samplerCopy, nullptr);
         });

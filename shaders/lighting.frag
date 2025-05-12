@@ -19,7 +19,7 @@ void main() {
     float z = sqrt(1.0 - dot(decodedNormalXY, decodedNormalXY)); // Reconstruct z
     vec3 normal = normalize(vec3(decodedNormalXY, z));
 
-    vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
+    vec3 lightDir = normalize(vec3(-0.5, 1.0, 0.3));
     float diff = max(dot(normal, lightDir), 0.0);
 
     vec3 color = albedo * diff * (1.0 - roughness * 0.5);

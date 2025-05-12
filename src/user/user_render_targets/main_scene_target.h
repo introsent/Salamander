@@ -29,10 +29,13 @@ private:
 
     VkSampler      m_gBufferSampler = VK_NULL_HANDLE;
 
+    void createGBufferSampler();
     void createGBufferAttachments();
 
     std::vector<GLTFPrimitiveData> m_primitives;
     std::vector<ManagedTexture> m_modelTextures;
+
+    void updateLightingDescriptors();
 
     void createLightingPipeline();  // Renamed from createPipeline
     void createDepthPrepassPipeline();
@@ -41,7 +44,6 @@ private:
     void createDescriptors();
     void loadModel(const std::string& path);
     void createBuffers();
-
     // Updates
     void updateUniformBuffers() const;
 
