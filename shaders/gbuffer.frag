@@ -17,8 +17,16 @@ layout(location = 1) out vec2 outNormal;   // Normal.xy (RG16F, VK_FORMAT_R16G16
 layout(location = 2) out vec2 outParams;   // Roughness/Metallic (RG8, VK_FORMAT_R8G8_UNORM)
 
 void main() {
+    // Sample the texture
+    vec4 albedo = texture(textures[vMaterial], vTexCoord);
+
+    // Alpha cutout
+    if (albedo.a < 0.95) {
+        discard;
+    }
+
     // Albedo (base color)
-    outAlbedo = texture(textures[vMaterial], vTexCoord);
+    outAlbedo = albedo;
 
     // Normal: encode world-space normal.xy into [0,1] for RG16F
     vec3 N = normalize(vNormal);
