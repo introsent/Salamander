@@ -1,5 +1,7 @@
 ﻿#include "camera.h"
 
+#include <algorithm>
+
 // Сonstructor: look-at target
 Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 worldUp, float roll)
     : Position(position), WorldUp(worldUp), Roll(roll)
@@ -52,11 +54,10 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset) {
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
 
-    Yaw += yoffset;
-    Pitch += xoffset;
+    Yaw   += xoffset;
+    Pitch += yoffset;
 
-    if (Pitch > 89.0f) Pitch = 89.0f;
-    if (Pitch < -89.0f) Pitch = -89.0f;
+    Pitch = std::clamp(Pitch, -89.0f, 89.0f);
 
     updateCameraVectors();
 }
@@ -77,14 +78,11 @@ void Camera::ProcessMouseScroll(float yoffset) {
     if (Zoom > 45.0f) Zoom = 45.0f;
 }
 void Camera::updateCameraVectors() {
-    // Calculate the front vector
     glm::vec3 front;
-    // Yaw rotates around Z axis, Pitch rotates around Right vector
     front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    front.y = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    front.z = sin(glm::radians(Pitch));  // Negative because pitch up should look up
+    front.y = sin(glm::radians(Pitch));
+    front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
     Front = glm::normalize(front);
-
 
     // First calculate the base Right and Up vectors (before roll)
     glm::vec3 baseRight = glm::normalize(glm::cross(Front, WorldUp));
