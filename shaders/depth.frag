@@ -16,6 +16,4 @@ void main() {
     if (albedo.a < 0.95) {  // Adjust the threshold as needed
         discard;
     }
-
-    // No need to write to any outputs, as this is a depth pre-pass
 }
