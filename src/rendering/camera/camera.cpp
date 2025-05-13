@@ -20,9 +20,15 @@ Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, fl
     updateCameraVectors();
 }
 glm::mat4 Camera::GetViewMatrix() const {
-    return glm::lookAt(Position, Position + Front, Up);
+    // Ensure Up is not parallel to Front
+    glm::vec3 up = Up;
+    if (glm::abs(glm::dot(Front, Up)) > 0.999f) {
+        // Fallback to WorldUp or a perpendicular vector
+        up = WorldUp;
+        // std::cout << "Warning: Up and Front are nearly parallel!\n";
+    }
+    return glm::lookAt(Position, Position + Front, up);
 }
-
 glm::mat4 Camera::GetProjectionMatrix(float aspectRatio) const {
     glm::mat4 proj = glm::perspective(glm::radians(Zoom), aspectRatio, 0.1f, 100.0f);
     proj[1][1] *= -1.0f;
@@ -50,19 +56,21 @@ void Camera::ProcessKeyboard(GLFWwindow* window, float deltaTime) {
 
 }
 
-
 void Camera::ProcessMouseMovement(float xoffset, float yoffset) {
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
 
-    Yaw   += xoffset;
+    Yaw += xoffset;
     Pitch += yoffset;
 
+    // Clamp pitch to avoid singularities
     Pitch = std::clamp(Pitch, -89.0f, 89.0f);
+
+    // Normalize yaw to [-180, 180°] for stability
+    Yaw = fmod(Yaw + 180.0f, 360.0f) - 180.0f;
 
     updateCameraVectors();
 }
-
 void Camera::ProcessVerticalMovement(float yoffset) {
     float velocity = yoffset * MouseSensitivity * 0.25f;
     Position += WorldUp * velocity;
@@ -79,26 +87,24 @@ void Camera::ProcessMouseScroll(float yoffset) {
     if (Zoom > 45.0f) Zoom = 45.0f;
 }
 void Camera::updateCameraVectors() {
+    // Calculate front vector from yaw and pitch
     glm::vec3 front;
     front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
     front.y = sin(glm::radians(Pitch));
     front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
     Front = glm::normalize(front);
 
-    // First calculate the base Right and Up vectors (before roll)
-    glm::vec3 baseRight = glm::normalize(glm::cross(Front, WorldUp));
-    glm::vec3 baseUp = glm::normalize(glm::cross(baseRight, Front));
+    // Calculate right vector using WorldUp
+    Right = glm::normalize(glm::cross(Front, WorldUp));
 
+    // Calculate up vector
+    Up = glm::normalize(glm::cross(Right, Front));
+
+    // Apply roll if non-zero
     if (Roll != 0.0f) {
-        // Create rotation matrix around Front vector for roll
         float rollRad = glm::radians(Roll);
         glm::mat4 rollMatrix = glm::rotate(glm::mat4(1.0f), rollRad, Front);
-
-        // Apply roll rotation to the base vectors
-        Right = glm::vec3(rollMatrix * glm::vec4(baseRight, 0.0f));
-        Up = glm::vec3(rollMatrix * glm::vec4(baseUp, 0.0f));
-    } else {
-        Right = baseRight;
-        Up = baseUp;
+        Right = glm::vec3(rollMatrix * glm::vec4(Right, 0.0f));
+        Up = glm::vec3(rollMatrix * glm::vec4(Up, 0.0f));
     }
 }

@@ -252,8 +252,8 @@ void MainSceneTarget::createDepthPrepassPipeline() {
     renderingInfo.depthAttachmentFormat = m_shared->depthFormat;
 
     PipelineConfig config{};
-    config.vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/gbuffer_vert.spv";
-    config.fragShaderPath.clear();
+    config.vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/depth_vert.spv";
+    config.fragShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/depth_frag.spv";
 
     config.inputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,

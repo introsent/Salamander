@@ -3,10 +3,12 @@
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 #extension GL_EXT_scalar_block_layout : require
 
+
 struct Vertex {
-    vec3 pos;
-    vec3 color;
-    vec2 texCoord;
+    vec3 pos;      // Model-space position
+    vec2 texCoord; // UV
+    vec3 normal;   // Model-space normal
+    vec4 tangent;  // Tangent.xyz + bitangent sign in w
 };
 
 layout(push_constant) uniform PushConstants {
@@ -26,10 +28,17 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 proj;
 } ubo;
 
+// Outputs to the fragment stage
+layout(location = 0) out vec2 vTexCoord;
+layout(location = 1) flat out uint vMaterial;
+
 void main() {
     VertexBuffer vertexBuffer = VertexBuffer(pushConstants.vertexBufferAddress);
     Vertex v = vertexBuffer.vertices[gl_VertexIndex];
 
     vec3 scaledPos = v.pos * pushConstants.modelScale;
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(scaledPos, 1.0);
+
+    vTexCoord = v.texCoord;
+    vMaterial = pushConstants.materialIndex;
 }
