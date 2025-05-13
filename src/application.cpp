@@ -11,7 +11,7 @@ void VulkanApplication::run() {
     m_window->setupInputCallbacks();
 
     // Initialize camera with starting position
-    m_camera = Camera(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.f, 0.f, 1.f), 0.f, 0.f, -90.f);
+    m_camera = Camera(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.f, 1.f, 0.f), 0.f, 0.f, 0.f);
 
     createAllocator();
 
