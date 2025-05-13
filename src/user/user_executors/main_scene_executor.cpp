@@ -137,10 +137,7 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
     vkCmdBeginRendering(cmd, &lightingInfo);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_resources.lightingPipeline);
     setViewportAndScissor(cmd);
-    vkCmdBindDescriptorSets(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_resources.lightingPipelineLayout, 0, 1,
-        &m_resources.lightingDescriptorSets[m_resources.currentFrame], 0, nullptr
-    );
+    bindBuffers(cmd, m_resources.lightingPipelineLayout, m_resources.lightingDescriptorSets);
     vkCmdDraw(cmd, 3, 1, 0, 0); // Full-screen triangle
     vkCmdEndRendering(cmd);
 }

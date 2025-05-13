@@ -16,7 +16,8 @@ void main() {
     float metallic = params.y;
 
     vec2 decodedNormalXY = encodedNormal * 2.0 - 1.0;
-    float z = sqrt(1.0 - dot(decodedNormalXY, decodedNormalXY)); // Reconstruct z
+    float zSquared = 1.0 - dot(decodedNormalXY, decodedNormalXY);
+    float z = zSquared > 0.0 ? sqrt(zSquared) : 0.0; // Avoid negative sqrt
     vec3 normal = normalize(vec3(decodedNormalXY, z));
 
     vec3 lightDir = normalize(vec3(-0.5, 1.0, 0.3));

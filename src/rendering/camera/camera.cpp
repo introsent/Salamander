@@ -47,6 +47,7 @@ void Camera::ProcessKeyboard(GLFWwindow* window, float deltaTime) {
         Position += Up * velocity;
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
         Position -= Up * velocity;
+
 }
 
 

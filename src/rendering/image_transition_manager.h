@@ -81,7 +81,7 @@ public:
             .imageMemoryBarrierCount = 1,
             .pImageMemoryBarriers    = &barrier
         };
-        vkCmdPipelineBarrier2(cmd, &depInfo);
+        executeBarrier(cmd, barrier);
     }
 
     static void transitionToShaderRead(
