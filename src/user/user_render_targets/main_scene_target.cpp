@@ -11,6 +11,18 @@
 
 void MainSceneTarget::initialize(const SharedResources& shared) {
     m_shared = &shared;
+
+    if (!m_shared) {
+        throw std::runtime_error("m_shared is null after assignment");
+    }
+    if (!m_shared->frames) {
+        throw std::runtime_error("frames pointer is null");
+    }
+    if (m_shared->frames->empty()) {
+        throw std::runtime_error("frames vector is empty");
+    }
+    std::cout << "Frames size: " << m_shared->frames->size();
+
     createGBufferSampler();
     createGBufferAttachments();
     loadModel(MODEL_PATH);
@@ -38,6 +50,7 @@ void MainSceneTarget::createGBufferSampler() {
     samplerInfo.mipLodBias = 0.0f;
     samplerInfo.minLod = 0.0f;
     samplerInfo.maxLod = 0.0f;
+
 
     if (vkCreateSampler(m_shared->context->device(), &samplerInfo, nullptr, &m_gBufferSampler) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create G-buffer sampler");
@@ -389,7 +402,7 @@ void MainSceneTarget::createGBufferPipeline() {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = VK_TRUE,
         .depthWriteEnable = VK_FALSE,
-        .depthCompareOp = VK_COMPARE_OP_EQUAL,
+        .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE
     };
@@ -419,6 +432,17 @@ void MainSceneTarget::createRenderingResources() {
     createGBufferPipeline();
     createLightingPipeline();
 
+    if (!m_shared || !m_shared->frames || m_shared->frames->empty()) {
+        throw std::runtime_error("Frames not properly initialized!");
+    }
+
+    std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
+    std::array<VkImage, MAX_FRAMES_IN_FLIGHT> depthImages;
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        depthViews[i] = (*m_shared->frames)[i].depthTexture.view;
+        depthImages[i] = (*m_shared->frames)[i].depthTexture.image;
+    }
+
     MainSceneExecutor::Resources mainResources{
         .lightingPipeline = m_lightingPipeline->handle(),
         .lightingPipelineLayout = m_lightingPipeline->layout(),
@@ -433,8 +457,8 @@ void MainSceneTarget::createRenderingResources() {
         .indices = m_indices,
         .extent = m_shared->swapChain->extent(),
         .colorImageViews = m_shared->swapChain->imagesViews(),
-        .depthImageView = m_shared->depthImageView,
-        .depthImage = m_shared->depthImage,
+        .depthImageViews = depthViews,
+        .depthImages = depthImages,
         .gBufferAlbedoImage = m_albedoTexture.image,
         .gBufferAlbedoView = m_albedoTexture.view,
         .gBufferNormalImage = m_normalTexture.image,
@@ -586,6 +610,23 @@ void MainSceneTarget::createDescriptors() {
 }
 
 void MainSceneTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    updateUniformBuffers();
+    VkMemoryBarrier2 memoryBarrier{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT
+    };
+
+    VkDependencyInfo dependencyInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .memoryBarrierCount = 1,
+        .pMemoryBarriers = &memoryBarrier
+    };
+
+    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
+
     m_executor->begin(commandBuffer, imageIndex);
     m_executor->execute(commandBuffer);
     m_executor->end(commandBuffer);
@@ -597,6 +638,13 @@ void MainSceneTarget::recreateSwapChain() {
 
     createGBufferAttachments();
     updateLightingDescriptors();
+
+    std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
+    std::array<VkImage, MAX_FRAMES_IN_FLIGHT> depthImages;
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        depthViews[i] = m_shared->frames[i].data()->depthTexture.view;
+        depthImages[i] = m_shared->frames[i].data()->depthTexture.image;
+    }
 
     MainSceneExecutor::Resources mainResources{
         .lightingPipeline = m_lightingPipeline->handle(),
@@ -612,8 +660,8 @@ void MainSceneTarget::recreateSwapChain() {
         .indices = m_indices,
         .extent = m_shared->swapChain->extent(),
         .colorImageViews = m_shared->swapChain->imagesViews(),
-        .depthImageView = m_shared->depthImageView,
-        .depthImage = m_shared->depthImage,
+        .depthImageViews = depthViews,
+        .depthImages = depthImages,
         .gBufferAlbedoImage = m_albedoTexture.image,
         .gBufferAlbedoView = m_albedoTexture.view,
         .gBufferNormalImage = m_normalTexture.image,
@@ -636,7 +684,7 @@ void MainSceneTarget::cleanup() {
 }
 
 void MainSceneTarget::updateUniformBuffers() const {
-    m_uniformBuffers[m_shared->currentFrame].update(m_shared->swapChain->extent(), m_shared->camera);
+    m_uniformBuffers[m_shared->currentFrame].update(m_shared->context->device(), m_shared->swapChain->extent(), m_shared->camera);
 }
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {

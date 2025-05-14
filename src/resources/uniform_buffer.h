@@ -16,7 +16,7 @@ public:
     ~UniformBuffer() override;
 
     // Updates buffer contents and flushes to GPU
-    void update(VkExtent2D extent, Camera* camera) const;
+    void update(VkDevice device, VkExtent2D extent, Camera* camera) const;
 
 protected:
     void*               mapped        = nullptr;

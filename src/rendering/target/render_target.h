@@ -5,6 +5,7 @@
 #include "render_pass.h"
 #include "command_manager.h"
 #include "buffer_manager.h"
+#include "data_structures.h"
 #include "texture_manager.h"
 #include "framebuffer_manager.h"
 #include "render_pass_executor.h"
@@ -26,6 +27,7 @@ public:
         VkImage depthImage;
         VkFormat depthFormat;
         Camera* camera;
+        std::vector<Frame>* frames;
     };
 
 

@@ -42,7 +42,7 @@ UniformBuffer::~UniformBuffer() {
     unmapBuffer();
 }
 
-void UniformBuffer::update(VkExtent2D extent, Camera* camera) const
+void UniformBuffer::update(VkDevice device, VkExtent2D extent, Camera* camera) const
 {
     // Build UBO
     UniformBufferObject ubo{};
@@ -55,8 +55,16 @@ void UniformBuffer::update(VkExtent2D extent, Camera* camera) const
     // Copy to mapped memory
     std::memcpy(mapped, &ubo, sizeof(ubo));
 
-    // Flush via VMA so GPU sees writes
-    vmaFlushAllocation(allocator, allocation, 0, sizeof(ubo));
+    // Add memory barrier
+    VmaAllocationInfo allocInfo;
+    vmaGetAllocationInfo(allocator, allocation, &allocInfo);
+    VkMappedMemoryRange range{
+        .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        .memory = allocInfo.deviceMemory,
+        .offset = allocInfo.offset,
+        .size = sizeof(UniformBufferObject)
+    };
+    vkFlushMappedMemoryRanges(device, 1, &range);
 }
 
 void UniformBuffer::unmapBuffer()

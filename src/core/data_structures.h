@@ -5,6 +5,9 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
+#include "command_buffer.h"
+#include "texture_manager.h"
+
 struct Vertex {
     glm::vec3 pos;
     glm::vec2 texCoord;
@@ -42,4 +45,14 @@ struct GLTFPrimitiveData {
     uint32_t indexOffset;
     uint32_t indexCount;
     uint32_t materialIndex;
+};
+
+static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
+struct Frame {
+    std::unique_ptr<CommandBuffer> commandBuffer;
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkFence inFlightFence;
+    ManagedTexture depthTexture;
 };
