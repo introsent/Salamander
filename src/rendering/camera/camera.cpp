@@ -20,14 +20,7 @@ Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, fl
     updateCameraVectors();
 }
 glm::mat4 Camera::GetViewMatrix() const {
-    // Ensure Up is not parallel to Front
-    glm::vec3 up = Up;
-    if (glm::abs(glm::dot(Front, Up)) > 0.999f) {
-        // Fallback to WorldUp or a perpendicular vector
-        up = WorldUp;
-        // std::cout << "Warning: Up and Front are nearly parallel!\n";
-    }
-    return glm::lookAt(Position, Position + Front, up);
+    return glm::lookAt(Position, Position + Front, Up);
 }
 glm::mat4 Camera::GetProjectionMatrix(float aspectRatio) const {
     glm::mat4 proj = glm::perspective(glm::radians(Zoom), aspectRatio, 0.1f, 100.0f);
