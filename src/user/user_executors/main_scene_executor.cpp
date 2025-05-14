@@ -57,6 +57,12 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
         cmd, m_resources.gBufferParamsImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
 
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        m_resources.depthImage,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+
     // G-buffer Pass
     std::array<VkRenderingAttachmentInfo, 3> gBufferAttachments = {{
         {
@@ -87,7 +93,7 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
     VkRenderingAttachmentInfo depthAttachment = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
         .imageView = m_resources.depthImageView,
-        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE
     };

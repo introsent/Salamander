@@ -389,7 +389,7 @@ void MainSceneTarget::createGBufferPipeline() {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = VK_TRUE,
         .depthWriteEnable = VK_FALSE,
-        .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+        .depthCompareOp = VK_COMPARE_OP_EQUAL,
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE
     };
@@ -456,6 +456,14 @@ void MainSceneTarget::createDescriptors() {
     if (textureCount == 0) {
         throw std::runtime_error("No textures were loaded!");
     }
+
+   //DescriptorSetLayoutBuilder depthLayoutBuilder(m_shared->context->device());
+   //m_depthPrepassDescriptorLayout = depthLayoutBuilder
+   //    .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+   //    .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+   //    .build();
+
+
 
     // G-buffer descriptor layout (for depth and G-buffer passes)
     DescriptorSetLayoutBuilder gBufferLayoutBuilder(m_shared->context->device());

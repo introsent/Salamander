@@ -37,7 +37,7 @@ void main() {
     Vertex v = vertexBuffer.vertices[gl_VertexIndex];
 
     vec3 scaledPos = v.pos * pushConstants.modelScale;
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(scaledPos, 1.0);
+    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(scaledPos, 1.0);//ubo.proj * ubo.view * ubo.model * vec4(scaledPos, 1.0);
 
     vTexCoord = v.texCoord;
     vMaterial = pushConstants.materialIndex;

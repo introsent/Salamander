@@ -95,7 +95,7 @@ void Renderer::initializeSharedResources(Camera* camera) {
        extent.width,
        extent.height,
        m_depthFormat->handle(),
-       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |  VK_IMAGE_USAGE_SAMPLED_BIT,
        VMA_MEMORY_USAGE_GPU_ONLY,
        VK_IMAGE_ASPECT_DEPTH_BIT,
        false
