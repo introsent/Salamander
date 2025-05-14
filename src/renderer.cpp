@@ -15,18 +15,18 @@ Renderer::Renderer(Context* context, Window* window, VmaAllocator allocator, Cam
     : m_context(context), m_window(window), m_allocator(allocator) {
 
     initializeSharedResources(camera);
+    createCommandBuffers();
+    createSyncObjects();
 
     // Create targets
     m_renderTargets.push_back(std::make_unique<MainSceneTarget>());
-    m_renderTargets.push_back(std::make_unique<ImGuiTarget>());
+//    m_renderTargets.push_back(std::make_unique<ImGuiTarget>());
 
     // Initialize targets
     for (auto& target : m_renderTargets) {
         target->initialize(m_sharedResources);
     }
 
-    createCommandBuffers();
-    createSyncObjects();
 }
 
 void Renderer::createSyncObjects() {
@@ -67,8 +67,19 @@ void Renderer::createSyncObjects() {
 
 void Renderer::createCommandBuffers() {
     m_frames.resize(MAX_FRAMES_IN_FLIGHT);
+    VkExtent2D extent = m_swapChain->extent();
+
     for (auto& frame : m_frames) {
         frame.commandBuffer = m_commandManager->createCommandBuffer();
+        frame.depthTexture = m_textureManager->createTexture(
+           extent.width,
+           extent.height,
+           m_depthFormat->handle(),
+           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+           VMA_MEMORY_USAGE_GPU_ONLY,
+           VK_IMAGE_ASPECT_DEPTH_BIT,
+           false
+       );
     }
 }
 
@@ -91,15 +102,6 @@ void Renderer::initializeSharedResources(Camera* camera) {
     );
 
     VkExtent2D extent = m_swapChain->extent();
-    m_depthImage = m_textureManager->createTexture(
-       extent.width,
-       extent.height,
-       m_depthFormat->handle(),
-       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |  VK_IMAGE_USAGE_SAMPLED_BIT,
-       VMA_MEMORY_USAGE_GPU_ONLY,
-       VK_IMAGE_ASPECT_DEPTH_BIT,
-       false
-   );
 
 
     //SharedResources:
@@ -122,15 +124,15 @@ void Renderer::initializeSharedResources(Camera* camera) {
         .textureManager = m_textureManager.get(),
         .currentFrame = m_currentFrame,
         .allocator = m_allocator,
-        .depthImageView = m_depthImage.view,
-        .depthImage = m_depthImage.image,
         .depthFormat = m_depthFormat->handle(),
-        .camera = camera
+        .camera = camera,
+        .frames = &m_frames
     };
 }
 
 
 void Renderer::drawFrame() {
+    //vkDeviceWaitIdle(m_context->device());
     Frame& currentFrame = m_frames[m_currentFrame];
 
     // Wait for fence before doing anything
@@ -151,10 +153,13 @@ void Renderer::drawFrame() {
         return;
     }
 
-    m_sharedResources.currentFrame = m_currentFrame;
-    for (auto& target : m_renderTargets) {
-        target->updateUniformBuffers(); // Move update here
-    }
+    m_sharedResources.depthImageView = currentFrame.depthTexture.view;
+    m_sharedResources.depthImage = currentFrame.depthTexture.image;
+
+
+    //for (auto& target : m_renderTargets) {
+    //    target->updateUniformBuffers(); // Move update here
+    //}
 
     vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
 
@@ -173,14 +178,18 @@ void Renderer::drawFrame() {
     VkSemaphoreSubmitInfo waitSemaphoreInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = currentFrame.imageAvailableSemaphore,
-        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+                     VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                     VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
     };
 
     VkSemaphoreSubmitInfo signalSemaphoreInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = currentFrame.renderFinishedSemaphore,
-        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+                     VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
     };
+
 
     VkCommandBufferSubmitInfo cmdBufferInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -228,19 +237,18 @@ void Renderer::recreateSwapChain() {
     // Recreate swapchain
     m_swapChain->recreate();
 
-    // Recreate depth image
-    m_depthImage = m_textureManager->createTexture(
-        m_swapChain->extent().width,
-        m_swapChain->extent().height,
-        m_depthFormat->handle(),
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_IMAGE_ASPECT_DEPTH_BIT,
-        false
-    );
-
-    // Update depth image
-    m_sharedResources.depthImageView = m_depthImage.view;
+    VkExtent2D extent = m_swapChain->extent();
+    for (auto& frame : m_frames) {
+        frame.depthTexture = m_textureManager->createTexture(
+            extent.width,
+            extent.height,
+            m_depthFormat->handle(),
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
+            false
+        );
+    }
 
     // Recreate targets
     for (auto& target : m_renderTargets) {

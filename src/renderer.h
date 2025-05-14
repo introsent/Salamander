@@ -9,7 +9,6 @@
 
 class Renderer {
 public:
-    static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
     Renderer(Context* context, Window* window, VmaAllocator allocator, Camera* camera);
     ~Renderer();
@@ -19,12 +18,7 @@ public:
     void markFramebufferResized();
 
 private:
-    struct Frame {
-        std::unique_ptr<CommandBuffer> commandBuffer;
-        VkSemaphore imageAvailableSemaphore;
-        VkSemaphore renderFinishedSemaphore;
-        VkFence inFlightFence;
-    };
+
 
     void createSyncObjects();
     void createCommandBuffers();
@@ -47,7 +41,6 @@ private:
 
     // Images
     std::unique_ptr<DepthFormat> m_depthFormat;
-    ManagedTexture m_depthImage;
 
     // Targets
     std::vector<std::unique_ptr<RenderTarget>> m_renderTargets;

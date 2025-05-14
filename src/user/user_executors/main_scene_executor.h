@@ -21,8 +21,8 @@ public:
         std::vector<uint32_t>           indices;
         VkExtent2D                      extent;
         std::vector<VkImageView>        colorImageViews;
-        VkImageView                     depthImageView;
-        VkImage                         depthImage;
+        std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthImageViews;
+        std::array<VkImage, MAX_FRAMES_IN_FLIGHT> depthImages;
         VkImage                         gBufferAlbedoImage;
         VkImageView                     gBufferAlbedoView;
         VkImage                         gBufferNormalImage;
@@ -51,4 +51,6 @@ private:
     VkRenderingAttachmentInfo m_colorAttachment{};
     VkRenderingAttachmentInfo m_depthAttachment{};
     uint32_t m_currentImageIndex{};
+    VkImageLayout m_currentDepthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
 };
