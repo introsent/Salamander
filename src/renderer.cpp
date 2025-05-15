@@ -20,7 +20,7 @@ Renderer::Renderer(Context* context, Window* window, VmaAllocator allocator, Cam
 
     // Create targets
     m_renderTargets.push_back(std::make_unique<MainSceneTarget>());
-//    m_renderTargets.push_back(std::make_unique<ImGuiTarget>());
+    m_renderTargets.push_back(std::make_unique<ImGuiTarget>());
 
     // Initialize targets
     for (auto& target : m_renderTargets) {

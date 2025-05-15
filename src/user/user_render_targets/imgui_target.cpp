@@ -21,10 +21,16 @@ void ImGuiTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 
 void ImGuiTarget::recreateSwapChain() {
 
+    std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        depthViews[i] = (*m_shared->frames)[i].depthTexture.view;
+    }
+
     ImGuiPassExecutor::Resources resources{
         .extent =  m_shared->swapChain->extent(),
         .swapchainImageViews = m_shared->swapChain->imagesViews(),
-        .depthImageView = m_shared->depthImageView
+        .depthImageViews = depthViews,
+        .currentFrame = m_shared->currentFrame
     };
 
     m_executor = std::make_unique<ImGuiPassExecutor>(std::move(resources));
@@ -45,11 +51,17 @@ void ImGuiTarget::createRenderingResources()
 {
     initializeImGui();
 
+    std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        depthViews[i] = (*m_shared->frames)[i].depthTexture.view;
+    }
+
     // ImGui pass executor
     ImGuiPassExecutor::Resources resources{
-        .extent = m_shared->swapChain->extent(),
+        .extent =  m_shared->swapChain->extent(),
         .swapchainImageViews = m_shared->swapChain->imagesViews(),
-        .depthImageView = m_shared->depthImageView
+        .depthImageViews = depthViews,
+        .currentFrame = m_shared->currentFrame
     };
 
     m_executor = std::make_unique<ImGuiPassExecutor>(std::move(resources));

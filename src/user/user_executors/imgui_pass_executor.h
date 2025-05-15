@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "render_pass_executor.h"
+#include "data_structures.h"
 #include "render_pass.h"
 #include <imgui.h>
 #include <vector>
@@ -9,7 +10,8 @@ public:
     struct Resources {
         VkExtent2D                  extent;
         std::vector<VkImageView>    swapchainImageViews;
-        VkImageView                 depthImageView;  // Optional
+        std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthImageViews;
+        uint32_t*                       currentFrame;
     };
 
 
