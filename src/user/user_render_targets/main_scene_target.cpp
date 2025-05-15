@@ -444,6 +444,7 @@ void MainSceneTarget::createRenderingResources() {
     }
 
     MainSceneExecutor::Resources mainResources{
+        .device =  m_shared->context->device(),
         .lightingPipeline = m_lightingPipeline->handle(),
         .lightingPipelineLayout = m_lightingPipeline->layout(),
         .depthPipeline = m_depthPrepassPipeline->handle(),
@@ -642,11 +643,12 @@ void MainSceneTarget::recreateSwapChain() {
     std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
     std::array<VkImage, MAX_FRAMES_IN_FLIGHT> depthImages;
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        depthViews[i] = m_shared->frames[i].data()->depthTexture.view;
-        depthImages[i] = m_shared->frames[i].data()->depthTexture.image;
+        depthViews[i] = (*m_shared->frames)[i].depthTexture.view;
+        depthImages[i] = (*m_shared->frames)[i].depthTexture.image;
     }
 
     MainSceneExecutor::Resources mainResources{
+        .device =  m_shared->context->device(),
         .lightingPipeline = m_lightingPipeline->handle(),
         .lightingPipelineLayout = m_lightingPipeline->layout(),
         .depthPipeline = m_depthPrepassPipeline->handle(),
@@ -684,7 +686,7 @@ void MainSceneTarget::cleanup() {
 }
 
 void MainSceneTarget::updateUniformBuffers() const {
-    m_uniformBuffers[m_shared->currentFrame].update(m_shared->context->device(), m_shared->swapChain->extent(), m_shared->camera);
+    m_uniformBuffers[*(m_shared->currentFrame)].update(m_shared->context->device(), m_shared->swapChain->extent(), m_shared->camera);
 }
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {

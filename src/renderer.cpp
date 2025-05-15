@@ -122,7 +122,7 @@ void Renderer::initializeSharedResources(Camera* camera) {
         .commandManager = m_commandManager.get(),
         .bufferManager = m_bufferManager.get(),
         .textureManager = m_textureManager.get(),
-        .currentFrame = m_currentFrame,
+        .currentFrame = &m_currentFrame,
         .allocator = m_allocator,
         .depthFormat = m_depthFormat->handle(),
         .camera = camera,
@@ -152,14 +152,14 @@ void Renderer::drawFrame() {
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         return;
     }
+    m_sharedResources.currentFrame = &m_currentFrame;
 
     m_sharedResources.depthImageView = currentFrame.depthTexture.view;
     m_sharedResources.depthImage = currentFrame.depthTexture.image;
 
-
-    //for (auto& target : m_renderTargets) {
-    //    target->updateUniformBuffers(); // Move update here
-    //}
+    for (auto& target : m_renderTargets) {
+        target->updateUniformBuffers(); // Move update here
+    }
 
     vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
 
@@ -167,7 +167,6 @@ void Renderer::drawFrame() {
     currentFrame.commandBuffer->reset();
     currentFrame.commandBuffer->begin();
 
-    m_sharedResources.currentFrame = m_currentFrame;
     for (auto& target : m_renderTargets) {
         target->render(currentFrame.commandBuffer->handle(), imageIndex);
     }
@@ -239,15 +238,16 @@ void Renderer::recreateSwapChain() {
 
     VkExtent2D extent = m_swapChain->extent();
     for (auto& frame : m_frames) {
+        frame.commandBuffer = m_commandManager->createCommandBuffer();
         frame.depthTexture = m_textureManager->createTexture(
-            extent.width,
-            extent.height,
-            m_depthFormat->handle(),
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            VK_IMAGE_ASPECT_DEPTH_BIT,
-            false
-        );
+           extent.width,
+           extent.height,
+           m_depthFormat->handle(),
+           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+           VMA_MEMORY_USAGE_GPU_ONLY,
+           VK_IMAGE_ASPECT_DEPTH_BIT,
+           false
+       );
     }
 
     // Recreate targets

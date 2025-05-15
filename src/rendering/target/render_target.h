@@ -21,7 +21,7 @@ public:
         CommandManager* commandManager;
         BufferManager* bufferManager;
         TextureManager* textureManager;
-        uint32_t currentFrame;
+        uint32_t* currentFrame;
         VmaAllocator allocator;
         VkImageView depthImageView;
         VkImage depthImage;
