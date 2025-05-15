@@ -8,6 +8,7 @@
 class MainSceneExecutor : public RenderPassExecutor {
 public:
     struct Resources {
+        VkDevice                        device;
         VkPipeline                      lightingPipeline;        // For lighting pass
         VkPipelineLayout                lightingPipelineLayout;
         VkPipeline                      depthPipeline;          // For depth pre-pass
@@ -33,7 +34,7 @@ public:
         VkClearValue                    clearDepth;
         SwapChain*                      swapChain;
         std::vector<GLTFPrimitiveData>  primitives;
-        uint32_t                        currentFrame;
+        uint32_t*                       currentFrame;
     };
 
     explicit MainSceneExecutor(Resources resources);
@@ -51,6 +52,6 @@ private:
     VkRenderingAttachmentInfo m_colorAttachment{};
     VkRenderingAttachmentInfo m_depthAttachment{};
     uint32_t m_currentImageIndex{};
-    VkImageLayout m_currentDepthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    std::array<VkImageLayout, MAX_FRAMES_IN_FLIGHT> m_currentDepthLayouts;
 
 };
