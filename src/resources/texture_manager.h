@@ -33,7 +33,10 @@ public:
     TextureManager(TextureManager&&) = delete;
     TextureManager& operator=(TextureManager&&) = delete;
 
-    ManagedTexture& loadTexture(const std::string& filepath);
+    ManagedTexture& loadTexture(
+        const std::string& filepath,
+        VkFormat           format     = VK_FORMAT_R8G8B8A8_SRGB
+    );
     ManagedTexture& createTexture(uint32_t width, uint32_t height, VkFormat format,
         VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
         VkImageAspectFlags aspect, bool createSampler = false);

@@ -15,6 +15,8 @@ layout(push_constant, scalar) uniform PushConstants {
     uint64_t vertexBufferAddress;
     uint32_t baseColorTextureIndex;
     uint32_t metalRoughTextureIndex;
+    uint32_t normalTextureIndex;
+    uint32_t textureCount;
     vec3 modelScale;
 } pushConstants;
 

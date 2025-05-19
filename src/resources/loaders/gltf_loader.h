@@ -17,6 +17,7 @@ struct GLTFPrimitive {
 struct GLTFMaterial {
     int   baseColorTexture   = -1;
     int   metallicRoughnessTexture = -1;
+    int   normalTexture      = -1;
     float metallicFactor     = 1.0f;
     float roughnessFactor    = 1.0f;
 };
