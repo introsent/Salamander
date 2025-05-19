@@ -36,6 +36,8 @@ private:
 
     std::vector<GLTFPrimitiveData> m_primitives;
     std::vector<ManagedTexture> m_modelTextures;
+    std::vector<ManagedTexture> m_materialTextures;
+    std::vector<std::string> m_defaultMaterialKeys;
 
     void updateLightingDescriptors();
 
@@ -45,6 +47,9 @@ private:
     void createRenderingResources();
     void createDescriptors();
     void loadModel(const std::string& path);
+
+    uint32_t createDefaultMaterialTexture(float metallicFactor, float roughnessFactor);
+
     void createBuffers();
     // Updates
 
@@ -74,7 +79,8 @@ private:
     // Framedata
     struct FrameData {
         VkDescriptorBufferInfo bufferInfo;
-        std::vector<VkDescriptorImageInfo> imageInfos;
+        std::vector<VkDescriptorImageInfo> textureImageInfos;
+        std::vector<VkDescriptorImageInfo> materialImageInfos;
     };
     std::array<FrameData, MAX_FRAMES_IN_FLIGHT> m_frameData;
 };

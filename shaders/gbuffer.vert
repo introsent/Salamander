@@ -4,10 +4,10 @@
 #extension GL_EXT_scalar_block_layout : require
 
 // Push-constants mirror your C++ PushConstants struct
-layout(push_constant) uniform PushConstants {
+layout(push_constant, scalar) uniform PushConstants {
     uint64_t vertexBufferAddress;  // SSBO address for vertex pulling
-    uint32_t indexOffset;          // First index in this primitive
-    uint32_t materialIndex;        // Which texture to sample
+    uint32_t baseColorTextureIndex;
+    uint32_t metalRoughTextureIndex;
     vec3     modelScale;           // Scale applied in model space
 } pc;
 
@@ -35,8 +35,9 @@ layout(binding = 0) uniform UniformBufferObject {
 layout(location = 0) out vec3 vWorldPos;     // For depth if needed or lighting
 layout(location = 1) out vec3 vNormal;       // Full 3D normal
 layout(location = 2) out vec2 vTexCoord;     // UV
-layout(location = 3) flat out uint vMaterial; // Material/texture index
+layout(location = 3) flat out uint vBaseColorTexture; // Material/texture index
 layout(location = 4) out vec4 vTangent;      // Tangent + bitangent sign
+layout(location = 5) flat out uint vMetalRoughTextureIndex;
 
 void main() {
     // Pull vertex from SSBO
@@ -55,7 +56,8 @@ void main() {
     vTexCoord = v.texCoord;
 
     // Pass material index to select the right texture array slot
-    vMaterial = pc.materialIndex;
+    vBaseColorTexture = pc.baseColorTextureIndex;
+    vMetalRoughTextureIndex = pc.metalRoughTextureIndex;
 
     // Pass tangent + bitangent sign through
     vTangent = v.tangent;

@@ -188,8 +188,8 @@ void MainSceneExecutor::drawPrimitives(VkCommandBuffer cmd, VkPipelineLayout lay
     for (const auto& primitive : m_resources.primitives) {
         PushConstants pc = {
             .vertexBufferAddress = m_resources.vertexBufferAddress,
-            .indexOffset = primitive.indexOffset,
-            .materialIndex = primitive.materialIndex,
+            .baseColorTextureIndex = primitive.materialIndex,
+            .metalRoughTextureIndex = primitive.metalRoughTextureIndex,
             .modelScale = globalScale
         };
         vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);

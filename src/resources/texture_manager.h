@@ -37,6 +37,7 @@ public:
     ManagedTexture& createTexture(uint32_t width, uint32_t height, VkFormat format,
         VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
         VkImageAspectFlags aspect, bool createSampler = false);
+    ManagedTexture& createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels);
 
     void transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image,
     VkImageLayout oldLayout, VkImageLayout newLayout,

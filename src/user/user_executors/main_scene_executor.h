@@ -35,6 +35,7 @@ public:
         SwapChain*                      swapChain;
         std::vector<GLTFPrimitiveData>  primitives;
         uint32_t*                       currentFrame;
+        uint32_t                        textureCount;
     };
 
     explicit MainSceneExecutor(Resources resources);
