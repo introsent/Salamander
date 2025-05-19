@@ -69,6 +69,65 @@ ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, V
     return m_managedTextures.back();
 }
 
+ManagedTexture& TextureManager::createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels) {
+    // Determine format based on channels
+    VkFormat format = VK_FORMAT_R8G8B8A8_SRGB; // Default to RGBA
+    if (channels == 1) {
+        format = VK_FORMAT_R8_UNORM;
+    } else if (channels == 2) {
+        format = VK_FORMAT_R8G8_UNORM;
+    } else if (channels == 3) {
+        format = VK_FORMAT_R8G8B8_SRGB;
+    }
+
+    // Calculate image size
+    VkDeviceSize imageSize = width * height * channels;
+
+    // Create staging buffer
+    ManagedBuffer staging = m_bufferManager->createBuffer(
+        imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
+    );
+
+    // Copy data to staging buffer
+    void* mappedData;
+    vmaMapMemory(m_allocator, staging.allocation, &mappedData);
+    memcpy(mappedData, data, static_cast<size_t>(imageSize));
+    vmaUnmapMemory(m_allocator, staging.allocation);
+
+    // Create image
+    ManagedTexture texture;
+    texture.width = width;
+    texture.height = height;
+    texture.format = format;
+    texture.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    texture.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+    texture.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    texture.hasSampler = true;
+
+    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY, texture.image, texture.allocation);
+
+    // Transition image layout for copy operation
+    transitionImageLayout(texture.image, format,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    // Copy buffer data to image
+    copyBufferToImage(staging.buffer, texture.image, width, height);
+
+    // Transition image layout for shader access
+    transitionImageLayout(texture.image, format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    // Create image view and sampler
+    texture.view = createImageView(texture.image, format, VK_IMAGE_ASPECT_COLOR_BIT);
+    texture.sampler = createSampler();
+
+    // Add to managed textures
+    m_managedTextures.push_back(texture);
+    return m_managedTextures.back();
+}
+
 void TextureManager::transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout,
                                                VkImageLayout newLayout, VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
                                                VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const {

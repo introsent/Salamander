@@ -11,10 +11,10 @@ struct Vertex {
     vec4 tangent;  // Tangent.xyz + bitangent sign in w
 };
 
-layout(push_constant) uniform PushConstants {
+layout(push_constant, scalar) uniform PushConstants {
     uint64_t vertexBufferAddress;
-    uint32_t indexOffset;
-    uint32_t materialIndex;
+    uint32_t baseColorTextureIndex;
+    uint32_t metalRoughTextureIndex;
     vec3 modelScale;
 } pushConstants;
 
@@ -40,5 +40,5 @@ void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(scaledPos, 1.0);//ubo.proj * ubo.view * ubo.model * vec4(scaledPos, 1.0);
 
     vTexCoord = v.texCoord;
-    vMaterial = pushConstants.materialIndex;
+    vMaterial = pushConstants.baseColorTextureIndex;
 }
