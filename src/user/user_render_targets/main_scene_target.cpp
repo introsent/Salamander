@@ -73,7 +73,7 @@ void MainSceneTarget::createGBufferAttachments() {
     {
         auto& a = m_shared->textureManager->createTexture(
             extent.width, extent.height,
-            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_FORMAT_R8G8B8A8_SRGB,
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
@@ -88,7 +88,7 @@ void MainSceneTarget::createGBufferAttachments() {
     {
         auto& n = m_shared->textureManager->createTexture(
             extent.width, extent.height,
-            VK_FORMAT_R16G16_SFLOAT,
+            VK_FORMAT_R8G8B8A8_UNORM,
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
@@ -338,8 +338,8 @@ void MainSceneTarget::createGBufferPipeline() {
     };
 
     VkFormat colorFormats[3] = {
+        VK_FORMAT_R8G8B8A8_SRGB,
         VK_FORMAT_R8G8B8A8_UNORM,
-        VK_FORMAT_R16G16_SFLOAT,
         VK_FORMAT_R8G8_UNORM
     };
 
@@ -480,6 +480,7 @@ void MainSceneTarget::createRenderingResources() {
 void MainSceneTarget::createDescriptors() {
     auto textureCount = static_cast<uint32_t>(m_modelTextures.size());
     auto materialTextureCount = static_cast<uint32_t>(m_materialTextures.size());
+    auto normalTextureCount = static_cast<uint32_t>(m_normalTextures.size());
     if (textureCount == 0) {
         throw std::runtime_error("No textures were loaded!");
     }
@@ -497,12 +498,14 @@ void MainSceneTarget::createDescriptors() {
     m_gBufferDescriptorLayout = gBufferLayoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
         .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, textureCount)
+        .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, normalTextureCount)
         .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, materialTextureCount)
         .build();
 
     std::vector<VkDescriptorPoolSize> gBufferPoolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textureCount * MAX_FRAMES_IN_FLIGHT},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, normalTextureCount * MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, materialTextureCount * MAX_FRAMES_IN_FLIGHT}
     };
 
@@ -549,6 +552,15 @@ void MainSceneTarget::createDescriptors() {
             });
         }
 
+        m_frameData[i].normalImageInfos.clear();
+        for (const auto& texture : m_normalTextures) {
+            m_frameData[i].normalImageInfos.push_back({
+                .sampler = texture.sampler,
+                .imageView = texture.view,
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            });
+        }
+
         // Prepare material texture descriptors
         m_frameData[i].materialImageInfos.clear();
         for (const auto& texture : m_materialTextures) {
@@ -558,6 +570,8 @@ void MainSceneTarget::createDescriptors() {
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             });
         }
+
+
 
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> gBufferUpdates = {
             {
@@ -572,6 +586,13 @@ void MainSceneTarget::createDescriptors() {
                 .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .imageInfo = m_frameData[i].textureImageInfos.data(),
                 .descriptorCount = static_cast<uint32_t>(m_frameData[i].textureImageInfos.size()),
+                .isImage = true
+            },
+            {
+                .binding = 2,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = m_frameData[i].normalImageInfos.data(),
+                .descriptorCount = static_cast<uint32_t>(m_frameData[i].normalImageInfos.size()),
                 .isImage = true
             },
             {
@@ -698,7 +719,7 @@ void MainSceneTarget::recreateSwapChain() {
         .swapChain = m_shared->swapChain,
         .primitives = m_primitives,
         .currentFrame = m_shared->currentFrame,
-        .textureCount = static_cast<uint32_t>(m_materialTextures.size())
+        .textureCount = static_cast<uint32_t>(m_modelTextures.size())
     };
 
     m_executor = std::make_unique<MainSceneExecutor>(mainResources);
@@ -723,6 +744,7 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
     m_materialTextures.clear();  // Add a new vector for material textures
     std::unordered_map<std::string, size_t> texturePathToIndex;
     std::unordered_map<std::string, size_t> materialTexturePathToIndex;
+    std::unordered_map<std::string, size_t> normalTexturePathToIndex;
 
     // First load all base color textures
     for (const auto& texInfo : gltfModel.textures) {
@@ -744,6 +766,7 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
     for (const auto& srcPrim : gltfModel.primitives) {
         uint32_t textureIndex = 0;
         uint32_t materialTextureIndex = 0;  // Default material texture index
+        uint32_t normalTextureIndex = 0;  // Number of material textures
 
         if (srcPrim.materialIndex >= 0) {
             const auto& material = gltfModel.materials[srcPrim.materialIndex];
@@ -753,6 +776,25 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
                 const auto& texInfo = gltfModel.textures[material.baseColorTexture];
                 std::string texturePath = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
                 textureIndex = texturePathToIndex[texturePath];
+            }
+
+            if (material.normalTexture >= 0) {
+                const auto& normalTexInfo = gltfModel.textures[material.normalTexture];
+                std::string normTexturePath = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + normalTexInfo.uri;
+                normalTextureIndex = texturePathToIndex[normTexturePath];
+
+                auto it = normalTexturePathToIndex.find(normTexturePath);
+                if (it == normalTexturePathToIndex.end()) {
+                    normalTexturePathToIndex[normTexturePath ] = m_normalTextures.size();
+                    m_normalTextures.push_back(m_shared->textureManager->loadTexture(normTexturePath, VK_FORMAT_R8G8B8A8_UNORM));
+                    normalTextureIndex  = static_cast<uint32_t>(m_normalTextures.size() - 1);
+                } else {
+                    normalTextureIndex = static_cast<uint32_t>(it->second);
+                }
+            }
+            else
+            {
+                normalTextureIndex = UINT32_MAX;
             }
 
             // Handle metallic-roughness texture
@@ -778,14 +820,11 @@ void MainSceneTarget::loadModel(const std::string& modelPath) {
             .indexOffset = srcPrim.indexOffset,
             .indexCount = srcPrim.indexCount,
             .materialIndex = textureIndex,
-            .metalRoughTextureIndex = materialTextureIndex  // Store the material texture index
+            .metalRoughTextureIndex = materialTextureIndex,
+            .normalTextureIndex = normalTextureIndex
         };
         m_primitives.push_back(primitive);
     }
-
-    std::cout << "Loaded textures count: " << m_modelTextures.size() << std::endl;
-    std::cout << "Loaded material textures count: " << m_materialTextures.size() << std::endl;
-    std::cout << "Primitives count: " << m_primitives.size() << std::endl;
 }
 
 uint32_t MainSceneTarget::createDefaultMaterialTexture(float metallicFactor, float roughnessFactor) {

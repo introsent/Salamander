@@ -140,6 +140,10 @@ bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
         }
         material.roughnessFactor = static_cast<float>(mat.pbrMetallicRoughness.roughnessFactor);
         material.metallicFactor  = static_cast<float>(mat.pbrMetallicRoughness.metallicFactor);
+
+        if (mat.normalTexture.index >= 0) {
+            material.normalTexture = mat.normalTexture.index;
+        }
         outModel.materials.push_back(material);
     }
 

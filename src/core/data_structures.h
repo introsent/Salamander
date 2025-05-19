@@ -46,6 +46,7 @@ struct GLTFPrimitiveData {
     uint32_t indexCount;
     uint32_t materialIndex;
     uint32_t metalRoughTextureIndex;
+    uint32_t normalTextureIndex;
 };
 
 static constexpr int MAX_FRAMES_IN_FLIGHT = 2;

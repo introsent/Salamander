@@ -17,35 +17,63 @@ TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
 {
 }
 
-ManagedTexture& TextureManager::loadTexture(const std::string& filepath) {
+ManagedTexture& TextureManager::loadTexture(
+    const std::string& filepath,
+    VkFormat           format
+) {
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load(filepath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    if (!pixels) throw std::runtime_error("Failed to load texture image!");
+    stbi_uc* pixels = stbi_load(
+        filepath.c_str(), &texWidth, &texHeight, &texChannels,
+        STBI_rgb_alpha
+    );
+    if (!pixels) {
+        throw std::runtime_error("Failed to load texture image!");
+    }
 
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
+    // Staging buffer (unchanged)
     ManagedBuffer staging = m_bufferManager->createBuffer(
-        imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU
     );
-
     void* data;
     vmaMapMemory(m_allocator, staging.allocation, &data);
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vmaUnmapMemory(m_allocator, staging.allocation);
     stbi_image_free(pixels);
 
+    // Create the GPU image with the supplied format
     ManagedTexture texture;
-    createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+    createImage(
+        texWidth, texHeight,
+        format,                        // <— use the parameter here
+        VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY, texture.image, texture.allocation);
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        texture.image, texture.allocation
+    );
 
-    transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    // Transition, copy, and transition again
+    transitionImageLayout(
+        texture.image, format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
     copyBufferToImage(staging.buffer, texture.image, texWidth, texHeight);
-    transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    transitionImageLayout(
+        texture.image, format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
 
-    texture.view = createImageView(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    // Create the view with the same format
+    texture.view = createImageView(
+        texture.image,
+        format,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
     texture.sampler = createSampler();
 
     m_managedTextures.push_back(texture);
