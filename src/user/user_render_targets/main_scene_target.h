@@ -28,8 +28,10 @@ private:
     ManagedTexture m_albedoTexture;
     ManagedTexture m_normalTexture;
     ManagedTexture m_paramTexture;
+    ManagedTexture m_depthTexture;
 
     VkSampler      m_gBufferSampler = VK_NULL_HANDLE;
+    VkSampler      m_depthSampler = VK_NULL_HANDLE;
 
     void createGBufferSampler();
     void createGBufferAttachments();

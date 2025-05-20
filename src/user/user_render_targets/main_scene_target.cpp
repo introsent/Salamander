@@ -62,6 +62,34 @@ void MainSceneTarget::createGBufferSampler() {
         vkDestroySampler(deviceCopy, samplerCopy, nullptr);
         });
     TextureManager::incrementSamplerIndex();
+
+    VkSamplerCreateInfo depthSamplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    depthSamplerInfo.magFilter             = VK_FILTER_NEAREST;                   // no filtering
+    depthSamplerInfo.minFilter             = VK_FILTER_NEAREST;
+    depthSamplerInfo.mipmapMode            = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    depthSamplerInfo.addressModeU          = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    depthSamplerInfo.addressModeV          = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    depthSamplerInfo.addressModeW          = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    depthSamplerInfo.mipLodBias            = 0.0f;
+    depthSamplerInfo.compareEnable         = VK_FALSE;                            // no depth compare
+    depthSamplerInfo.minLod                = 0.0f;
+    depthSamplerInfo.maxLod                = 0.0f;                                // no mipmaps
+    depthSamplerInfo.maxAnisotropy         = 1.0f;
+    depthSamplerInfo.anisotropyEnable      = VK_FALSE;
+    depthSamplerInfo.borderColor           = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;  // irrelevant under clamp
+    // unnormalizedCoordinates must be FALSE for texelFetch (normalized coords only apply to texelFetch?)
+    // default is normalized == VK_FALSE
+    depthSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+    if (vkCreateSampler(m_shared->context->device(), &depthSamplerInfo, nullptr, &m_depthSampler) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create Depth sampler");
+    }
+
+    VkSampler depthSamplerCopy = m_depthSampler;
+    DeletionQueue::get().pushFunction("DepthSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy, depthSamplerCopy]() {
+        vkDestroySampler(deviceCopy, depthSamplerCopy, nullptr);
+    });
+
 }
 
 void MainSceneTarget::createGBufferAttachments() {
@@ -77,7 +105,7 @@ void MainSceneTarget::createGBufferAttachments() {
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            false
+            true
         );
         m_albedoTexture.image = a.image;
         m_albedoTexture.allocation = a.allocation;
@@ -92,7 +120,7 @@ void MainSceneTarget::createGBufferAttachments() {
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            false
+            true
         );
         m_normalTexture.image = n.image;
         m_normalTexture.allocation = n.allocation;
@@ -107,12 +135,32 @@ void MainSceneTarget::createGBufferAttachments() {
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            false
+            true
         );
         m_paramTexture.image = p.image;
         m_paramTexture.allocation = p.allocation;
         m_paramTexture.view  = p.view;
     }
+
+    {
+        VkImageUsageFlags depthUsage =
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+            VK_IMAGE_USAGE_SAMPLED_BIT |
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT;  // Allow for transitions
+
+        auto& d = m_shared->textureManager->createTexture(
+            extent.width, extent.height,
+            VK_FORMAT_D32_SFLOAT,
+            depthUsage,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
+            false
+        );
+        m_depthTexture.image = d.image;
+        m_depthTexture.allocation = d.allocation;
+        m_depthTexture.view = d.view;
+    }
+
 }
 
 
@@ -132,6 +180,11 @@ void MainSceneTarget::updateLightingDescriptors() {
         .imageView = m_paramTexture.view,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     };
+    VkDescriptorImageInfo depthInfo = {
+        .sampler =  m_depthSampler,
+        .imageView = m_depthTexture.view,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+     };
 
     std::vector<MainDescriptorManager::DescriptorUpdateInfo> lightingUpdates = {
         {
@@ -152,6 +205,13 @@ void MainSceneTarget::updateLightingDescriptors() {
             .binding = 3,
             .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .imageInfo = &paramsInfo,
+            .descriptorCount = 1,
+            .isImage = true
+        },
+        {
+            .binding = 4,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo = &depthInfo,
             .descriptorCount = 1,
             .isImage = true
         }
@@ -340,7 +400,7 @@ void MainSceneTarget::createGBufferPipeline() {
     VkFormat colorFormats[3] = {
         VK_FORMAT_R8G8B8A8_SRGB,
         VK_FORMAT_R8G8B8A8_UNORM,
-        VK_FORMAT_R8G8_UNORM
+        VK_FORMAT_R8G8_UNORM,
     };
 
     VkPipelineRenderingCreateInfo renderingInfo{};
@@ -466,6 +526,8 @@ void MainSceneTarget::createRenderingResources() {
         .gBufferNormalView = m_normalTexture.view,
         .gBufferParamsImage = m_paramTexture.image,
         .gBufferParamsView = m_paramTexture.view,
+        .depthImage = m_depthTexture.image,
+        .depthView = m_depthTexture.view,
         .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
         .clearDepth = {.depthStencil = {1.0f, 0}},
         .swapChain = m_shared->swapChain,
@@ -522,10 +584,11 @@ void MainSceneTarget::createDescriptors() {
         .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Albedo
         .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Normal
         .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Params
+        .addBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .build();
 
     std::vector<VkDescriptorPoolSize> lightingPoolSizes = {
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 * MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * MAX_FRAMES_IN_FLIGHT}
     };
 
     m_lightingDescriptorManager = std::make_unique<MainDescriptorManager>(
@@ -604,50 +667,59 @@ void MainSceneTarget::createDescriptors() {
             }
         };
         m_gBufferDescriptorManager->updateDescriptorSet(i, gBufferUpdates);
-    }
 
-    // Update lighting descriptor sets
-    VkDescriptorImageInfo albedoInfo = {
-        .sampler = m_gBufferSampler,
-        .imageView = m_albedoTexture.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    };
-    VkDescriptorImageInfo normalInfo = {
-        .sampler = m_gBufferSampler,
-        .imageView = m_normalTexture.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    };
-    VkDescriptorImageInfo paramsInfo = {
-        .sampler = m_gBufferSampler,
-        .imageView = m_paramTexture.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    };
+        // Update lighting descriptor sets
+        VkDescriptorImageInfo albedoInfo = {
+            .sampler = m_gBufferSampler,
+            .imageView = m_albedoTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        VkDescriptorImageInfo normalInfo = {
+            .sampler = m_gBufferSampler,
+            .imageView = m_normalTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        VkDescriptorImageInfo paramsInfo = {
+            .sampler = m_gBufferSampler,
+            .imageView = m_paramTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        VkDescriptorImageInfo depthInfo = {
+            .sampler = m_depthSampler,
+            .imageView = m_depthTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        };
 
-    std::vector<MainDescriptorManager::DescriptorUpdateInfo> lightingUpdates = {
-        {
-            .binding = 1,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &albedoInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        },
-        {
-            .binding = 2,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &normalInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        },
-        {
-            .binding = 3,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &paramsInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        }
-    };
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        std::vector<MainDescriptorManager::DescriptorUpdateInfo> lightingUpdates = {
+            {
+                .binding = 1,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &albedoInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            },
+            {
+                .binding = 2,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &normalInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            },
+            {
+                .binding = 3,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &paramsInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            },
+            {
+                .binding = 4,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &depthInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            }
+        };
         m_lightingDescriptorManager->updateDescriptorSet(i, lightingUpdates);
     }
 }
@@ -714,6 +786,8 @@ void MainSceneTarget::recreateSwapChain() {
         .gBufferNormalView = m_normalTexture.view,
         .gBufferParamsImage = m_paramTexture.image,
         .gBufferParamsView = m_paramTexture.view,
+        .depthImage = m_depthTexture.image,
+        .depthView = m_depthTexture.view,
         .clearColor = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
         .clearDepth = {.depthStencil = {1.0f, 0}},
         .swapChain = m_shared->swapChain,

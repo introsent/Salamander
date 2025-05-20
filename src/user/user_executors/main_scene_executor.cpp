@@ -51,14 +51,61 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
     drawPrimitives(cmd, m_resources.depthPipelineLayout);
     vkCmdEndRendering(cmd);
 
+    // Transition the per-frame depth image to GENERAL layout which supports both reading and transfer
     ImageTransitionManager::transitionDepthAttachment(
-            cmd,
-            m_resources.depthImages[*m_resources.currentFrame],
-             m_currentDepthLayouts[*m_resources.currentFrame] ,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+        cmd,
+        m_resources.depthImages[*m_resources.currentFrame],
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_GENERAL
+    );
+    m_currentDepthLayouts[*m_resources.currentFrame] = VK_IMAGE_LAYOUT_GENERAL;
 
+    // Transition the destination to TRANSFER_DST_OPTIMAL
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        m_resources.depthImage,
+        VK_IMAGE_LAYOUT_UNDEFINED,  // First use in this frame
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
+
+    // Copy depth from framebuffer depth to our sampling depth texture
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    copyRegion.srcSubresource.mipLevel = 0;
+    copyRegion.srcSubresource.baseArrayLayer = 0;
+    copyRegion.srcSubresource.layerCount = 1;
+    copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    copyRegion.dstSubresource.mipLevel = 0;
+    copyRegion.dstSubresource.baseArrayLayer = 0;
+    copyRegion.dstSubresource.layerCount = 1;
+    copyRegion.extent = {m_resources.extent.width, m_resources.extent.height, 1};
+
+    vkCmdCopyImage(
+        cmd,
+        m_resources.depthImages[*m_resources.currentFrame],
+        VK_IMAGE_LAYOUT_GENERAL,  // GENERAL layout supports transfer source operations
+        m_resources.depthImage,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &copyRegion
+    );
+
+    // Transition the depth texture to shader read-only optimal for sampling
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        m_resources.depthImage,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+    );
+
+    // Transition the per-frame depth image from GENERAL to read-only for G-buffer pass
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        m_resources.depthImages[*m_resources.currentFrame],
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+    );
     m_currentDepthLayouts[*m_resources.currentFrame] = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-
 
     // Transition G-buffer images
     ImageTransitionManager::transitionColorAttachment(
@@ -70,10 +117,6 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
     ImageTransitionManager::transitionColorAttachment(
         cmd, m_resources.gBufferParamsImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
-
-
-
-
 
     // G-buffer Pass
     std::array<VkRenderingAttachmentInfo, 3> gBufferAttachments = {{
@@ -102,13 +145,16 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
             .clearValue = {.color = {0.0f, 0.0f, 0.0f, 0.0f}}
         }
     }};
+
+    // Use the per-frame depth image for the G-buffer pass (read-only)
     VkRenderingAttachmentInfo depthAttachment = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
         .imageView = m_resources.depthImageViews[*m_resources.currentFrame],
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE
     };
+
     VkRenderingInfo gBufferInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
         .renderArea = {{0, 0}, m_resources.extent},
