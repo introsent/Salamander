@@ -30,6 +30,8 @@ public:
         VkImageView                     gBufferNormalView;
         VkImage                         gBufferParamsImage;
         VkImageView                     gBufferParamsView;
+        VkImage                         depthImage;
+        VkImageView                     depthView;
         VkClearValue                    clearColor;
         VkClearValue                    clearDepth;
         SwapChain*                      swapChain;

@@ -51,20 +51,9 @@ void UniformBuffer::update(VkDevice device, VkExtent2D extent, Camera* camera) c
     ubo.proj  = camera->GetProjectionMatrix(
         static_cast<float>(extent.width) / static_cast<float>(extent.height)
     );
-
+    ubo.cameraPosition = camera->Position;
     // Copy to mapped memory
     std::memcpy(mapped, &ubo, sizeof(ubo));
-
-    // Add memory barrier
-    VmaAllocationInfo allocInfo;
-    vmaGetAllocationInfo(allocator, allocation, &allocInfo);
-    VkMappedMemoryRange range{
-        .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-        .memory = allocInfo.deviceMemory,
-        .offset = allocInfo.offset,
-        .size = sizeof(UniformBufferObject)
-    };
-    vkFlushMappedMemoryRanges(device, 1, &range);
 }
 
 void UniformBuffer::unmapBuffer()

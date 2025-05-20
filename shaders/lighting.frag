@@ -3,6 +3,7 @@
 layout(binding = 1) uniform sampler2D gAlbedo;
 layout(binding = 2) uniform sampler2D gNormal;
 layout(binding = 3) uniform sampler2D gParams;
+layout(binding = 4) uniform sampler2D gDepth;
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 outColor;
@@ -29,5 +30,15 @@ void main() {
     float ambient = 0.2;
     color += albedo * ambient;
 
-    outColor = vec4(color, 1.0);
+    ivec2 texelCoord = ivec2(fragUV * vec2(textureSize(gDepth, 0)));
+    float depthTexelFetch = texelFetch(gDepth, texelCoord, 0).r;
+    float depth = depthTexelFetch;
+    vec3 debugColor;
+
+    float a = 0.945;  // Lower bound
+    float b = 1.0;   // Upper bound
+    float remapped = clamp((depth - a) / (b - a), 0.0, 1.0);
+    debugColor = vec3(remapped);
+
+    outColor = vec4(debugColor, 1.0);
 }

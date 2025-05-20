@@ -26,10 +26,11 @@ layout(buffer_reference, scalar) readonly buffer VertexBuffer {
 };
 
 // UBO for transforms
-layout(binding = 0) uniform UniformBufferObject {
+layout(binding = 0, scalar) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
     mat4 proj;
+    vec3 cameraPosition;
 } ubo;
 
 // Outputs to the fragment stage
