@@ -581,6 +581,7 @@ void MainSceneTarget::createDescriptors() {
     // Lighting descriptor layout (for lighting pass)
     DescriptorSetLayoutBuilder lightingLayoutBuilder(m_shared->context->device());
     m_lightingDescriptorLayout = lightingLayoutBuilder
+        .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
         .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Albedo
         .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Normal
         .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Params
@@ -588,7 +589,7 @@ void MainSceneTarget::createDescriptors() {
         .build();
 
     std::vector<VkDescriptorPoolSize> lightingPoolSizes = {
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5 * MAX_FRAMES_IN_FLIGHT}
     };
 
     m_lightingDescriptorManager = std::make_unique<MainDescriptorManager>(
@@ -691,6 +692,13 @@ void MainSceneTarget::createDescriptors() {
         };
 
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> lightingUpdates = {
+            {
+                .binding = 0,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_frameData[i].bufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            },
             {
                 .binding = 1,
                 .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
