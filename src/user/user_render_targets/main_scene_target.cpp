@@ -25,6 +25,8 @@ void MainSceneTarget::initialize(const SharedResources& shared) {
 
     createGBufferSampler();
     createGBufferAttachments();
+    createToneMappingSampler();
+    createToneMappingAttachments();
     loadModel(MODEL_PATH);
     createBuffers();
     createDescriptors();
@@ -88,6 +90,20 @@ void MainSceneTarget::createGBufferSampler() {
     VkSampler depthSamplerCopy = m_depthSampler;
     DeletionQueue::get().pushFunction("DepthSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy, depthSamplerCopy]() {
         vkDestroySampler(deviceCopy, depthSamplerCopy, nullptr);
+    });
+
+    VkSamplerCreateInfo hdrSamplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    hdrSamplerInfo.magFilter        = VK_FILTER_LINEAR;
+    hdrSamplerInfo.minFilter        = VK_FILTER_LINEAR;
+    hdrSamplerInfo.addressModeU     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    hdrSamplerInfo.addressModeV     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    hdrSamplerInfo.addressModeW     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    hdrSamplerInfo.mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    vkCreateSampler(m_shared->context->device(), &hdrSamplerInfo, nullptr, &m_hdrSampler);
+
+    VkSampler hdrSamplerCopy = m_hdrSampler;
+    DeletionQueue::get().pushFunction("HdrSampler", [device = m_shared->context->device(), s = hdrSamplerCopy]() {
+        vkDestroySampler(device, s, nullptr);
     });
 
 }
@@ -242,12 +258,12 @@ void MainSceneTarget::createLightingPipeline() {
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments = &colorBlendAttachment;
 
-    VkFormat colorFormat = m_shared->swapChain->format();
+    VkFormat hdrFormat = VK_FORMAT_R32G32B32A32_SFLOAT; // for hdr
     VkPipelineRenderingCreateInfo renderingInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-        .colorAttachmentCount = 1,
-        .pColorAttachmentFormats = &colorFormat,
-        .depthAttachmentFormat = VK_FORMAT_UNDEFINED  // No depth in lighting pass
+        .colorAttachmentCount   = 1,
+        .pColorAttachmentFormats= &hdrFormat,
+        .depthAttachmentFormat  = VK_FORMAT_UNDEFINED
     };
 
     PipelineConfig pipelineConfig{
@@ -390,6 +406,62 @@ void MainSceneTarget::createDepthPrepassPipeline() {
     );
 }
 
+void MainSceneTarget::createToneMappingSampler() {
+    VkSamplerCreateInfo hdrSamplerInfo{};
+    hdrSamplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    hdrSamplerInfo.magFilter    = VK_FILTER_LINEAR;
+    hdrSamplerInfo.minFilter    = VK_FILTER_LINEAR;
+    hdrSamplerInfo.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    hdrSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    hdrSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    hdrSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    hdrSamplerInfo.mipLodBias   = 0.0f;
+    hdrSamplerInfo.minLod       = 0.0f;
+    hdrSamplerInfo.maxLod       = 0.0f;
+    hdrSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+    hdrSamplerInfo.anisotropyEnable        = VK_FALSE;
+    hdrSamplerInfo.maxAnisotropy           = 1.0f;
+    hdrSamplerInfo.compareEnable           = VK_FALSE;
+    hdrSamplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+    hdrSamplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+
+    if (vkCreateSampler(m_shared->context->device(), &hdrSamplerInfo, nullptr, &m_hdrSampler) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create HDR sampler");
+    }
+
+    VkSampler samplerCopy = m_hdrSampler;
+    VkDevice deviceCopy   = m_shared->context->device();
+    DeletionQueue::get().pushFunction("ToneMappingSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy, samplerCopy]() {
+        vkDestroySampler(deviceCopy, samplerCopy, nullptr);
+    });
+
+    TextureManager::incrementSamplerIndex();
+}
+
+void MainSceneTarget::createToneMappingAttachments() {
+    const auto& extent = m_shared->swapChain->extent();
+
+    VkImageUsageFlags usage =
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+        VK_IMAGE_USAGE_SAMPLED_BIT |
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+    // Create HDR lighting output texture
+    auto& h = m_shared->textureManager->createTexture(
+        extent.width, extent.height,
+        VK_FORMAT_R32G32B32A32_SFLOAT,
+        usage,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        true // create image view
+    );
+
+    m_hdrTexture.image      = h.image;
+    m_hdrTexture.allocation = h.allocation;
+    m_hdrTexture.view       = h.view;
+}
+
+
 void MainSceneTarget::createGBufferPipeline() {
     // Unchanged from your original implementation
     static constexpr std::array<VkDynamicState, 2> dynamicStates = {
@@ -487,10 +559,113 @@ void MainSceneTarget::createGBufferPipeline() {
     );
 }
 
+void MainSceneTarget::createToneMappingPipeline() {
+       // 1) Dynamic state: viewport & scissor
+    static constexpr std::array<VkDynamicState, 2> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    // 2) No blending, write RGBA
+    VkPipelineColorBlendAttachmentState blendAttachment{};
+    blendAttachment.blendEnable    = VK_FALSE;
+    blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT
+                                   | VK_COLOR_COMPONENT_G_BIT
+                                   | VK_COLOR_COMPONENT_B_BIT
+                                   | VK_COLOR_COMPONENT_A_BIT;
+
+    VkPipelineColorBlendStateCreateInfo blendState{};
+    blendState.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    blendState.logicOpEnable   = VK_FALSE;
+    blendState.attachmentCount = 1;
+    blendState.pAttachments    = &blendAttachment;
+
+    // 3) Rendering info: one color attachment → swapchain’s SRGB format
+    VkFormat swapFmt = m_shared->swapChain->format();  // e.g. VK_FORMAT_B8G8R8A8_SRGB
+    VkPipelineRenderingCreateInfo renderingInfo{
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+        .colorAttachmentCount    = 1,
+        .pColorAttachmentFormats = &swapFmt,
+        .depthAttachmentFormat   = VK_FORMAT_UNDEFINED
+    };
+
+    // 4) Build the pipeline config
+    PipelineConfig cfg{};
+    cfg.vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/tone_vert.spv";
+    cfg.fragShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/tone_frag.spv";
+
+    cfg.inputAssembly = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE
+    };
+
+    cfg.viewportState = {
+        .sType          = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount  = 1,
+        .scissorCount   = 1
+    };
+
+    cfg.rasterizer = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable        = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .cullMode                = VK_CULL_MODE_NONE,
+        .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable         = VK_FALSE,
+        .lineWidth               = 1.0f
+    };
+
+    cfg.multisampling = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable   = VK_FALSE
+    };
+
+    cfg.depthStencil = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable       = VK_FALSE,
+        .depthWriteEnable      = VK_FALSE,
+        .depthCompareOp        = VK_COMPARE_OP_ALWAYS,
+        .stencilTestEnable     = VK_FALSE
+    };
+
+    cfg.colorBlendAttachments = { blendAttachment };
+    cfg.colorBlending          = blendState;
+
+    cfg.dynamicState = {
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .pDynamicStates    = dynamicStates.data()
+    };
+
+    cfg.rendering = renderingInfo;
+
+    // 5) Descriptor layout must match: binding 0 = COMBINED_IMAGE_SAMPLER (your HDR backbuffer)
+    //    Already created in createDescriptors():
+    //      .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+    //
+    // 6) Finally, instantiate the Pipeline
+
+    VkPushConstantRange pushRange{};
+    pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushRange.offset     = 0;
+    pushRange.size       = sizeof(TonePush);
+
+    m_toneMappingPipeline = std::make_unique<Pipeline>(
+        m_shared->context,
+        m_toneMappingDescriptorLayout->handle(),
+        cfg,
+        pushRange
+    );
+}
+
 void MainSceneTarget::createRenderingResources() {
     createDepthPrepassPipeline();
     createGBufferPipeline();
     createLightingPipeline();
+    createToneMappingPipeline();
 
     if (!m_shared || !m_shared->frames || m_shared->frames->empty()) {
         throw std::runtime_error("Frames not properly initialized!");
@@ -533,7 +708,12 @@ void MainSceneTarget::createRenderingResources() {
         .swapChain = m_shared->swapChain,
         .primitives = m_primitives,
         .currentFrame = m_shared->currentFrame,
-        .textureCount = static_cast<uint32_t>(m_materialTextures.size())
+        .textureCount = static_cast<uint32_t>(m_materialTextures.size()),
+        .hdrImage = m_hdrTexture.image,
+        .hdrImageView = m_hdrTexture.view,
+        .toneDescriptorSets = m_toneMappingDescriptorManager->getDescriptorSets(),
+        .tonePipeline = m_toneMappingPipeline->handle(),
+        .tonePipelineLayout = m_toneMappingPipeline->layout()
     };
 
     m_executor = std::make_unique<MainSceneExecutor>(mainResources);
@@ -598,6 +778,22 @@ void MainSceneTarget::createDescriptors() {
         m_shared->context->device(),
         m_lightingDescriptorLayout->handle(),
         lightingPoolSizes,
+        MAX_FRAMES_IN_FLIGHT
+    );
+
+    DescriptorSetLayoutBuilder toneLayout(m_shared->context->device());
+    m_toneMappingDescriptorLayout = toneLayout
+        .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    VK_SHADER_STAGE_FRAGMENT_BIT)
+        .build();
+
+    std::vector<VkDescriptorPoolSize> tonePool = {
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
+    };
+    m_toneMappingDescriptorManager = std::make_unique<MainDescriptorManager>(
+        m_shared->context->device(),
+        m_toneMappingDescriptorLayout->handle(),
+        tonePool,
         MAX_FRAMES_IN_FLIGHT
     );
 
@@ -742,6 +938,20 @@ void MainSceneTarget::createDescriptors() {
             },
         };
         m_lightingDescriptorManager->updateDescriptorSet(i, lightingUpdates);
+
+        VkDescriptorImageInfo hdrInfo = {
+            .sampler     = m_hdrSampler,
+            .imageView   = m_hdrTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        MainDescriptorManager::DescriptorUpdateInfo toneUpdate {
+            .binding         = 0,
+            .type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo       = &hdrInfo,
+            .descriptorCount = 1,
+            .isImage         = true
+        };
+        m_toneMappingDescriptorManager->updateDescriptorSet(i, { toneUpdate });
     }
 }
 
@@ -814,7 +1024,12 @@ void MainSceneTarget::recreateSwapChain() {
         .swapChain = m_shared->swapChain,
         .primitives = m_primitives,
         .currentFrame = m_shared->currentFrame,
-        .textureCount = static_cast<uint32_t>(m_modelTextures.size())
+        .textureCount = static_cast<uint32_t>(m_modelTextures.size()),
+        .hdrImage = m_hdrTexture.image,
+        .hdrImageView = m_hdrTexture.view,
+        .toneDescriptorSets = m_toneMappingDescriptorManager->getDescriptorSets(),
+        .tonePipeline = m_toneMappingPipeline->handle(),
+        .tonePipelineLayout = m_toneMappingPipeline->layout()
     };
 
     m_executor = std::make_unique<MainSceneExecutor>(mainResources);

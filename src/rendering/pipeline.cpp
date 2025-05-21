@@ -22,9 +22,10 @@ static std::vector<char> readFile(const std::string& filename) {
 Pipeline::Pipeline(
     Context* context,
     VkDescriptorSetLayout descriptorSetLayout,
-    const PipelineConfig& config
+    const PipelineConfig& config,
+    VkPushConstantRange pushConstantRange
 ) : m_context(context){
-    createPipelineLayout(descriptorSetLayout);
+    createPipelineLayout(descriptorSetLayout, pushConstantRange);
 
     auto vertCode = readFile(config.vertShaderPath);
     std::vector<char> fragCode;
@@ -116,12 +117,7 @@ void Pipeline::createShaderModule(const std::vector<char>& code, VkShaderModule*
     }
 }
 
-void Pipeline::createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout) {
-    VkPushConstantRange pushConstantRange{
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .offset = 0,
-        .size = sizeof(PushConstants)
-    };
+void Pipeline::createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout, VkPushConstantRange pushConstantRange) {
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

@@ -38,6 +38,11 @@ public:
         std::vector<GLTFPrimitiveData>  primitives;
         uint32_t*                       currentFrame;
         uint32_t                        textureCount;
+        VkImage                         hdrImage;
+        VkImageView                     hdrImageView;
+        std::vector<VkDescriptorSet>    toneDescriptorSets;
+        VkPipeline                      tonePipeline;
+        VkPipelineLayout                tonePipelineLayout;
     };
 
     explicit MainSceneExecutor(Resources resources);
