@@ -56,6 +56,16 @@ void UniformBuffer::update(VkDevice device, VkExtent2D extent, Camera* camera) c
     std::memcpy(mapped, &ubo, sizeof(ubo));
 }
 
+void UniformBuffer::updateOmniLight() const {
+    PointLightData omniLight{};
+    omniLight.pointLightPosition = glm::vec3( glm::vec4(8.0f, 1.0f, 0.0f, 1.f));
+    omniLight.pointLightIntensity = 1000.f;
+    omniLight.pointLightColor = glm::vec3(0.f, 0.f, 1.f);
+    omniLight.pointLightRadius = 4.f;
+
+    std::memcpy(mapped, &omniLight, sizeof(omniLight));
+}
+
 void UniformBuffer::unmapBuffer()
 {
     if (mapped && allocator != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE) {

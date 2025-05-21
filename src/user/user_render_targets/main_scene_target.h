@@ -78,6 +78,8 @@ private:
     // Model
     IndexBuffer m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
+    UniformBuffer m_omniLightBuffer;
+
 
     // Framedata
     struct FrameData {
@@ -85,6 +87,7 @@ private:
         std::vector<VkDescriptorImageInfo> textureImageInfos;
         std::vector<VkDescriptorImageInfo> materialImageInfos;
         std::vector<VkDescriptorImageInfo> normalImageInfos;
+        VkDescriptorBufferInfo omniLightBufferInfo;
     };
     std::array<FrameData, MAX_FRAMES_IN_FLIGHT> m_frameData;
 };

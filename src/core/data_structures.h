@@ -59,3 +59,10 @@ struct Frame {
     VkFence inFlightFence;
     ManagedTexture depthTexture;
 };
+
+struct PointLightData {
+    glm::vec3 pointLightPosition;
+    float pointLightIntensity;  // In lumens
+    glm::vec3 pointLightColor;
+    float pointLightRadius;     // Maximum radius of influence for optimization
+};

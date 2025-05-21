@@ -18,6 +18,8 @@ public:
     // Updates buffer contents and flushes to GPU
     void update(VkDevice device, VkExtent2D extent, Camera* camera) const;
 
+    void updateOmniLight() const;
+
 protected:
     void*               mapped        = nullptr;
     VmaAllocator        allocator     = VK_NULL_HANDLE;
