@@ -586,10 +586,12 @@ void MainSceneTarget::createDescriptors() {
         .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Normal
         .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Params
         .addBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .addBinding(5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  VK_SHADER_STAGE_FRAGMENT_BIT)
         .build();
 
     std::vector<VkDescriptorPoolSize> lightingPoolSizes = {
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5 * MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * MAX_FRAMES_IN_FLIGHT},
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT}
     };
 
     m_lightingDescriptorManager = std::make_unique<MainDescriptorManager>(
@@ -635,7 +637,11 @@ void MainSceneTarget::createDescriptors() {
             });
         }
 
-
+        m_frameData[i].omniLightBufferInfo = {
+            .buffer = m_omniLightBuffer.handle(),
+            .offset = 0,
+            .range = sizeof(PointLightData)
+        };
 
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> gBufferUpdates = {
             {
@@ -726,7 +732,14 @@ void MainSceneTarget::createDescriptors() {
                 .imageInfo = &depthInfo,
                 .descriptorCount = 1,
                 .isImage = true
-            }
+            },
+            {
+                .binding = 5,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_frameData[i].omniLightBufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            },
         };
         m_lightingDescriptorManager->updateDescriptorSet(i, lightingUpdates);
     }
@@ -949,4 +962,14 @@ void MainSceneTarget::createBuffers() {
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         m_uniformBuffers.emplace_back(m_shared->bufferManager, m_shared->allocator, bufferSize);
     }
+
+    VkDeviceSize omniLightBufferSize = sizeof(PointLightData);
+    m_omniLightBuffer =
+        {
+        m_shared->bufferManager,
+        m_shared->allocator,
+        omniLightBufferSize
+        };
+
+    m_omniLightBuffer.updateOmniLight();
 }

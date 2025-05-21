@@ -9,6 +9,14 @@ layout(binding = 0, scalar) uniform UniformBufferObject {
     vec3 cameraPosition;
 } ubo;
 
+// Add point light properties to UBO or as a separate uniform buffer
+layout(binding = 5, scalar) uniform LightData {
+    vec3 pointLightPosition;
+    float pointLightIntensity;  // In lumens
+    vec3 pointLightColor;
+    float pointLightRadius;     // Maximum radius of influence for optimization
+} lightData;
+
 // G-buffer textures
 layout(binding = 1) uniform sampler2D gAlbedo;
 layout(binding = 2) uniform sampler2D gNormal;
@@ -45,22 +53,72 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+// Calculate light contribution with PBR
+vec3 calculatePBRLighting(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, float roughness, vec3 radiance) {
+    vec3 H = normalize(V + L);
+
+    // Calculate base reflectivity (F0)
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; // Avoid division by zero
+    vec3 specular = numerator / denominator;
+
+    // Diffuse term with energy conservation
+    vec3 kD = (1.0 - F) * (1.0 - metallic);
+    vec3 diffuse = kD * albedo / 3.141592653589793;
+
+    // Final light contribution
+    float NdotL = max(dot(N, L), 0.0);
+    return (diffuse + specular) * radiance * NdotL;
+}
+
+// Physically based attenuation for point light
+// Inverse square law with smooth falloff
+float calculatePointLightAttenuation(vec3 lightPos, vec3 fragPos, float lightRadius) {
+    float distance = length(lightPos - fragPos);
+
+    // Using inverse square law for physical correctness
+    // For lumen to lux conversion: lux = lumen / (4 * PI * distance²)
+    float attenuation = 1.0 / (4.0 * 3.141592653589793 * distance * distance);
+
+    // Optional smooth falloff at radius boundary
+    if (lightRadius > 0.0) {
+        attenuation *= max(0.0, 1.0 - pow(distance / lightRadius, 4.0));
+    }
+
+    return attenuation;
+}
+
 // Reconstruct world position from depth
-vec3 GetWorldPositionFromDepth(float depth, ivec2 fragCoords, mat4 invProj, mat4 invView, ivec2 resolution) {
-    // Convert to NDC (Vulkan Y-axis points down)
-    vec2 ndc = vec2(
-    (float(fragCoords.x) / float(resolution.x)) * 2.0 - 1.0,
-    (float(fragCoords.y) / float(resolution.y)) * 2.0 - 1.0
-    );
-    ndc.y *= -1.0; // Flip Y for Vulkan
+vec3 GetWorldPositionFromDepth(
+float depth,
+ivec2 fragCoords,
+mat4 invProj,
+mat4 invView,
+ivec2 resolution
+) {
+    // 1) build NDC XY in [–1,1]
+    vec2 ndc;
+    ndc.x = (float(fragCoords.x) / float(resolution.x)) * 2.0 - 1.0;
+    ndc.y = (float(fragCoords.y) / float(resolution.y)) * 2.0 - 1.0;
 
-    vec4 clipPos = vec4(ndc, depth, 1.0);
+    // 2) Vulkan uses [0,1] for clip-Z, so use depth directly
+    float clipZ = depth;
 
-    // Transform to view space
+    // 3) reconstruct clip-space pos
+    vec4 clipPos = vec4(ndc, clipZ, 1.0);
+
+    // 4) bring back to view-space
     vec4 viewPos = invProj * clipPos;
     viewPos /= viewPos.w;
 
-    // Transform to world space
+    // 5) bring back to world-space
     vec4 worldPos = invView * viewPos;
     return worldPos.xyz;
 }
@@ -74,7 +132,7 @@ void main() {
     mat4 invProj = inverse(ubo.proj);
 
     // Compute texel coordinates
-    ivec2 texCoord = ivec2(fragUV * vec2(resolution));
+    ivec2 texCoord = ivec2(gl_FragCoord.xy);
 
     // Sample G-buffer textures
     vec3 albedo = texelFetch(gAlbedo, texCoord, 0).rgb;
@@ -95,30 +153,23 @@ void main() {
     // Compute view direction
     vec3 V = normalize(ubo.cameraPosition - worldPos);
 
-    // Hardcoded directional light
-    vec3 L = normalize(-vec3(0.577, -0.577, -0.577)); // Direction to light
-    vec3 H = normalize(V + L);
-    vec3 radiance = vec3(1.0) * 1.0; // Intensity = 1.0
+    // Initialize final light accumulation
+    vec3 Lo = vec3(0.0);
 
-    // Calculate base reflectivity (F0)
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    // 1. Directional Light Contribution
+    vec3 L_dir = normalize(-vec3(0.577, -0.577, -0.577)); // Direction to light
+    vec3 radiance_dir = vec3(1.0) * 1.0; // Intensity = 1.0 in lux
 
-    // Cook-Torrance BRDF
-    float NDF = DistributionGGX(N, H, roughness);
-    float G = GeometrySmith(N, V, L, roughness);
-    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+    Lo += calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir);
 
-    vec3 numerator = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; // Avoid division by zero
-    vec3 specular = numerator / denominator;
+    // 2. Point Light Contribution
+    vec3 L_point = normalize(lightData.pointLightPosition - worldPos);
+    float attenuation = calculatePointLightAttenuation(lightData.pointLightPosition, worldPos, lightData.pointLightRadius);
 
-    // Diffuse term with energy conservation
-    vec3 kD = (1.0 - F) * (1.0 - metallic);
-    vec3 diffuse = kD * albedo / 3.141592653589793;
+    // Convert lumen to lux using attenuation
+    vec3 radiance_point = lightData.pointLightColor * lightData.pointLightIntensity * attenuation;
 
-    // Final light contribution
-    float NdotL = max(dot(N, L), 0.0);
-    vec3 Lo = (diffuse + specular) * radiance * NdotL;
+    Lo += calculatePBRLighting(N, V, L_point, albedo, metallic, roughness, radiance_point);
 
     // Simple Reinhard tonemapping
     vec3 color = Lo / (Lo + vec3(1.0));

@@ -64,7 +64,7 @@ void main() {
     mat3 normalMatrix = transpose(inverse(model3));
 
     // Transform normal & tangent
-    vNormal  = normalize(normalMatrix * v.normal);
+    vNormal  = normalize(mat3(ubo.model) * v.normal);
     vec3 t    = normalize(normalMatrix * v.tangent.xyz);
     vTangent = vec4(t, v.tangent.w);
 

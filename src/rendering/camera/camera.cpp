@@ -20,7 +20,7 @@ Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, fl
     updateCameraVectors();
 }
 glm::mat4 Camera::GetViewMatrix() const {
-    return glm::lookAt(Position, Position + Front, Up);
+    return glm::lookAt(Position, Position + Front, WorldUp);
 }
 glm::mat4 Camera::GetProjectionMatrix(float aspectRatio) const {
     glm::mat4 proj = glm::perspective(glm::radians(Zoom), aspectRatio, 0.1f, 100.0f);
@@ -66,7 +66,7 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset) {
 }
 void Camera::ProcessVerticalMovement(float yoffset) {
     float velocity = yoffset * MouseSensitivity * 0.25f;
-    Position += WorldUp * velocity;
+    Position += Up * velocity;
 }
 
 void Camera::ProcessHorizontalMovement(float yoffset) {
