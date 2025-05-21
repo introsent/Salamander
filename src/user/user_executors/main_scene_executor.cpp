@@ -181,28 +181,88 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
         cmd, m_resources.gBufferParamsImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
 
+    ImageTransitionManager::transitionColorAttachment(
+        cmd,
+        m_resources.hdrImage,                   // 🛠 new
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    );
+
     // Lighting Pass
-    VkRenderingAttachmentInfo colorAttachment = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = m_resources.colorImageViews[m_currentImageIndex],
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = m_resources.clearColor
+    VkRenderingAttachmentInfo hdrColorAttachment = {
+        .sType         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .imageView     = m_resources.hdrImageView, // 🛠 new
+        .imageLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue    = m_resources.clearColor
     };
-    VkRenderingInfo lightingInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
-        .renderArea = {{0, 0}, m_resources.extent},
-        .layerCount = 1,
+    VkRenderingInfo hdrLightingInfo = {
+        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+        .renderArea           = {{0, 0}, m_resources.extent},
+        .layerCount           = 1,
         .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachment,
-        .pDepthAttachment = nullptr
+        .pColorAttachments    = &hdrColorAttachment,
+        .pDepthAttachment     = nullptr
     };
-    vkCmdBeginRendering(cmd, &lightingInfo);
+    vkCmdBeginRendering(cmd, &hdrLightingInfo);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_resources.lightingPipeline);
     setViewportAndScissor(cmd);
     bindBuffers(cmd, m_resources.lightingPipelineLayout, m_resources.lightingDescriptorSets);
-    vkCmdDraw(cmd, 3, 1, 0, 0); // Full-screen triangle
+    vkCmdDraw(cmd, 3, 1, 0, 0);  // fullscreen triangle
+    vkCmdEndRendering(cmd);
+
+    ImageTransitionManager::transitionToShaderRead(
+        cmd,
+        m_resources.hdrImage,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+
+    VkRenderingAttachmentInfo swapColorAttachment = {
+        .sType         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .imageView     = m_resources.colorImageViews[m_currentImageIndex],
+        .imageLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue    = m_resources.clearColor
+    };
+    VkRenderingInfo toneMapInfo = {
+        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+        .renderArea           = {{0, 0}, m_resources.extent},
+        .layerCount           = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments    = &swapColorAttachment,
+        .pDepthAttachment     = nullptr
+    };
+
+
+
+    vkCmdBeginRendering(cmd, &toneMapInfo);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_resources.tonePipeline);
+    setViewportAndScissor(cmd);
+    // bind your tone-mapping descriptors (hdr sampler)
+    vkCmdBindDescriptorSets(
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_resources.tonePipelineLayout,
+        0, 1,
+        &m_resources.toneDescriptorSets[*m_resources.currentFrame],
+        0, nullptr
+    );
+    TonePush pc {
+        glm::vec2{ static_cast<float>(m_resources.extent.width),
+                   static_cast<float>(m_resources.extent.height) }
+    };
+    vkCmdPushConstants(
+    cmd,
+    m_resources.tonePipelineLayout,           // your tone-mapping pipeline layout
+    VK_SHADER_STAGE_FRAGMENT_BIT,             // stage flags (fragment shader)
+    0,                                        // offset in bytes
+    sizeof(TonePush),                         // size in bytes
+    &pc                                       // pointer to the data
+    );
+    vkCmdDraw(cmd, 3, 1, 0, 0);  // fullscreen triangle
     vkCmdEndRendering(cmd);
 }
 

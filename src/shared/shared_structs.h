@@ -11,3 +11,7 @@ struct PushConstants {
     uint32_t textureCount;
     glm::vec3 modelScale;
 };
+
+struct TonePush {
+    glm::vec2 screenSize;
+};

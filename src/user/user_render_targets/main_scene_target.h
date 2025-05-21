@@ -33,8 +33,12 @@ private:
     VkSampler      m_gBufferSampler = VK_NULL_HANDLE;
     VkSampler      m_depthSampler = VK_NULL_HANDLE;
 
+    ManagedTexture m_hdrTexture;
+    VkSampler     m_hdrSampler = VK_NULL_HANDLE;
+
     void createGBufferSampler();
     void createGBufferAttachments();
+    void createGBufferPipeline();
 
     std::vector<GLTFPrimitiveData> m_primitives;
     std::vector<ManagedTexture> m_modelTextures;
@@ -43,10 +47,13 @@ private:
     std::vector<std::string> m_defaultMaterialKeys;
 
     void updateLightingDescriptors();
-
     void createLightingPipeline();  // Renamed from createPipeline
     void createDepthPrepassPipeline();
-    void createGBufferPipeline();
+
+    void createToneMappingSampler();
+    void createToneMappingAttachments();
+    void createToneMappingPipeline();
+
     void createRenderingResources();
     void createDescriptors();
     void loadModel(const std::string& path);
@@ -60,12 +67,15 @@ private:
     std::unique_ptr<Pipeline> m_lightingPipeline;  // Renamed from m_pipeline
     std::unique_ptr<Pipeline> m_depthPrepassPipeline;
     std::unique_ptr<Pipeline> m_gBufferPipeline;
+    std::unique_ptr<Pipeline> m_toneMappingPipeline;
 
     // Descriptor layouts and managers
     std::unique_ptr<DescriptorSetLayout> m_gBufferDescriptorLayout;  // For depth and G-buffer passes
     std::unique_ptr<MainDescriptorManager> m_gBufferDescriptorManager;
     std::unique_ptr<DescriptorSetLayout> m_lightingDescriptorLayout;  // For lighting pass
     std::unique_ptr<MainDescriptorManager> m_lightingDescriptorManager;
+    std::unique_ptr<DescriptorSetLayout> m_toneMappingDescriptorLayout;  // For tone mapping pass
+    std::unique_ptr<MainDescriptorManager> m_toneMappingDescriptorManager;
 
     // Vertices and indices of initial model
     std::vector<Vertex> m_vertices;
