@@ -181,59 +181,72 @@ void MainSceneTarget::createGBufferAttachments() {
 
 
 void MainSceneTarget::updateLightingDescriptors() {
-    VkDescriptorImageInfo albedoInfo = {
-        .sampler = m_gBufferSampler,
-        .imageView = m_albedoTexture.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    };
-    VkDescriptorImageInfo normalInfo = {
-        .sampler = m_gBufferSampler,
-        .imageView = m_normalTexture.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    };
-    VkDescriptorImageInfo paramsInfo = {
-        .sampler = m_gBufferSampler,
-        .imageView = m_paramTexture.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    };
-    VkDescriptorImageInfo depthInfo = {
-        .sampler =  m_depthSampler,
-        .imageView = m_depthTexture.view,
-        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-     };
-
-    std::vector<MainDescriptorManager::DescriptorUpdateInfo> lightingUpdates = {
-        {
-            .binding = 1,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &albedoInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        },
-        {
-            .binding = 2,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &normalInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        },
-        {
-            .binding = 3,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &paramsInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        },
-        {
-            .binding = 4,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &depthInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        }
-    };
-
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        VkDescriptorImageInfo albedoInfo = {
+            .sampler = m_gBufferSampler,
+            .imageView = m_albedoTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        VkDescriptorImageInfo normalInfo = {
+            .sampler = m_gBufferSampler,
+            .imageView = m_normalTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        VkDescriptorImageInfo paramsInfo = {
+            .sampler = m_gBufferSampler,
+            .imageView = m_paramTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        VkDescriptorImageInfo depthInfo = {
+            .sampler = m_depthSampler,
+            .imageView = m_depthTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        };
+
+        std::vector<MainDescriptorManager::DescriptorUpdateInfo> lightingUpdates = {
+            {
+                .binding = 0,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_frameData[i].bufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            },
+            {
+                .binding = 1,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &albedoInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            },
+            {
+                .binding = 2,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &normalInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            },
+            {
+                .binding = 3,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &paramsInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            },
+            {
+                .binding = 4,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &depthInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            },
+            {
+                .binding = 5,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_frameData[i].omniLightBufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            },
+        };
         m_lightingDescriptorManager->updateDescriptorSet(i, lightingUpdates);
     }
 }
@@ -459,6 +472,33 @@ void MainSceneTarget::createToneMappingAttachments() {
     m_hdrTexture.image      = h.image;
     m_hdrTexture.allocation = h.allocation;
     m_hdrTexture.view       = h.view;
+}
+
+void MainSceneTarget::updateToneMappingDescriptors() {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        VkDescriptorImageInfo hdrInfo = {
+            .sampler     = m_hdrSampler,
+            .imageView   = m_hdrTexture.view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        std::vector<MainDescriptorManager::DescriptorUpdateInfo> toneUpdates {
+            {
+                .binding         = 0,
+                .type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo       = &hdrInfo,
+                .descriptorCount = 1,
+                .isImage         = true
+            },
+            {
+                .binding         = 1,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_frameData[i].cameraExposureBufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            }
+        };
+        m_toneMappingDescriptorManager->updateDescriptorSet(i, toneUpdates);
+    }
 }
 
 
@@ -785,10 +825,12 @@ void MainSceneTarget::createDescriptors() {
     m_toneMappingDescriptorLayout = toneLayout
         .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     VK_SHADER_STAGE_FRAGMENT_BIT)
+        .addBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .build();
 
     std::vector<VkDescriptorPoolSize> tonePool = {
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT }
     };
     m_toneMappingDescriptorManager = std::make_unique<MainDescriptorManager>(
         m_shared->context->device(),
@@ -838,6 +880,13 @@ void MainSceneTarget::createDescriptors() {
             .offset = 0,
             .range = sizeof(PointLightData)
         };
+
+        m_frameData[i].cameraExposureBufferInfo =
+            {
+            .buffer = m_cameraExposureBuffer.handle(),
+            .offset = 0,
+            .range = sizeof(CameraExposure)
+            };
 
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> gBufferUpdates = {
             {
@@ -944,14 +993,23 @@ void MainSceneTarget::createDescriptors() {
             .imageView   = m_hdrTexture.view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
-        MainDescriptorManager::DescriptorUpdateInfo toneUpdate {
-            .binding         = 0,
-            .type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo       = &hdrInfo,
-            .descriptorCount = 1,
-            .isImage         = true
+        std::vector<MainDescriptorManager::DescriptorUpdateInfo> toneUpdates {
+            {
+                .binding         = 0,
+                .type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo       = &hdrInfo,
+                .descriptorCount = 1,
+                .isImage         = true
+            },
+            {
+                .binding         = 1,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_frameData[i].cameraExposureBufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            }
         };
-        m_toneMappingDescriptorManager->updateDescriptorSet(i, { toneUpdate });
+        m_toneMappingDescriptorManager->updateDescriptorSet(i, toneUpdates);
     }
 }
 
@@ -983,9 +1041,11 @@ void MainSceneTarget::recreateSwapChain() {
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         vkWaitForFences(m_shared->context->device(), 1, &(*m_shared->frames)[i].inFlightFence, VK_TRUE, UINT64_MAX);
     }
-
+    createToneMappingAttachments();
     createGBufferAttachments();
     updateLightingDescriptors();
+    updateToneMappingDescriptors();
+
 
     std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
     std::array<VkImage, MAX_FRAMES_IN_FLIGHT> depthImages;
@@ -1041,7 +1101,14 @@ void MainSceneTarget::cleanup() {
 }
 
 void MainSceneTarget::updateUniformBuffers() const {
-    m_uniformBuffers[*(m_shared->currentFrame)].update(m_shared->context->device(), m_shared->swapChain->extent(), m_shared->camera);
+    UniformBufferObject ubo{};
+    ubo.model = glm::mat4(1.0f);
+    ubo.view  = m_shared->camera->GetViewMatrix();
+    ubo.proj  = m_shared->camera->GetProjectionMatrix(
+        static_cast<float>(m_shared->swapChain->extent().width) / static_cast<float>(m_shared->swapChain->extent().height)
+    );
+    ubo.cameraPosition =m_shared->camera->Position;
+    m_uniformBuffers[*(m_shared->currentFrame)].update(ubo);
 }
 
 void MainSceneTarget::loadModel(const std::string& modelPath) {
@@ -1185,6 +1252,19 @@ void MainSceneTarget::createBuffers() {
         m_shared->allocator,
         omniLightBufferSize
         };
+    PointLightData omniLight{};
+    omniLight.pointLightPosition = glm::vec3( glm::vec4(8.0f, 1.0f, 0.0f, 1.f));
+    omniLight.pointLightIntensity = 1000.f;
+    omniLight.pointLightColor = glm::vec3(0.f, 0.f, 1.f);
+    omniLight.pointLightRadius = 4.f;
+    m_omniLightBuffer.update(omniLight);
 
-    m_omniLightBuffer.updateOmniLight();
+    VkDeviceSize cameraExposureSize = sizeof(CameraExposure);
+    m_cameraExposureBuffer =
+    {
+        m_shared->bufferManager,
+        m_shared->allocator,
+        cameraExposureSize
+    };
+    m_cameraExposureBuffer.update(camExpUBO);
 }

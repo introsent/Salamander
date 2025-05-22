@@ -158,7 +158,7 @@ void main() {
 
     // 1. Directional Light Contribution
     vec3 L_dir = normalize(-vec3(0.577, -0.577, -0.577)); // Direction to light
-    vec3 radiance_dir = vec3(1.0) * 1.0; // Intensity = 1.0 in lux
+    vec3 radiance_dir = vec3(1.0) *  10000.0; // Intensity = 1.0 in lux (already in correct units)
 
     Lo += calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir);
 
@@ -171,9 +171,6 @@ void main() {
 
     Lo += calculatePBRLighting(N, V, L_point, albedo, metallic, roughness, radiance_point);
 
-    // Simple Reinhard tonemapping
-    vec3 color = Lo / (Lo + vec3(1.0));
-
     // Output final color
-    outColor = vec4(color, 1.0);
+    outColor = vec4(Lo, 1.0);
 }
