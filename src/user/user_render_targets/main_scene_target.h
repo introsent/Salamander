@@ -52,6 +52,7 @@ private:
 
     void createToneMappingSampler();
     void createToneMappingAttachments();
+    void updateToneMappingDescriptors();
     void createToneMappingPipeline();
 
     void createRenderingResources();
@@ -89,6 +90,7 @@ private:
     IndexBuffer m_indexBuffer;
     std::vector<UniformBuffer> m_uniformBuffers;
     UniformBuffer m_omniLightBuffer;
+    UniformBuffer m_cameraExposureBuffer;
 
 
     // Framedata
@@ -98,6 +100,7 @@ private:
         std::vector<VkDescriptorImageInfo> materialImageInfos;
         std::vector<VkDescriptorImageInfo> normalImageInfos;
         VkDescriptorBufferInfo omniLightBufferInfo;
+        VkDescriptorBufferInfo cameraExposureBufferInfo;
     };
     std::array<FrameData, MAX_FRAMES_IN_FLIGHT> m_frameData;
 };

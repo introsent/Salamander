@@ -183,7 +183,7 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
 
     ImageTransitionManager::transitionColorAttachment(
         cmd,
-        m_resources.hdrImage,                   // 🛠 new
+        m_resources.hdrImage,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
@@ -191,7 +191,7 @@ void MainSceneExecutor::execute(VkCommandBuffer cmd) {
     // Lighting Pass
     VkRenderingAttachmentInfo hdrColorAttachment = {
         .sType         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView     = m_resources.hdrImageView, // 🛠 new
+        .imageView     = m_resources.hdrImageView,
         .imageLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,

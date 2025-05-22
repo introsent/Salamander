@@ -3,6 +3,8 @@
 #include "buffer_manager.h"
 #include "vk_mem_alloc.h"
 #include <vulkan/vulkan.h>
+
+#include "data_structures.h"
 #include "camera/camera.h"
 
 class UniformBuffer final : public Buffer {
@@ -15,11 +17,10 @@ public:
     UniformBuffer& operator=(const UniformBuffer&) = delete;
     ~UniformBuffer() override;
 
-    // Updates buffer contents and flushes to GPU
-    void update(VkDevice device, VkExtent2D extent, Camera* camera) const;
-
-    void updateOmniLight() const;
-
+    template<typename T>
+    void update(const T& data) const {
+        std::memcpy(mapped, &data, sizeof(T));
+    }
 protected:
     void*               mapped        = nullptr;
     VmaAllocator        allocator     = VK_NULL_HANDLE;

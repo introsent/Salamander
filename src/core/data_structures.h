@@ -66,3 +66,10 @@ struct PointLightData {
     glm::vec3 pointLightColor;
     float pointLightRadius;     // Maximum radius of influence for optimization
 };
+
+inline struct CameraExposure {
+    float aperture;
+    float shutterSpeed;
+    float ISO;
+    float ev100Override;
+} camExpUBO{ 2.8f, 1.0f/60.0f, 100.0f, -1.0f };
