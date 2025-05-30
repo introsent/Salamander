@@ -22,6 +22,9 @@ struct MainSceneGlobalData {
     // Frame data
     struct FrameData {
         VkDescriptorBufferInfo bufferInfo;
+        std::vector<VkDescriptorImageInfo> textureImageInfos;
+        std::vector<VkDescriptorImageInfo> materialImageInfos;
+        std::vector<VkDescriptorImageInfo> normalImageInfos;
         VkDescriptorBufferInfo omniLightBufferInfo;
         VkDescriptorBufferInfo cameraExposureBufferInfo;
     };
