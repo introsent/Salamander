@@ -140,6 +140,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_render_targets/gbuffer_pass.h
         src/user/user_render_targets/lighting_pass.cpp
         src/user/user_render_targets/lighting_pass.h
+        src/user/user_render_targets/tone_mapping_pass.cpp
+        src/user/user_render_targets/tone_mapping_pass.h
 )
 
 # Add ImGui source files with proper includes and links
