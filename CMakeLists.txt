@@ -138,6 +138,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_render_targets/depth_prepass.h
         src/user/user_render_targets/gbuffer_pass.cpp
         src/user/user_render_targets/gbuffer_pass.h
+        src/user/user_render_targets/lighting_pass.cpp
+        src/user/user_render_targets/lighting_pass.h
 )
 
 # Add ImGui source files with proper includes and links
