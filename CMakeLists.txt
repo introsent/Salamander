@@ -134,6 +134,8 @@ set(${PROJECT_NAME}_SOURCES
     src/rendering/camera/camera.h
         src/resources/loaders/gltf_loader.cpp
         src/resources/loaders/gltf_loader.h
+        src/user/user_render_targets/depth_prepass.cpp
+        src/user/user_render_targets/depth_prepass.h
 )
 
 # Add ImGui source files with proper includes and links

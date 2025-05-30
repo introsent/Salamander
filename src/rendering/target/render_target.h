@@ -2,7 +2,6 @@
 #include "context.h"
 #include "swap_chain.h"
 #include "window.h"
-#include "render_pass.h"
 #include "command_manager.h"
 #include "buffer_manager.h"
 #include "data_structures.h"
