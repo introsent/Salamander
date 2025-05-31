@@ -39,7 +39,7 @@ void MainSceneController::recreateSwapChain() {
         vkWaitForFences(m_shared->context->device(), 1,
                         &(*m_shared->frames)[i].inFlightFence, VK_TRUE, UINT64_MAX);
     }
-
+    m_depthPrepass.recreateSwapChain();
     m_gBufferPass.recreateSwapChain();
     m_lightingPass.recreateSwapChain();
     m_toneMappingPass.recreateSwapChain();
