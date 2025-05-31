@@ -121,8 +121,8 @@ set(${PROJECT_NAME}_SOURCES
     src/user/user_descriptor_managers/imgui_descriptor_manager.cpp
     src/user/user_descriptor_managers/imgui_descriptor_manager.h
     src/rendering/target/render_target.h
-    src/user/user_render_targets/main_scene_target.cpp
-    src/user/user_render_targets/main_scene_target.h
+        src/user/user_render_targets/main_scene_target.cpp
+        src/user/user_render_targets/main_scene_target.h
     src/user/user_render_targets/imgui_target.cpp
     src/user/user_render_targets/imgui_target.h
     src/user/user_executors/main_scene_executor.cpp
@@ -134,14 +134,16 @@ set(${PROJECT_NAME}_SOURCES
     src/rendering/camera/camera.h
         src/resources/loaders/gltf_loader.cpp
         src/resources/loaders/gltf_loader.h
-        src/user/user_render_targets/depth_prepass.cpp
-        src/user/user_render_targets/depth_prepass.h
-        src/user/user_render_targets/gbuffer_pass.cpp
-        src/user/user_render_targets/gbuffer_pass.h
-        src/user/user_render_targets/lighting_pass.cpp
-        src/user/user_render_targets/lighting_pass.h
-        src/user/user_render_targets/tone_mapping_pass.cpp
-        src/user/user_render_targets/tone_mapping_pass.h
+        src/user/user_passes/depth_prepass.cpp
+        src/user/user_passes/depth_prepass.h
+        src/user/user_passes/gbuffer_pass.cpp
+        src/user/user_passes/gbuffer_pass.h
+        src/user/user_passes/lighting_pass.cpp
+        src/user/user_passes/lighting_pass.h
+        src/user/user_passes/tone_mapping_pass.cpp
+        src/user/user_passes/tone_mapping_pass.h
+        src/user/user_render_targets/main_scene_controller.cpp
+        src/user/user_render_targets/main_scene_controller.h
 )
 
 # Add ImGui source files with proper includes and links

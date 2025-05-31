@@ -1,4 +1,4 @@
-﻿#include "lighting_pass.h"
+﻿#include "../user_passes/lighting_pass.h"
 
 #include "config.h"
 #include "pipeline.h"
@@ -56,7 +56,6 @@ void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
     
     vkCmdBeginRendering(cmd, &renderInfo);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->handle());
-    
     // Set dynamic viewport/scissor
     VkViewport viewport = {
         0.0f, 0.0f,
@@ -65,10 +64,9 @@ void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
         0.0f, 1.0f
     };
     vkCmdSetViewport(cmd, 0, 1, &viewport);
-    
     VkRect2D scissor = {{0, 0}, m_shared->swapChain->extent()};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
-    
+    vkCmdBindIndexBuffer(cmd, m_globalData->indexBuffer.handle(), 0, VK_INDEX_TYPE_UINT32);
     // Bind descriptor set
     vkCmdBindDescriptorSets(
         cmd, 
@@ -91,9 +89,6 @@ void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
-    
-    // Update dependencies
-    m_dependencies->hdrTexture = &m_hdrTexture;
 }
 
 void LightingPass::createPipeline() {
@@ -151,7 +146,10 @@ void LightingPass::createPipeline() {
     config.depthStencil = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = VK_FALSE,
-        .depthWriteEnable = VK_FALSE
+        .depthWriteEnable = VK_FALSE,
+        .depthCompareOp = VK_COMPARE_OP_EQUAL,
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable = VK_FALSE
     };
     
     config.colorBlendAttachments = {blendAttachment};
@@ -192,6 +190,8 @@ void LightingPass::createAttachments() {
         VK_IMAGE_ASPECT_COLOR_BIT,
         true
     );
+
+    m_dependencies->hdrTexture = &m_hdrTexture;
 }
 
 void LightingPass::createDescriptors() {

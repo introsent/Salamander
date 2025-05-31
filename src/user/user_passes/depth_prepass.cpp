@@ -1,7 +1,8 @@
-﻿#include "depth_prepass.h"
+﻿#include "../user_passes/depth_prepass.h"
 
 #include "config.h"
 #include "depth_format.h"
+#include "image_transition_manager.h"
 #include "pipeline.h"
 #include "descriptors/descriptor_set_layout_builder.h"
 #include "loaders/gltf_loader.h"
@@ -28,15 +29,25 @@ void DepthPrepass::recreateSwapChain() {
 }
 
 void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
+    auto& depthTexture = *m_dependencies->perFrameDepthTextures[frameIndex];
+
+    // Transition to optimal layout for rendering
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        depthTexture.image,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    );
+
     VkRenderingAttachmentInfo depthAttachment = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = (*m_shared->frames)[frameIndex].depthTexture.view,
+        .imageView = depthTexture.view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .clearValue = {.depthStencil = {1.0f, 0}}
     };
-    
+
     VkRenderingInfo renderInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea = {{0, 0}, m_shared->swapChain->extent()},
@@ -94,9 +105,65 @@ void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
     }
     
     vkCmdEndRendering(cmd);
-    
+
     // Update layout tracking
     m_dependencies->depthLayouts[frameIndex] = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    ImageTransitionManager::transitionDepthAttachment(
+           cmd,
+           m_dependencies->perFrameDepthTextures[frameIndex]->image,
+           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+           VK_IMAGE_LAYOUT_GENERAL
+       );
+
+    m_dependencies->depthLayouts[frameIndex] = VK_IMAGE_LAYOUT_GENERAL;
+
+    // Transition the destination to TRANSFER_DST_OPTIMAL
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        m_dependencies->depthTexture->image,
+        VK_IMAGE_LAYOUT_UNDEFINED,  // First use in this frame
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
+
+    // Copy depth from framebuffer depth to our sampling depth texture
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    copyRegion.srcSubresource.mipLevel = 0;
+    copyRegion.srcSubresource.baseArrayLayer = 0;
+    copyRegion.srcSubresource.layerCount = 1;
+    copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    copyRegion.dstSubresource.mipLevel = 0;
+    copyRegion.dstSubresource.baseArrayLayer = 0;
+    copyRegion.dstSubresource.layerCount = 1;
+    copyRegion.extent = {m_shared->swapChain->extent().width, m_shared->swapChain->extent().height, 1};
+
+    vkCmdCopyImage(
+        cmd,
+        m_dependencies->perFrameDepthTextures[frameIndex]->image,
+        VK_IMAGE_LAYOUT_GENERAL,  // GENERAL layout supports transfer source operations
+        m_dependencies->depthTexture->image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &copyRegion
+    );
+
+    // Transition the depth texture to shader read-only optimal for sampling
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        m_dependencies->depthTexture->image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+    );
+
+    ImageTransitionManager::transitionDepthAttachment(
+       cmd,
+       m_dependencies->perFrameDepthTextures[frameIndex]->image,
+       VK_IMAGE_LAYOUT_GENERAL,
+       VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+   );
+    m_dependencies->depthLayouts[frameIndex] = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
 }
 
 void DepthPrepass::createPipeline() {
@@ -175,24 +242,36 @@ void DepthPrepass::createPipeline() {
 }
 
 void DepthPrepass::createDescriptors() {
-    // Descriptor layout (only uniform buffer)
+    // Descriptor layout (matches original)
     DescriptorSetLayoutBuilder layoutBuilder(m_shared->context->device());
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+        .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+                   static_cast<uint32_t>(m_globalData->modelTextures.size()))
+        .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+                   static_cast<uint32_t>(m_globalData->normalTextures.size()))
+        .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+                   static_cast<uint32_t>(m_globalData->materialTextures.size()))
         .build();
-    
-    // Descriptor pool and sets
+
+    // Descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+         static_cast<uint32_t>(m_globalData->modelTextures.size() * MAX_FRAMES_IN_FLIGHT)},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+         static_cast<uint32_t>(m_globalData->normalTextures.size() * MAX_FRAMES_IN_FLIGHT)},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+         static_cast<uint32_t>(m_globalData->materialTextures.size() * MAX_FRAMES_IN_FLIGHT)}
     };
-    
+
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
         m_shared->context->device(),
         m_descriptorLayout->handle(),
         poolSizes,
         MAX_FRAMES_IN_FLIGHT
     );
-    
+
     // Update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
@@ -202,6 +281,27 @@ void DepthPrepass::createDescriptors() {
                 .bufferInfo = &m_globalData->frameData[i].bufferInfo,
                 .descriptorCount = 1,
                 .isImage = false
+            },
+            {
+                .binding = 1,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = m_globalData->frameData[i].textureImageInfos.data(),
+                .descriptorCount = static_cast<uint32_t>(m_globalData->modelTextures.size()),
+                .isImage = true
+            },
+            {
+                .binding = 2,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = m_globalData->frameData[i].normalImageInfos.data(),
+                .descriptorCount = static_cast<uint32_t>(m_globalData->normalTextures.size()),
+                .isImage = true
+            },
+            {
+                .binding = 5,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = m_globalData->frameData[i].materialImageInfos.data(),
+                .descriptorCount = static_cast<uint32_t>(m_globalData->materialTextures.size()),
+                .isImage = true
             }
         };
         m_descriptorManager->updateDescriptorSet(i, updates);

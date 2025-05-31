@@ -5,6 +5,8 @@
 #include "descriptors/descriptor_set_layout_builder.h"
 #include "image_transition_manager.h"
 #include "loaders/gltf_loader.h"
+#include "shared/scene_data.h"
+#include "target/render_target.h"
 
 void GBufferPass::initialize(const RenderTarget::SharedResources& shared,
                              MainSceneGlobalData& globalData,
@@ -148,11 +150,7 @@ void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
     ImageTransitionManager::transitionToShaderRead(
         cmd, m_paramTexture.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
-    
-    // Update dependencies
-    m_dependencies->albedoTexture = &m_albedoTexture;
-    m_dependencies->normalTexture = &m_normalTexture;
-    m_dependencies->paramTexture = &m_paramTexture;
+
 }
 
 void GBufferPass::createPipeline() {
@@ -286,6 +284,26 @@ void GBufferPass::createAttachments() {
         VK_IMAGE_ASPECT_COLOR_BIT,
         true
     );
+
+    VkImageUsageFlags depthUsage =
+           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+           VK_IMAGE_USAGE_SAMPLED_BIT |
+           VK_IMAGE_USAGE_TRANSFER_DST_BIT;  // Allow for transitions
+
+    m_depthTexture = m_shared->textureManager->createTexture(
+        extent.width, extent.height,
+        VK_FORMAT_D32_SFLOAT,
+        depthUsage,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        VK_IMAGE_ASPECT_DEPTH_BIT,
+        false
+    );
+
+    // Update dependencies
+    m_dependencies->albedoTexture = &m_albedoTexture;
+    m_dependencies->normalTexture = &m_normalTexture;
+    m_dependencies->paramTexture = &m_paramTexture;
+    m_dependencies->depthTexture = &m_depthTexture;
 }
 
 void GBufferPass::createDescriptors() {
@@ -318,7 +336,7 @@ void GBufferPass::createDescriptors() {
         poolSizes,
         MAX_FRAMES_IN_FLIGHT
     );
-    
+
     // Update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
