@@ -37,10 +37,20 @@ public:
         const std::string& filepath,
         VkFormat           format     = VK_FORMAT_R8G8B8A8_SRGB
     );
+    ManagedTexture& loadHDRTexture(const std::string& path);
+
     ManagedTexture& createTexture(uint32_t width, uint32_t height, VkFormat format,
         VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
         VkImageAspectFlags aspect, bool createSampler = false);
     ManagedTexture& createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels);
+
+    ManagedTexture& createCubeTexture(uint32_t size, VkFormat format,
+                                     VkImageUsageFlags usage, VmaMemoryUsage memoryUsage);
+    void createImage(uint32_t width, uint32_t height, VkFormat format,
+                                 VkImageTiling tiling, VkImageUsageFlags usage,
+                                 VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation,
+                                 uint32_t layers, VkImageCreateFlags flags) const;
+
 
     void transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image,
     VkImageLayout oldLayout, VkImageLayout newLayout,

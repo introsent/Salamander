@@ -125,9 +125,7 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_render_targets/main_scene_target.h
     src/user/user_render_targets/imgui_target.cpp
     src/user/user_render_targets/imgui_target.h
-    src/user/user_executors/main_scene_executor.cpp
-    src/user/user_executors/main_scene_executor.h
-    src/rendering/image_transition_manager.h
+        src/rendering/image_transition_manager.h
     src/resources/ssbo_buffer.cpp
     src/resources/ssbo_buffer.h
     src/rendering/camera/camera.cpp
@@ -144,6 +142,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_passes/tone_mapping_pass.h
         src/user/user_render_targets/main_scene_controller.cpp
         src/user/user_render_targets/main_scene_controller.h
+        src/user/user_render_targets/cube_map_renderer.cpp
+        src/user/user_render_targets/cube_map_renderer.h
 )
 
 # Add ImGui source files with proper includes and links
