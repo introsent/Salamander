@@ -19,32 +19,32 @@ void CubeMapRenderer::cleanup() {
 }
 
 void CubeMapRenderer::createCubeVertexData() {
-    // Cube vertices (positions only) - 24 vertices (4 per face)
     const std::vector<glm::vec3> cubeVertices = {
         // +X face
-        {1.0f, -1.0f, -1.0f}, {1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, -1.0f}, {1.0f, -1.0f, -1.0f},
+        {1, -1, -1}, {1, -1,  1}, {1,  1,  1},
+        {1,  1,  1}, {1,  1, -1}, {1, -1, -1},
 
         // -X face
-        {-1.0f, -1.0f, 1.0f}, {-1.0f, -1.0f, -1.0f}, {-1.0f, 1.0f, -1.0f},
-        {-1.0f, 1.0f, -1.0f}, {-1.0f, 1.0f, 1.0f}, {-1.0f, -1.0f, 1.0f},
+        {-1, -1,  1}, {-1, -1, -1}, {-1,  1, -1},
+        {-1,  1, -1}, {-1,  1,  1}, {-1, -1,  1},
 
         // +Y face
-        {-1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f}, {-1.0f, 1.0f, 1.0f}, {-1.0f, 1.0f, -1.0f},
+        {-1, 1, -1}, {1, 1, -1}, {1, 1, 1},
+        {1, 1, 1}, {-1, 1, 1}, {-1, 1, -1},
 
         // -Y face
-        {-1.0f, -1.0f, 1.0f}, {1.0f, -1.0f, 1.0f}, {1.0f, -1.0f, -1.0f},
-        {1.0f, -1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}, {-1.0f, -1.0f, 1.0f},
+        {-1, -1, 1}, {1, -1, 1}, {1, -1, -1},
+        {1, -1, -1}, {-1, -1, -1}, {-1, -1, 1},
 
         // +Z face
-        {-1.0f, -1.0f, 1.0f}, {-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f}, {1.0f, -1.0f, 1.0f}, {-1.0f, -1.0f, 1.0f},
+        {-1, -1, 1}, {-1, 1, 1}, {1, 1, 1},
+        {1, 1, 1}, {1, -1, 1}, {-1, -1, 1},
 
         // -Z face
-        {1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, -1.0f}, {-1.0f, 1.0f, -1.0f},
-        {-1.0f, 1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}, {1.0f, -1.0f, -1.0f}
+        {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
+        {-1, 1, -1}, {-1, -1, -1}, {1, -1, -1}
     };
+
 
     VkDeviceSize bufferSize = sizeof(glm::vec3) * cubeVertices.size();
 
@@ -184,8 +184,8 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
         // +X, -X, +Y, -Y, +Z, -Z
         glm::lookAt(glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
         glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
         glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
         glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
         glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))
     };
