@@ -28,13 +28,13 @@ void ToneMappingPass::recreateSwapChain() {
     // No swapchain-dependent resources
 }
 
-void ToneMappingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
+void ToneMappingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
     VkImage swapImage = m_shared->swapChain->getCurrentImage(frameIndex);
 
     // ─── Set up your color attachment for tone mapping ───
     VkRenderingAttachmentInfo colorAttachment = {
         .sType         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView     = m_shared->swapChain->imagesViews()[frameIndex],
+        .imageView     = m_shared->swapChain->imagesViews()[imageIndex],
         .imageLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -92,14 +92,6 @@ void ToneMappingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
       // fullscreen triangle
       vkCmdDraw(cmd, 3, 1, 0, 0);
     vkCmdEndRendering(cmd);
-
-    // ─── Finally transition INTO PRESENT_SRC_KHR ───
-    ImageTransitionManager::transitionToPresent(
-        cmd,
-        swapImage,
-        m_currentColorLayouts[frameIndex],
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    );
 }
 
 void ToneMappingPass::createPipeline() {

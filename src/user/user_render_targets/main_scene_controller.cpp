@@ -46,33 +46,32 @@ void MainSceneController::recreateSwapChain() {
 }
 
 void MainSceneController::render(VkCommandBuffer cmd, uint32_t imageIndex) {
-    // Transition per-frame depth image to initial layout
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        ImageTransitionManager::transitionDepthAttachment(
-            cmd,
-            m_dependencies.perFrameDepthTextures[i]->image,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        );
-    }
-
-    // Transition swapchain images to initial layout
-    for (auto& image : m_shared->swapChain->images()) {
-        ImageTransitionManager::transitionColorAttachment(
-            cmd,
-            image,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-        );
-    }
 
     updateUniformBuffers();
 
+    // Transition swapchain images to initial layout
+    ImageTransitionManager::transitionColorAttachment(
+        cmd,
+        m_shared->swapChain->getCurrentImage(imageIndex),
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    );
+
     // Execute passes in rendering order
-    m_depthPrepass.execute(cmd, *m_shared->currentFrame);
-    m_gBufferPass.execute(cmd, *m_shared->currentFrame);
-    m_lightingPass.execute(cmd, *m_shared->currentFrame);
-    m_toneMappingPass.execute(cmd, *m_shared->currentFrame);
+    m_depthPrepass.execute(cmd, *m_shared->currentFrame, imageIndex);
+    m_gBufferPass.execute(cmd, *m_shared->currentFrame, imageIndex);
+    m_lightingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
+    m_toneMappingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
+
+
+    // ─── Finally transition INTO PRESENT_SRC_KHR ───
+    ImageTransitionManager::transitionToPresent(
+        cmd,
+        m_shared->swapChain->getCurrentImage(imageIndex),
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    );
+
 }
 
 void MainSceneController::updateUniformBuffers() const {

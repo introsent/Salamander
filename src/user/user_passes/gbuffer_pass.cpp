@@ -31,7 +31,7 @@ void GBufferPass::recreateSwapChain() {
     createAttachments();
 }
 
-void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
+void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
     // Transition attachments
     ImageTransitionManager::transitionColorAttachment(
         cmd, m_albedoTexture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL

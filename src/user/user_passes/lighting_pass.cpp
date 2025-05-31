@@ -27,7 +27,7 @@ void LightingPass::recreateSwapChain() {
     createAttachments();
 }
 
-void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
+void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
     // Transition HDR texture
     ImageTransitionManager::transitionColorAttachment(
         cmd, m_hdrTexture.image, 
