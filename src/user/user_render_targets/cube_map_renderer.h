@@ -17,13 +17,11 @@ struct CubeMapPushConstants {
     uint64_t vertexBufferAddress;  // For vertex pulling
     glm::mat4 viewProj;            // View-projection matrix
     uint32_t faceIndex;            // Current face being rendered
-    uint32_t _padding;             // Padding for alignment
 };
 
 class CubeMapRenderer {
 public:
-    CubeMapRenderer(Context* context, BufferManager* bufferManager, TextureManager* textureManager);
-    void initialize();
+    void initialize(Context* context, BufferManager* bufferManager, TextureManager* textureManager);
     void cleanup();
 
     struct CubeMap {
@@ -52,4 +50,5 @@ private:
 
     ManagedBuffer m_cubeVertexBuffer;
     uint64_t m_vertexBufferAddress = 0;
+    VkSampler m_equirectSampler;
 };

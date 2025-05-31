@@ -24,9 +24,9 @@ void MainSceneController::initialize(const RenderTarget::SharedResources& shared
     m_lightingPass.initialize(shared, m_globalData, m_dependencies);
     m_toneMappingPass.initialize(shared, m_globalData, m_dependencies);
 
-    m_cubeMapRenderer = {m_shared->context,
+    m_cubeMapRenderer.initialize(m_shared->context,
                               m_shared->bufferManager,
-                              m_shared->textureManager};
+                              m_shared->textureManager);
     createIBLResources();
 }
 
@@ -385,10 +385,11 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
 
 void MainSceneController::createIBLResources() {
     // Load HDR
-    m_hdrEquirect = m_shared->textureManager->loadHDRTexture("path/to/hdr.hdr");
+    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/circus_arena.hdr");
 
     // Create environment cube map
     m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R32G32B32A32_SFLOAT);
+
 
     // Convert equirect to cube
     VkCommandBuffer cmd = m_shared->commandManager->beginSingleTimeCommands();

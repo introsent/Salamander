@@ -1,6 +1,8 @@
 #version 450
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
 
-layout(push_constant) uniform PushConstants {
+layout(push_constant, scalar) uniform PushConstants {
     uint64_t vertexBufferAddress;
     mat4 viewProj;
     uint faceIndex;
@@ -8,6 +10,7 @@ layout(push_constant) uniform PushConstants {
 
 layout(binding = 0) uniform sampler2D equirectTexture;
 
+layout(location = 0) in vec3 fragLocalPosition;
 layout(location = 0) out vec4 outColor;
 
 const vec2 invAtan = vec2(0.1591, 0.3183); // 1/(2*PI), 1/PI
@@ -20,12 +23,9 @@ vec2 sampleSphericalMap(vec3 v) {
 }
 
 void main() {
-    // Reconstruct world position from clip space
-    vec4 worldPos = inverse(pc.viewProj) * vec4(gl_FragCoord.xy, 0.0, 1.0);
-    worldPos.xyz /= worldPos.w;
-    vec3 dir = normalize(worldPos.xyz);
+    vec3 direction = normalize(fragLocalPosition);
 
-    // Convert direction to spherical coordinates
-    vec2 uv = sampleSphericalMap(dir);
+    direction = vec3(direction.z, direction.y, -direction.x);
+    vec2 uv = sampleSphericalMap(direction);
     outColor = texture(equirectTexture, uv);
 }

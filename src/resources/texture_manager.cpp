@@ -7,13 +7,14 @@
 #include <stdexcept>
 #include "deletion_queue.h"
 
+static int imageID = 0;
 // Define and initialize static member
 int TextureManager::samplerIndex = 0;
 
 TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
-                             CommandManager* commandManager, BufferManager* bufferManager)
+                             CommandManager* commandManager, BufferManager* bufferManager, DebugMessenger* debugMessenger)
     : m_device(device), m_allocator(allocator),
-      m_commandManager(commandManager), m_bufferManager(bufferManager)
+      m_commandManager(commandManager), m_bufferManager(bufferManager), m_debugMessenger(debugMessenger)
 {
 }
 
@@ -236,6 +237,12 @@ ManagedTexture& TextureManager::createCubeTexture(uint32_t size, VkFormat format
     // Don't create view here - we'll create face views separately
     texture.view = VK_NULL_HANDLE;
 
+    m_debugMessenger->setObjectName(
+    reinterpret_cast<uint64_t>(texture.image),
+    VK_OBJECT_TYPE_IMAGE,
+    "CubeMap_Image"
+);
+
     m_managedTextures.push_back(texture);
     return m_managedTextures.back();
 }
@@ -270,7 +277,7 @@ void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat forma
     VkImage       imageCopy = image;
     VmaAllocation allocHandle = allocation;
 
-    static int imageID = 0;
+
     DeletionQueue::get().pushFunction("Image_" + std::to_string(imageID++),
         [allocCopy, imageCopy, allocHandle]() {
             vmaDestroyImage(allocCopy, imageCopy, allocHandle);
@@ -340,7 +347,7 @@ void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat forma
     VkImage       imageCopy = image;
     VmaAllocation allocHandle = allocation;
 
-    static int imageID = 0;
+
     DeletionQueue::get().pushFunction("Image_" + std::to_string(imageID++),[allocCopy, imageCopy, allocHandle]() {
         vmaDestroyImage(allocCopy, imageCopy, allocHandle);
         });

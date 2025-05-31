@@ -105,13 +105,26 @@ bool Context::isDeviceSuitable(VkPhysicalDevice device) const {
            swapChainAdequate;
 }
 
-std::vector<const char*> Context::getRequiredExtensions(bool enableValidation) {
+std::vector<const char*> Context::getRequiredInstanceExtensions(bool enableValidation) {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = nullptr;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
     if (enableValidation) {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+    return extensions;
+}
+
+std::vector<const char*> Context::getRequiredDeviceExtensions(bool enableDebugUtils) {
+    std::vector<const char*> extensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        // …any other device extensions (e.g. ray tracing, portability, etc.)
+    };
+
+    if (enableDebugUtils) {
+        // This is what actually allows vkGetDeviceProcAddr(m_device, "vkSetDebugUtilsObjectNameEXT") to return non-null.
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
     return extensions;
@@ -128,6 +141,7 @@ Context::Context(Window* window, bool enableValidation)
     createSurface(window);
     selectPhysicalDevice();
     createLogicalDevice();
+    m_debugMessenger->setupDeviceFunctions(m_device);
 }
 
 // cleans up all Vulkan resources
@@ -150,7 +164,7 @@ void Context::createInstance() {
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_3;
 
-    auto extensions = getRequiredExtensions(m_enableValidation);
+    auto extensions = getRequiredInstanceExtensions(m_enableValidation);
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -279,6 +293,7 @@ void Context::createLogicalDevice() {
     features12.pNext = &features13;     // 1.2-> 1.3
     deviceFeatures2.pNext = &features12; // Base -> 1.2 -> 1.3
 
+
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
@@ -293,6 +308,7 @@ void Context::createLogicalDevice() {
     } else {
         createInfo.enabledLayerCount = 0;
     }
+
 
     if (vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create logical device!");
