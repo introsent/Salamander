@@ -11,7 +11,7 @@ public:
                    PassDependencies& dependencies) override;
     void cleanup() override;
     void recreateSwapChain() override;
-    void execute(VkCommandBuffer cmd, uint32_t imageIndex) override;
+    void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) override;
 
 private:
     void createPipeline();

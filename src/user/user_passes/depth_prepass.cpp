@@ -28,8 +28,16 @@ void DepthPrepass::recreateSwapChain() {
     // No swapchain-dependent resources in depth prepass
 }
 
-void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex) {
+void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
     auto& depthTexture = *m_dependencies->perFrameDepthTextures[frameIndex];
+
+    // Transition per-frame depth image to initial layout
+    ImageTransitionManager::transitionDepthAttachment(
+        cmd,
+        depthTexture.image,
+        m_dependencies->depthLayouts[*m_shared->currentFrame],
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    );
 
     // Transition to optimal layout for rendering
     ImageTransitionManager::transitionDepthAttachment(

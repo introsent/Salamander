@@ -11,5 +11,5 @@ public:
                            PassDependencies& dependencies) = 0;
     virtual void cleanup() = 0;
     virtual void recreateSwapChain() = 0;
-    virtual void execute(VkCommandBuffer cmd, uint32_t imageIndex) = 0;
+    virtual void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) = 0;
 };
