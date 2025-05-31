@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "config.h"
+#include "cube_map_renderer.h"
 #include "user_passes/depth_prepass.h"
 #include "user_passes/gbuffer_pass.h"
 #include "user_passes/lighting_pass.h"
@@ -20,6 +21,7 @@ private:
     void loadModel(const std::string& path);
     void createBuffers();
     uint32_t createDefaultMaterialTexture(float metallicFactor, float roughnessFactor);
+    void createIBLResources();
 
     // Passes
     DepthPrepass m_depthPrepass;
@@ -31,6 +33,10 @@ private:
     MainSceneGlobalData m_globalData;
     PassDependencies m_dependencies;
     const RenderTarget::SharedResources* m_shared = nullptr;
+
+    CubeMapRenderer m_cubeMapRenderer;
+    CubeMapRenderer::CubeMap m_envCubeMap;
+    ManagedTexture m_hdrEquirect;
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";

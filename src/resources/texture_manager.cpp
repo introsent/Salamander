@@ -80,8 +80,63 @@ ManagedTexture& TextureManager::loadTexture(
     return m_managedTextures.back();
 }
 
+ManagedTexture& TextureManager::loadHDRTexture(const std::string& path) {
+    int width, height, channels;
+    float* pixels = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    if (!pixels) {
+        throw std::runtime_error("Failed to load HDR image: " + path);
+    }
+
+    VkDeviceSize imageSize = width * height * 4 * sizeof(float);
+
+    ManagedBuffer staging = m_bufferManager->createBuffer(
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU
+    );
+
+    void* data;
+    vmaMapMemory(m_allocator, staging.allocation, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vmaUnmapMemory(m_allocator, staging.allocation);
+    stbi_image_free(pixels);
+
+    ManagedTexture texture;
+    VkFormat format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    createImage(
+        width, height,
+        format,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        texture.image, texture.allocation
+    );
+
+    transitionImageLayout(
+        texture.image, format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
+    copyBufferToImage(staging.buffer, texture.image, width, height);
+    transitionImageLayout(
+        texture.image, format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+
+    texture.view = createImageView(
+        texture.image,
+        format,
+        VK_IMAGE_ASPECT_COLOR_BIT
+    );
+    texture.sampler = createSampler();
+
+    m_managedTextures.push_back(texture);
+    return m_managedTextures.back();
+}
+
 ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, VkFormat format,
-    VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler)
+                                              VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler)
 {
     ManagedTexture texture;
 
@@ -154,6 +209,72 @@ ManagedTexture& TextureManager::createTexture(const unsigned char* data, uint32_
     // Add to managed textures
     m_managedTextures.push_back(texture);
     return m_managedTextures.back();
+}
+
+ManagedTexture& TextureManager::createCubeTexture(uint32_t size, VkFormat format,
+                                                VkImageUsageFlags usage, VmaMemoryUsage memoryUsage)
+{
+    ManagedTexture texture;
+    createImage(
+        size, size, format,
+        VK_IMAGE_TILING_OPTIMAL,
+        usage,
+        memoryUsage,
+        texture.image, texture.allocation,
+        6,  // layers for cube map
+        VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT  // cube map flag
+    );
+
+    texture.width = size;
+    texture.height = size;
+    texture.format = format;
+    texture.usage = usage;
+    texture.memoryUsage = memoryUsage;
+    texture.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    texture.hasSampler = false; // We'll create sampler later
+
+    // Don't create view here - we'll create face views separately
+    texture.view = VK_NULL_HANDLE;
+
+    m_managedTextures.push_back(texture);
+    return m_managedTextures.back();
+}
+
+void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat format,
+                                 VkImageTiling tiling, VkImageUsageFlags usage,
+                                 VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation,
+                                 uint32_t layers, VkImageCreateFlags flags) const  // Add layers and flags
+{
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.flags = flags;  // Add flags
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent = { width, height, 1 };
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = layers;  // Use layers
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = usage;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo allocInfo{};
+    allocInfo.usage = memoryUsage;
+
+    if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create Vulkan image!");
+    }
+
+    VmaAllocator allocCopy = m_allocator;
+    VkImage       imageCopy = image;
+    VmaAllocation allocHandle = allocation;
+
+    static int imageID = 0;
+    DeletionQueue::get().pushFunction("Image_" + std::to_string(imageID++),
+        [allocCopy, imageCopy, allocHandle]() {
+            vmaDestroyImage(allocCopy, imageCopy, allocHandle);
+        });
 }
 
 void TextureManager::transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout,

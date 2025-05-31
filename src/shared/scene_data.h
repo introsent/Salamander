@@ -38,6 +38,8 @@ struct PassDependencies {
     ManagedTexture* normalTexture;
     ManagedTexture* paramTexture;
     ManagedTexture* hdrTexture;
+    ManagedTexture* equirectTexture;
+    ManagedTexture* cubeMap;
 
     // Layout tracking
     std::array<VkImageLayout, MAX_FRAMES_IN_FLIGHT> depthLayouts;

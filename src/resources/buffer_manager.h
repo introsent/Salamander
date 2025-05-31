@@ -23,7 +23,7 @@ public:
    
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const;
     
-
+    VmaAllocator allocator() const { return m_allocator; }
 private:
     void cleanup();
 

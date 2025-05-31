@@ -23,6 +23,11 @@ void MainSceneController::initialize(const RenderTarget::SharedResources& shared
     m_gBufferPass.initialize(shared, m_globalData, m_dependencies);
     m_lightingPass.initialize(shared, m_globalData, m_dependencies);
     m_toneMappingPass.initialize(shared, m_globalData, m_dependencies);
+
+    m_cubeMapRenderer = {m_shared->context,
+                              m_shared->bufferManager,
+                              m_shared->textureManager};
+    createIBLResources();
 }
 
 void MainSceneController::cleanup() {
@@ -376,4 +381,21 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
     ManagedTexture tex = m_shared->textureManager->createTexture(data, 1, 1, 4);
     m_globalData.materialTextures.push_back(tex);
     return static_cast<uint32_t>(m_globalData.materialTextures.size() - 1);
+}
+
+void MainSceneController::createIBLResources() {
+    // Load HDR
+    m_hdrEquirect = m_shared->textureManager->loadHDRTexture("path/to/hdr.hdr");
+
+    // Create environment cube map
+    m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R32G32B32A32_SFLOAT);
+
+    // Convert equirect to cube
+    VkCommandBuffer cmd = m_shared->commandManager->beginSingleTimeCommands();
+    m_cubeMapRenderer.renderEquirectToCube(cmd, m_hdrEquirect, m_envCubeMap);
+    m_shared->commandManager->endSingleTimeCommands(cmd);
+
+    // Set in dependencies
+    m_dependencies.equirectTexture = &m_hdrEquirect;
+    m_dependencies.cubeMap = &m_envCubeMap.texture;
 }
