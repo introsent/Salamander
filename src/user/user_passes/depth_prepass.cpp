@@ -25,31 +25,24 @@ void DepthPrepass::cleanup() {
 }
 
 void DepthPrepass::recreateSwapChain() {
-    // No swapchain-dependent resources in depth prepass
+    for (auto& layout : m_dependencies->depthLayouts) {
+        layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
 }
 
 void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
-    auto& depthTexture = *m_dependencies->perFrameDepthTextures[frameIndex];
 
     // Transition per-frame depth image to initial layout
     ImageTransitionManager::transitionDepthAttachment(
         cmd,
-        depthTexture.image,
+        m_dependencies->perFrameDepthTextures[frameIndex]->image,
         m_dependencies->depthLayouts[*m_shared->currentFrame],
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    );
-
-    // Transition to optimal layout for rendering
-    ImageTransitionManager::transitionDepthAttachment(
-        cmd,
-        depthTexture.image,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     );
 
     VkRenderingAttachmentInfo depthAttachment = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = depthTexture.view,
+        .imageView = m_dependencies->perFrameDepthTextures[frameIndex]->view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,

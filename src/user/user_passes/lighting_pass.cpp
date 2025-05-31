@@ -25,6 +25,7 @@ void LightingPass::cleanup() {
 
 void LightingPass::recreateSwapChain() {
     createAttachments();
+    updateDescriptors();
 }
 
 void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
@@ -219,7 +220,11 @@ void LightingPass::createDescriptors() {
         poolSizes,
         MAX_FRAMES_IN_FLIGHT
     );
-    
+    updateDescriptors();
+}
+
+void LightingPass::updateDescriptors()
+{
     // Update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo albedoInfo = {
@@ -242,7 +247,7 @@ void LightingPass::createDescriptors() {
             .imageView = m_dependencies->depthTexture->view,
             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
         };
-        
+
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
             {
                 .binding = 0,

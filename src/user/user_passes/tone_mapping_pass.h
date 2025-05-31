@@ -17,6 +17,7 @@ public:
 private:
     void createPipeline();
     void createDescriptors();
+    void updateDescriptors();
 
     // Resources
     const RenderTarget::SharedResources* m_shared = nullptr;

@@ -25,7 +25,7 @@ void ToneMappingPass::cleanup() {
 }
 
 void ToneMappingPass::recreateSwapChain() {
-    // No swapchain-dependent resources
+    updateDescriptors();
 }
 
 void ToneMappingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
@@ -208,6 +208,11 @@ void ToneMappingPass::createDescriptors() {
         MAX_FRAMES_IN_FLIGHT
     );
     
+    updateDescriptors();
+}
+
+void ToneMappingPass::updateDescriptors()
+{
     // Update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo hdrInfo = {
@@ -215,7 +220,7 @@ void ToneMappingPass::createDescriptors() {
             .imageView = m_dependencies->hdrTexture->view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
-        
+
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
             {
                 .binding = 0,
