@@ -11,6 +11,13 @@ DebugMessenger::DebugMessenger(VkInstance instance, bool enableValidation)
 {
     if (m_enableValidation) {
         setupDebugMessenger();
+
+        m_cmdBeginDebugUtilsLabel = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
+            vkGetInstanceProcAddr(m_instance, "vkCmdBeginDebugUtilsLabelEXT"));
+        m_cmdEndDebugUtilsLabel = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
+            vkGetInstanceProcAddr(m_instance, "vkCmdEndDebugUtilsLabelEXT"));
+        m_cmdInsertDebugUtilsLabel = reinterpret_cast<PFN_vkCmdInsertDebugUtilsLabelEXT>(
+            vkGetInstanceProcAddr(m_instance, "vkCmdInsertDebugUtilsLabelEXT"));
     }
 }
 
@@ -53,6 +60,75 @@ void DebugMessenger::setupDebugMessenger() {
 			}
 		}
 		});
+}
+
+void DebugMessenger::setupDeviceFunctions(VkDevice device) {
+    m_device = device;
+    if (m_enableValidation) {
+        // Load debug utils functions
+        m_setDebugUtilsObjectName = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
+            vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT"));
+        if (!m_setDebugUtilsObjectName) {
+            std::cerr << "Failed to load vkSetDebugUtilsObjectNameEXT" << std::endl;
+        }
+    }
+}
+
+void DebugMessenger::setObjectName(uint64_t objectHandle, VkObjectType objectType, const char* name) const {
+    if (!m_enableValidation || !m_setDebugUtilsObjectName) return;
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = objectType,
+        .objectHandle = objectHandle,
+        .pObjectName = name
+    };
+
+    VkResult result = m_setDebugUtilsObjectName(m_device, &nameInfo);
+    if (result != VK_SUCCESS) {
+        std::cerr << "Failed to set object name: " << result << std::endl;
+    }
+}
+
+void DebugMessenger::beginCmdDebugLabel(VkCommandBuffer commandBuffer, const char* labelName, const float color[4]) const {
+    if (!m_enableValidation || !m_cmdBeginDebugUtilsLabel) return;
+
+    VkDebugUtilsLabelEXT labelInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pLabelName = labelName
+    };
+
+    if (color) {
+        memcpy(labelInfo.color, color, sizeof(float) * 4);
+    } else {
+        // Default color (white)
+        labelInfo.color[0] = 1.0f;
+        labelInfo.color[1] = 1.0f;
+        labelInfo.color[2] = 1.0f;
+        labelInfo.color[3] = 1.0f;
+    }
+
+    m_cmdBeginDebugUtilsLabel(commandBuffer, &labelInfo);
+}
+
+void DebugMessenger::endCmdDebugLabel(VkCommandBuffer commandBuffer) const {
+    if (!m_enableValidation || !m_cmdEndDebugUtilsLabel) return;
+    m_cmdEndDebugUtilsLabel(commandBuffer);
+}
+
+void DebugMessenger::insertCmdDebugLabel(VkCommandBuffer commandBuffer, const char* labelName, const float color[4]) const {
+    if (!m_enableValidation || !m_cmdInsertDebugUtilsLabel) return;
+
+    VkDebugUtilsLabelEXT labelInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pLabelName = labelName
+    };
+
+    if (color) {
+        memcpy(labelInfo.color, color, sizeof(float) * 4);
+    }
+
+    m_cmdInsertDebugUtilsLabel(commandBuffer, &labelInfo);
 }
 
 /* The static callback function that is invoked by Vulkan when a debug message is generated.

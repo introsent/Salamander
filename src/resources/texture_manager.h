@@ -5,6 +5,8 @@
 #include <vector>
 #include <string>
 
+#include "debug_messenger.h"
+
 class BufferManager;
 class CommandManager;
 
@@ -27,7 +29,7 @@ struct ManagedTexture {
 class TextureManager {
 public:
     TextureManager(VkDevice device, VmaAllocator allocator,
-        CommandManager* commandManager, BufferManager* bufferManager);
+        CommandManager* commandManager, BufferManager* bufferManager, DebugMessenger* debugMessenger);
     TextureManager(const TextureManager&) = delete;
     TextureManager& operator=(const TextureManager&) = delete;
     TextureManager(TextureManager&&) = delete;
@@ -68,6 +70,7 @@ private:
     VmaAllocator m_allocator;
     CommandManager* m_commandManager;
     BufferManager* m_bufferManager;
+    DebugMessenger* m_debugMessenger;
 
     std::vector<ManagedTexture> m_managedTextures;
 

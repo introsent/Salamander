@@ -5,17 +5,11 @@
 #include "config.h"
 #include "descriptors/descriptor_set_layout_builder.h"
 
-CubeMapRenderer::CubeMapRenderer(Context* context,
-                                 BufferManager* bufferManager,
-                                 TextureManager* textureManager)
-    : m_context(context),
-      m_bufferManager(bufferManager),
-      m_textureManager(textureManager) {
+void CubeMapRenderer::initialize(Context* context, BufferManager* bufferManager, TextureManager* textureManager) {
 
-    initialize();
-}
-
-void CubeMapRenderer::initialize() {
+    m_context = context;
+    m_bufferManager = bufferManager;
+    m_textureManager = textureManager;
     createPipelines();
     createCubeVertexData();
 }
@@ -27,18 +21,29 @@ void CubeMapRenderer::cleanup() {
 void CubeMapRenderer::createCubeVertexData() {
     // Cube vertices (positions only) - 24 vertices (4 per face)
     const std::vector<glm::vec3> cubeVertices = {
-        // Front
-        {-1.0f, -1.0f,  1.0f}, { 1.0f, -1.0f,  1.0f}, { 1.0f,  1.0f,  1.0f}, {-1.0f,  1.0f,  1.0f},
-        // Back
-        {-1.0f, -1.0f, -1.0f}, { 1.0f, -1.0f, -1.0f}, { 1.0f,  1.0f, -1.0f}, {-1.0f,  1.0f, -1.0f},
-        // Left
-        {-1.0f, -1.0f, -1.0f}, {-1.0f, -1.0f,  1.0f}, {-1.0f,  1.0f,  1.0f}, {-1.0f,  1.0f, -1.0f},
-        // Right
-        { 1.0f, -1.0f, -1.0f}, { 1.0f, -1.0f,  1.0f}, { 1.0f,  1.0f,  1.0f}, { 1.0f,  1.0f, -1.0f},
-        // Top
-        {-1.0f,  1.0f,  1.0f}, { 1.0f,  1.0f,  1.0f}, { 1.0f,  1.0f, -1.0f}, {-1.0f,  1.0f, -1.0f},
-        // Bottom
-        {-1.0f, -1.0f,  1.0f}, { 1.0f, -1.0f,  1.0f}, { 1.0f, -1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}
+        // +X face
+        {1.0f, -1.0f, -1.0f}, {1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 1.0f},
+        {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, -1.0f}, {1.0f, -1.0f, -1.0f},
+
+        // -X face
+        {-1.0f, -1.0f, 1.0f}, {-1.0f, -1.0f, -1.0f}, {-1.0f, 1.0f, -1.0f},
+        {-1.0f, 1.0f, -1.0f}, {-1.0f, 1.0f, 1.0f}, {-1.0f, -1.0f, 1.0f},
+
+        // +Y face
+        {-1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, 1.0f},
+        {1.0f, 1.0f, 1.0f}, {-1.0f, 1.0f, 1.0f}, {-1.0f, 1.0f, -1.0f},
+
+        // -Y face
+        {-1.0f, -1.0f, 1.0f}, {1.0f, -1.0f, 1.0f}, {1.0f, -1.0f, -1.0f},
+        {1.0f, -1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}, {-1.0f, -1.0f, 1.0f},
+
+        // +Z face
+        {-1.0f, -1.0f, 1.0f}, {-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f},
+        {1.0f, 1.0f, 1.0f}, {1.0f, -1.0f, 1.0f}, {-1.0f, -1.0f, 1.0f},
+
+        // -Z face
+        {1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, -1.0f}, {-1.0f, 1.0f, -1.0f},
+        {-1.0f, 1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}, {1.0f, -1.0f, -1.0f}
     };
 
     VkDeviceSize bufferSize = sizeof(glm::vec3) * cubeVertices.size();
@@ -82,6 +87,7 @@ CubeMapRenderer::CubeMap CubeMapRenderer::createCubeMap(uint32_t size, VkFormat 
        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
        VMA_MEMORY_USAGE_GPU_ONLY
    );
+
     createCubeFaceViews(cubeMap);
     return cubeMap;
 }
@@ -140,6 +146,32 @@ void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) {
 void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
                                          const ManagedTexture& equirectTexture,
                                          CubeMap& cubeMap) {
+
+    // Add equirect texture transition
+    ImageTransitionManager::transitionImageLayout(
+        cmd, equirectTexture.image,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        1, 1
+    );
+
+    // Update descriptor set with actual texture data
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.sampler = m_equirectSampler;
+    imageInfo.imageView = equirectTexture.view;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+
+    std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
+        {
+            .binding = 0,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo = &imageInfo,
+            .descriptorCount = 1,
+            .isImage = true
+        }
+    };
+    m_descriptorManager->updateDescriptorSet(0, updates);
+
     // Transition cubemap to render target layout
     ImageTransitionManager::transitionImageLayout(
         cmd, cubeMap.texture.image,
@@ -205,8 +237,7 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                           0, sizeof(pushConstants), &pushConstants);
 
-        // Draw 24 vertices (4 per face, 6 faces)
-        vkCmdDraw(cmd, 24, 1, 0, 0);
+        vkCmdDraw(cmd, 36, 1, 0, 0);
 
         vkCmdEndRendering(cmd);
     }
@@ -221,6 +252,7 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
 }
 
 void CubeMapRenderer::createPipelines() {
+
     VkDevice device = m_context->device();
 
     // Create descriptor set layout
@@ -241,19 +273,28 @@ void CubeMapRenderer::createPipelines() {
         1
     );
 
-    // Update descriptor set
-    VkDescriptorImageInfo imageInfo{};
-    // Will be updated before rendering
-    std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
-        {
-            .binding = 0,
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .imageInfo = &imageInfo,
-            .descriptorCount = 1,
-            .isImage = true
-        }
-    };
-    m_descriptorManager->updateDescriptorSet(0, updates);
+    // Create sampler for equirect textures
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.anisotropyEnable = VK_FALSE;
+    samplerInfo.maxAnisotropy = 1.0f;
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &m_equirectSampler) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create equirect sampler");
+    }
+
+    DeletionQueue::get().pushFunction("EquirectSampler", [device, sampler = m_equirectSampler]() {
+        vkDestroySampler(device, sampler, nullptr);
+    });
+
 
     // Pipeline configuration
     static constexpr std::array<VkDynamicState, 2> dynamicStates = {

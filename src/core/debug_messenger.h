@@ -13,6 +13,13 @@ public:
 
     VkDebugUtilsMessengerEXT messenger() const { return m_messenger; }
 
+    void setupDeviceFunctions(VkDevice device);
+
+    void setObjectName(uint64_t objectHandle, VkObjectType objectType, const char* name) const;
+    void beginCmdDebugLabel(VkCommandBuffer commandBuffer, const char* labelName, const float color[4]) const;
+    void endCmdDebugLabel(VkCommandBuffer commandBuffer) const;
+    void insertCmdDebugLabel(VkCommandBuffer commandBuffer, const char* labelName, const float color[4]) const;
+
 private:
     static void populateCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
@@ -25,6 +32,13 @@ private:
         void* pUserData);
 
     VkInstance m_instance;
+    VkDevice m_device = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT m_messenger;
     bool m_enableValidation;
+
+    // Function pointers for debug utilities
+    PFN_vkSetDebugUtilsObjectNameEXT m_setDebugUtilsObjectName = nullptr;
+    PFN_vkCmdBeginDebugUtilsLabelEXT m_cmdBeginDebugUtilsLabel = nullptr;
+    PFN_vkCmdEndDebugUtilsLabelEXT m_cmdEndDebugUtilsLabel = nullptr;
+    PFN_vkCmdInsertDebugUtilsLabelEXT m_cmdInsertDebugUtilsLabel = nullptr;
 };

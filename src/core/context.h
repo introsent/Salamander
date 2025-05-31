@@ -44,6 +44,8 @@ public:
     VkInstance instance() const { return m_instance; }
     VkSurfaceKHR surface() const { return m_surface; }
 
+    DebugMessenger* debugMessenger() const { return m_debugMessenger; }
+
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) const;
 
 private:
@@ -57,7 +59,9 @@ private:
     bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
     bool isDeviceSuitable(VkPhysicalDevice device) const;
 
-    static std::vector<const char*> getRequiredExtensions(bool enableValidation);
+    static std::vector<const char*> getRequiredInstanceExtensions(bool enableValidation);
+    static std::vector<const char*> getRequiredDeviceExtensions(bool enableValidation);
+
 	
     VkInstance m_instance = VK_NULL_HANDLE;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
