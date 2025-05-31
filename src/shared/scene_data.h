@@ -41,6 +41,7 @@ struct PassDependencies {
 
     // Layout tracking
     std::array<VkImageLayout, MAX_FRAMES_IN_FLIGHT> depthLayouts;
+    std::array<ManagedTexture*, MAX_FRAMES_IN_FLIGHT> perFrameDepthTextures;
 
     void transitionDepth(VkCommandBuffer cmd, uint32_t frameIndex,
                          VkImageLayout newLayout);
