@@ -248,6 +248,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/viking_room.png
                ${CMAKE_CURRENT_BINARY_DIR}/textures/viking_room.png
                ${CMAKE_CURRENT_SOURCE_DIR}/textures/circus_arena.hdr
                ${CMAKE_CURRENT_BINARY_DIR}/textures/circus_arena.hdr
+                ${CMAKE_CURRENT_SOURCE_DIR}/textures/bambanani_sunset.hdr
+                ${CMAKE_CURRENT_BINARY_DIR}/textures/bambanani_sunset.hdr
                 COPYONLY)
                
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/viking_room.obj

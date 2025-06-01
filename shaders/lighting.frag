@@ -1,7 +1,6 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : require
 
-// Reuse existing UniformBufferObject
 layout(binding = 0, scalar) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
@@ -9,7 +8,6 @@ layout(binding = 0, scalar) uniform UniformBufferObject {
     vec3 cameraPosition;
 } ubo;
 
-// Add point light properties to UBO or as a separate uniform buffer
 layout(binding = 5, scalar) uniform LightData {
     vec3 pointLightPosition;
     float pointLightIntensity;  // In lumens
@@ -22,11 +20,12 @@ layout(binding = 1) uniform sampler2D gAlbedo;
 layout(binding = 2) uniform sampler2D gNormal;
 layout(binding = 3) uniform sampler2D gParams;
 layout(binding = 4) uniform sampler2D gDepth;
+layout(binding = 6) uniform samplerCube gCubeMap;
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 outColor;
 
-// PBR Functions (from LearnOpenGL)
+// PBR Functions
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
@@ -35,17 +34,30 @@ float DistributionGGX(vec3 N, vec3 H, float roughness) {
     return a2 / (3.141592653589793 * denom * denom);
 }
 
-float GeometrySchlickGGX(float NdotV, float roughness) {
+float GeometrySchlickGGX_Direct(float NdotV, float roughness) {
     float r = (roughness + 1.0);
     float k = (r * r) / 8.0;
     return NdotV / (NdotV * (1.0 - k) + k);
 }
 
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+float GeometrySchlickGGX_Indirect(float NdotV, float roughness) {
+    float a = roughness;
+    float k = (a * a) / 2.8; // Different coefficient for IBL
+    return NdotV / (NdotV * (1.0 - k) + k);
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness, bool indirect) {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    float ggx2 = indirect ?
+    GeometrySchlickGGX_Indirect(NdotV, roughness) :
+    GeometrySchlickGGX_Direct(NdotV, roughness);
+
+    float ggx1 = indirect ?
+    GeometrySchlickGGX_Indirect(NdotL, roughness) :
+    GeometrySchlickGGX_Direct(NdotL, roughness);
+
     return ggx1 * ggx2;
 }
 
@@ -53,20 +65,24 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-// Calculate light contribution with PBR
-vec3 calculatePBRLighting(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, float roughness, vec3 radiance) {
-    vec3 H = normalize(V + L);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) *
+    pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
 
-    // Calculate base reflectivity (F0)
+// Calculate light contribution with PBR
+vec3 calculatePBRLighting(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic,
+float roughness, vec3 radiance, bool indirect) {
+    vec3 H = normalize(V + L);
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
     // Cook-Torrance BRDF
     float NDF = DistributionGGX(N, H, roughness);
-    float G = GeometrySmith(N, V, L, roughness);
+    float G = GeometrySmith(N, V, L, roughness, indirect);
     vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
     vec3 numerator = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; // Avoid division by zero
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
     vec3 specular = numerator / denominator;
 
     // Diffuse term with energy conservation
@@ -78,16 +94,10 @@ vec3 calculatePBRLighting(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, f
     return (diffuse + specular) * radiance * NdotL;
 }
 
-// Physically based attenuation for point light
-// Inverse square law with smooth falloff
 float calculatePointLightAttenuation(vec3 lightPos, vec3 fragPos, float lightRadius) {
     float distance = length(lightPos - fragPos);
-
-    // Using inverse square law for physical correctness
-    // For lumen to lux conversion: lux = lumen / (4 * PI * distance²)
     float attenuation = 1.0 / (4.0 * 3.141592653589793 * distance * distance);
 
-    // Optional smooth falloff at radius boundary
     if (lightRadius > 0.0) {
         attenuation *= max(0.0, 1.0 - pow(distance / lightRadius, 4.0));
     }
@@ -95,7 +105,6 @@ float calculatePointLightAttenuation(vec3 lightPos, vec3 fragPos, float lightRad
     return attenuation;
 }
 
-// Reconstruct world position from depth
 vec3 GetWorldPositionFromDepth(
 float depth,
 ivec2 fragCoords,
@@ -103,74 +112,67 @@ mat4 invProj,
 mat4 invView,
 ivec2 resolution
 ) {
-    // 1) build NDC XY in [–1,1]
     vec2 ndc;
     ndc.x = (float(fragCoords.x) / float(resolution.x)) * 2.0 - 1.0;
     ndc.y = (float(fragCoords.y) / float(resolution.y)) * 2.0 - 1.0;
 
-    // 2) Vulkan uses [0,1] for clip-Z, so use depth directly
-    float clipZ = depth;
-
-    // 3) reconstruct clip-space pos
-    vec4 clipPos = vec4(ndc, clipZ, 1.0);
-
-    // 4) bring back to view-space
+    vec4 clipPos = vec4(ndc, depth, 1.0);
     vec4 viewPos = invProj * clipPos;
     viewPos /= viewPos.w;
-
-    // 5) bring back to world-space
     vec4 worldPos = invView * viewPos;
     return worldPos.xyz;
 }
 
 void main() {
-    // Get resolution from depth texture size
     ivec2 resolution = textureSize(gDepth, 0);
-
-    // Compute inverse matrices
     mat4 invView = inverse(ubo.view);
     mat4 invProj = inverse(ubo.proj);
-
-    // Compute texel coordinates
     ivec2 texCoord = ivec2(gl_FragCoord.xy);
 
-    // Sample G-buffer textures
+    // Sample G-buffer
     vec3 albedo = texelFetch(gAlbedo, texCoord, 0).rgb;
-    vec3 encodedNormal = texelFetch(gNormal, texCoord, 0).rgb; // Assuming 3-channel normal
-    vec2 params = texelFetch(gParams, texCoord, 0).rg; // roughness, metallic
+    vec3 encodedNormal = texelFetch(gNormal, texCoord, 0).rgb;
+    vec2 params = texelFetch(gParams, texCoord, 0).rg;
     float depth = texelFetch(gDepth, texCoord, 0).r;
 
-    // Decode normal from [0,1] to [-1,1]
     vec3 N = normalize(encodedNormal * 2.0 - 1.0);
-
-    // Extract PBR parameters
     float roughness = params.x;
     float metallic = params.y;
-
-    // Reconstruct world position
     vec3 worldPos = GetWorldPositionFromDepth(depth, texCoord, invProj, invView, resolution);
-
-    // Compute view direction
     vec3 V = normalize(ubo.cameraPosition - worldPos);
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
-    // Initialize final light accumulation
+    // Direct lighting
     vec3 Lo = vec3(0.0);
 
-    // 1. Directional Light Contribution
-    vec3 L_dir = normalize(-vec3(0.577, -0.577, -0.577)); // Direction to light
-    vec3 radiance_dir = vec3(1.0) *  10000.0; // Intensity = 1.0 in lux (already in correct units)
+    // Directional light
+    vec3 L_dir = normalize(-vec3(0.577, -0.577, -0.577));
+    vec3 radiance_dir = vec3(1.0) * 10000.0;
+    Lo += calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir, false);
 
-    Lo += calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir);
-
-    // 2. Point Light Contribution
+    // Point light
     vec3 L_point = normalize(lightData.pointLightPosition - worldPos);
-    float attenuation = calculatePointLightAttenuation(lightData.pointLightPosition, worldPos, lightData.pointLightRadius);
-
-    // Convert lumen to lux using attenuation
+    float attenuation = calculatePointLightAttenuation(
+    lightData.pointLightPosition,
+    worldPos,
+    lightData.pointLightRadius
+    );
     vec3 radiance_point = lightData.pointLightColor * lightData.pointLightIntensity * attenuation;
+    Lo += calculatePBRLighting(N, V, L_point, albedo, metallic, roughness, radiance_point, false);
 
-    Lo += calculatePBRLighting(N, V, L_point, albedo, metallic, roughness, radiance_point);
+    // Indirect lighting (diffuse irradiance)
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kS = F;
+    vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
-    // Output final color
-    outColor = vec4(Lo, 1.0);
+    // Sample irradiance cubemap (flip Y for coordinate system conversion)
+    vec3 irradiance = texture(gCubeMap, vec3(N.x, -N.y, N.z)).rgb;
+
+    // Calculate ambient diffuse
+    vec3 diffuse = irradiance * albedo;
+    vec3 ambient = kD * diffuse;
+
+    // Final color (direct + indirect)
+    vec3 color = ambient + Lo;
+    outColor = vec4(irradiance, 1.0);
 }

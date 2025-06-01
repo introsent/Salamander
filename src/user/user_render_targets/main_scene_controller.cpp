@@ -12,22 +12,21 @@ void MainSceneController::initialize(const RenderTarget::SharedResources& shared
     loadModel(MODEL_PATH);
     createBuffers();
 
-
     // Initialize dependencies
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_dependencies.perFrameDepthTextures[i] = &(*shared.frames)[i].depthTexture;
     }
+
+    m_cubeMapRenderer.initialize(m_shared->context,
+                          m_shared->bufferManager,
+                          m_shared->textureManager);
+    createIBLResources();
 
     // Initialize passes in dependency order
     m_depthPrepass.initialize(shared, m_globalData, m_dependencies);
     m_gBufferPass.initialize(shared, m_globalData, m_dependencies);
     m_lightingPass.initialize(shared, m_globalData, m_dependencies);
     m_toneMappingPass.initialize(shared, m_globalData, m_dependencies);
-
-    m_cubeMapRenderer.initialize(m_shared->context,
-                              m_shared->bufferManager,
-                              m_shared->textureManager);
-    createIBLResources();
 }
 
 void MainSceneController::cleanup() {
@@ -385,7 +384,7 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
 
 void MainSceneController::createIBLResources() {
     // Load HDR
-    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/circus_arena.hdr");
+    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/bambanani_sunset.hdr");
 
     // Create environment cube map
     m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R32G32B32A32_SFLOAT);
@@ -399,4 +398,6 @@ void MainSceneController::createIBLResources() {
     // Set in dependencies
     m_dependencies.equirectTexture = &m_hdrEquirect;
     m_dependencies.cubeMap = &m_envCubeMap.texture;
+    m_dependencies.cubeMap->view = m_envCubeMap.cubemapView;
+
 }
