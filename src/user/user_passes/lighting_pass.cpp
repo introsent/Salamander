@@ -205,13 +205,14 @@ void LightingPass::createDescriptors() {
         .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Normal
         .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Params
         .addBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Depth
-        .addBinding(5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)          // Lights
+        .addBinding(5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)// Lights
+        .addBinding(6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Cube map
         .build();
     
     // Descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5 * MAX_FRAMES_IN_FLIGHT}
     };
     
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
@@ -246,6 +247,12 @@ void LightingPass::updateDescriptors()
             .sampler = m_globalData->depthSampler,
             .imageView = m_dependencies->depthTexture->view,
             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        };
+
+        VkDescriptorImageInfo cubeTextureInfo = {
+            .sampler = m_globalData->hdrSampler,
+            .imageView = m_dependencies->cubeMap->view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
 
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
@@ -290,6 +297,13 @@ void LightingPass::updateDescriptors()
                 .bufferInfo = &m_globalData->frameData[i].omniLightBufferInfo,
                 .descriptorCount = 1,
                 .isImage = false
+            },
+            {
+                .binding = 6,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &cubeTextureInfo,
+                .descriptorCount = 1,
+                .isImage = true
             }
         };
         m_descriptorManager->updateDescriptorSet(i, updates);
