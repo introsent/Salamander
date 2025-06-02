@@ -80,6 +80,113 @@ void CubeMapRenderer::createCubeVertexData() {
     m_vertexBufferAddress = vkGetBufferDeviceAddress(m_context->device(), &addressInfo);
 }
 
+void CubeMapRenderer::createDiffuseIrradiancePipeline()
+{
+VkDevice device = m_context->device();
+
+    // Descriptor set layout
+    DescriptorSetLayoutBuilder layoutBuilder(device);
+    m_diffuseIrradianceDescriptorLayout = layoutBuilder
+        .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .build();
+
+    // Descriptor pool
+    std::vector<VkDescriptorPoolSize> poolSizes = {
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
+    };
+
+    m_diffuseIrradianceDescriptorManager = std::make_unique<MainDescriptorManager>(
+        device,
+        m_diffuseIrradianceDescriptorLayout->handle(),
+        poolSizes,
+        1
+    );
+
+    // Pipeline configuration
+    static constexpr std::array<VkDynamicState, 2> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkFormat colorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+    VkPipelineRenderingCreateInfo renderingInfo{};
+    renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachmentFormats = &colorFormat;
+
+    VkPipelineColorBlendAttachmentState blendAttachment{};
+    blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    blendAttachment.blendEnable = VK_FALSE;
+
+    PipelineConfig config{};
+    config.vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/equirect_to_cube_vert.spv";
+    config.fragShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/diffuse_irradiance_frag.spv";
+
+    config.inputAssembly = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE
+    };
+
+    config.viewportState = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .scissorCount = 1
+    };
+
+    config.rasterizer = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_NONE,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable = VK_FALSE,
+        .lineWidth = 1.0f
+    };
+
+    config.multisampling = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable = VK_FALSE
+    };
+
+    config.depthStencil = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable = VK_FALSE,
+        .depthWriteEnable = VK_FALSE
+    };
+
+    config.colorBlendAttachments = {blendAttachment};
+    config.colorBlending = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .attachmentCount = 1,
+        .pAttachments = &blendAttachment
+    };
+
+    config.dynamicState = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .pDynamicStates = dynamicStates.data()
+    };
+
+    config.rendering = renderingInfo;
+
+    // Push constant range
+    VkPushConstantRange pushConstant{};
+    pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstant.offset = 0;
+    pushConstant.size = sizeof(CubeMapPushConstants);
+
+    m_diffuseIrradiancePipeline = std::make_unique<Pipeline>(
+        m_context,
+        m_diffuseIrradianceDescriptorLayout->handle(),
+        config,
+        pushConstant
+    );
+}
+
 CubeMapRenderer::CubeMap CubeMapRenderer::createCubeMap(uint32_t size, VkFormat format) {
     CubeMap cubeMap;
     cubeMap.texture = m_textureManager->createCubeTexture(
@@ -249,6 +356,109 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         6, 1
     );
+}
+
+CubeMapRenderer::CubeMap CubeMapRenderer::createDiffuseIrradianceMap(VkCommandBuffer cmd, const CubeMap &environmentMap, uint32_t size) {
+ CubeMap irradianceMap = createCubeMap(size, VK_FORMAT_R32G32B32A32_SFLOAT);
+
+    if (!m_diffuseIrradiancePipeline) {
+        createDiffuseIrradiancePipeline();
+    }
+
+    // Update descriptor set with environment map
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.sampler = m_equirectSampler; // Or create a new sampler if needed
+    imageInfo.imageView = environmentMap.cubemapView;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
+        {
+            .binding = 0,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .imageInfo = &imageInfo,
+            .descriptorCount = 1,
+            .isImage = true
+        }
+    };
+    m_diffuseIrradianceDescriptorManager->updateDescriptorSet(0, updates);
+
+
+    // Transition irradiance map to render target
+    ImageTransitionManager::transitionImageLayout(
+        cmd, irradianceMap.texture.image,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        6, 1
+    );
+
+    // Same view matrices as in renderEquirectToCube
+    const std::array<glm::mat4, 6> viewMatrices = {
+        // +X, -X, +Y, -Y, +Z, -Z
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))
+    };
+
+    glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    proj[1][1] *= -1;  // Flip Y for Vulkan
+
+    for (uint32_t face = 0; face < 6; ++face) {
+        VkRenderingAttachmentInfo colorAttachment{};
+        colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        colorAttachment.imageView = irradianceMap.faceViews[face];
+        colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.clearValue = {{0.0f, 0.0f, 0.0f, 1.0f}};
+
+        VkRenderingInfo renderInfo{};
+        renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderInfo.renderArea = {{0, 0}, {size, size}};
+        renderInfo.layerCount = 1;
+        renderInfo.colorAttachmentCount = 1;
+        renderInfo.pColorAttachments = &colorAttachment;
+
+        vkCmdBeginRendering(cmd, &renderInfo);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_diffuseIrradiancePipeline->handle());
+
+        VkViewport viewport{0.0f, 0.0f, static_cast<float>(size), static_cast<float>(size), 0.0f, 1.0f};
+        vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+        VkRect2D scissor{{0, 0}, {size, size}};
+        vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                               m_diffuseIrradiancePipeline->layout(), 0, 1,
+                               &m_diffuseIrradianceDescriptorManager->getDescriptorSets()[0],
+                               0, nullptr);
+
+        CubeMapPushConstants pushConstants{};
+        pushConstants.vertexBufferAddress = m_vertexBufferAddress;
+        pushConstants.viewProj = proj * viewMatrices[face];
+        pushConstants.faceIndex = face;
+
+        vkCmdPushConstants(cmd, m_diffuseIrradiancePipeline->layout(),
+                          VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                          0, sizeof(pushConstants), &pushConstants);
+
+        vkCmdDraw(cmd, 36, 1, 0, 0);
+
+        vkCmdEndRendering(cmd);
+    }
+
+    // Transition to shader read
+    ImageTransitionManager::transitionImageLayout(
+        cmd, irradianceMap.texture.image,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        6, 1
+    );
+
+    return irradianceMap;
 }
 
 void CubeMapRenderer::createPipelines() {

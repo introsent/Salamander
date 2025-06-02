@@ -35,10 +35,14 @@ public:
                               const ManagedTexture& equirectTexture,
                               CubeMap& cubeMap);
 
+    CubeMap createDiffuseIrradianceMap(VkCommandBuffer cmd, const CubeMap& environmentMap, uint32_t size);
+
 private:
     void createPipelines();
     void createCubeFaceViews(CubeMap& cubeMap);
     void createCubeVertexData();
+
+    void createDiffuseIrradiancePipeline();
 
     Context* m_context;
     BufferManager* m_bufferManager;
@@ -47,6 +51,10 @@ private:
     std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
     std::unique_ptr<Pipeline> m_pipeline;
+
+    std::unique_ptr<Pipeline> m_diffuseIrradiancePipeline;
+    std::unique_ptr<DescriptorSetLayout> m_diffuseIrradianceDescriptorLayout;
+    std::unique_ptr<MainDescriptorManager> m_diffuseIrradianceDescriptorManager;
 
     ManagedBuffer m_cubeVertexBuffer;
     uint64_t m_vertexBufferAddress = 0;

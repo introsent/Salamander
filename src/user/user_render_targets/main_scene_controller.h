@@ -36,6 +36,7 @@ private:
 
     CubeMapRenderer m_cubeMapRenderer;
     CubeMapRenderer::CubeMap m_envCubeMap;
+    CubeMapRenderer::CubeMap m_irradianceMap;
     ManagedTexture m_hdrEquirect;
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;

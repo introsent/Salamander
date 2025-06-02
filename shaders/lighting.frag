@@ -21,6 +21,7 @@ layout(binding = 2) uniform sampler2D gNormal;
 layout(binding = 3) uniform sampler2D gParams;
 layout(binding = 4) uniform sampler2D gDepth;
 layout(binding = 6) uniform samplerCube gCubeMap;
+layout(binding = 7) uniform samplerCube gIrradianceMap;
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 outColor;
@@ -166,7 +167,7 @@ void main() {
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
     // Sample irradiance cubemap (flip Y for coordinate system conversion)
-    vec3 irradiance = texture(gCubeMap, vec3(N.x, -N.y, N.z)).rgb;
+    vec3 irradiance = texture(samplerCube(gIrradianceMap, , vec3(N.x, -N.y, N.z)).rgb;
 
     // Calculate ambient diffuse
     vec3 diffuse = irradiance * albedo;
