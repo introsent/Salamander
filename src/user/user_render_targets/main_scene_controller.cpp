@@ -384,7 +384,7 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
 
 void MainSceneController::createIBLResources() {
     // Load HDR
-    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/bambanani_sunset.hdr");
+    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/circus_arena.hdr");
 
     // Create environment cube map
     m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R32G32B32A32_SFLOAT);
@@ -393,11 +393,15 @@ void MainSceneController::createIBLResources() {
     // Convert equirect to cube
     VkCommandBuffer cmd = m_shared->commandManager->beginSingleTimeCommands();
     m_cubeMapRenderer.renderEquirectToCube(cmd, m_hdrEquirect, m_envCubeMap);
+    m_irradianceMap = m_cubeMapRenderer.createDiffuseIrradianceMap(cmd, m_envCubeMap, 64);
     m_shared->commandManager->endSingleTimeCommands(cmd);
 
     // Set in dependencies
     m_dependencies.equirectTexture = &m_hdrEquirect;
     m_dependencies.cubeMap = &m_envCubeMap.texture;
     m_dependencies.cubeMap->view = m_envCubeMap.cubemapView;
+
+    m_dependencies.irradianceMap = &m_irradianceMap.texture;
+    m_dependencies.irradianceMap->view = m_irradianceMap.cubemapView;
 
 }
