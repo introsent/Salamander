@@ -15,6 +15,13 @@ layout(binding = 5, scalar) uniform LightData {
     float pointLightRadius;     // Maximum radius of influence for optimization
 } lightData;
 
+layout(binding = 8, scalar) uniform CameraExposure {
+    float aperture;      // f-stop, e.g. 2.8
+    float shutterSpeed;  // exposure time in seconds, e.g. 1/60.0
+    float ISO;           // sensitivity, e.g. 100.0
+    float ev100Override; // if >=0, use this EV100 instead of computing
+} camExp;
+
 // G-buffer textures
 layout(binding = 1) uniform sampler2D gAlbedo;
 layout(binding = 2) uniform sampler2D gNormal;
@@ -43,7 +50,7 @@ float GeometrySchlickGGX_Direct(float NdotV, float roughness) {
 
 float GeometrySchlickGGX_Indirect(float NdotV, float roughness) {
     float a = roughness;
-    float k = (a * a) / 2.8; // Different coefficient for IBL
+    float k = (a * a) / 2.0; // Different coefficient for IBL
     return NdotV / (NdotV * (1.0 - k) + k);
 }
 
@@ -148,7 +155,7 @@ void main() {
 
     // Directional light
     vec3 L_dir = normalize(-vec3(0.577, -0.577, -0.577));
-    vec3 radiance_dir = vec3(1.0) * 10000.0;
+    vec3 radiance_dir = vec3(1.0) * 1000.0;
     Lo += calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir, false);
 
     // Point light
@@ -166,8 +173,9 @@ void main() {
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
+    float envIntensity = 800.f;
     // Sample irradiance cubemap (flip Y for coordinate system conversion)
-    vec3 irradiance = texture(samplerCube(gIrradianceMap, , vec3(N.x, -N.y, N.z)).rgb;
+    vec3 irradiance = texture(gIrradianceMap, vec3(N.x, -N.y, N.z)).rgb * envIntensity;
 
     // Calculate ambient diffuse
     vec3 diffuse = irradiance * albedo;
@@ -175,5 +183,5 @@ void main() {
 
     // Final color (direct + indirect)
     vec3 color = ambient + Lo;
-    outColor = vec4(irradiance, 1.0);
+    outColor = vec4(color , 1.0);
 }

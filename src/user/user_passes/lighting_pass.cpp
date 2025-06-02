@@ -208,11 +208,12 @@ void LightingPass::createDescriptors() {
         .addBinding(5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT)// Lights
         .addBinding(6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Cube map
         .addBinding(7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT) // Irradiance map
+        .addBinding(8, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  VK_SHADER_STAGE_FRAGMENT_BIT ) // Camera exposure
         .build();
     
     // Descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2 * MAX_FRAMES_IN_FLIGHT},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 * MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8 * MAX_FRAMES_IN_FLIGHT}
     };
     
@@ -318,6 +319,13 @@ void LightingPass::updateDescriptors()
                 .imageInfo = &irradianceInfo,
                 .descriptorCount = 1,
                 .isImage = true
+            },
+            {
+                .binding = 8,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_globalData->frameData[i].cameraExposureBufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
             }
         };
         m_descriptorManager->updateDescriptorSet(i, updates);
