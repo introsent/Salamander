@@ -155,7 +155,7 @@ void main() {
 
     // Directional light
     vec3 L_dir = normalize(-vec3(0.577, -0.577, -0.577));
-    vec3 radiance_dir = vec3(1.0) * 1000.0;
+    vec3 radiance_dir = vec3(1.0) * 10000.f;
     Lo += calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir, false);
 
     // Point light
@@ -173,15 +173,15 @@ void main() {
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
-    float envIntensity = 800.f;
+    float envIntensity = 5000.f;
     // Sample irradiance cubemap (flip Y for coordinate system conversion)
     vec3 irradiance = texture(gIrradianceMap, vec3(N.x, -N.y, N.z)).rgb * envIntensity;
 
     // Calculate ambient diffuse
-    vec3 diffuse = irradiance * albedo;
+    vec3 diffuse =  irradiance;
     vec3 ambient = kD * diffuse;
 
     // Final color (direct + indirect)
-    vec3 color = ambient + Lo;
-    outColor = vec4(color , 1.0);
+    vec3 color = ambient;
+    outColor = vec4(color, 1.0);
 }

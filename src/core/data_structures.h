@@ -72,4 +72,4 @@ inline struct CameraExposure {
     float shutterSpeed;
     float ISO;
     float ev100Override;
-} camExpUBO{ 2.8f, 1.0f/60.0f, 100.0f, -1.0f };
+} camExpUBO{ 5.f, 1.0f/ 200.0f, 100.0f, -1.0f };

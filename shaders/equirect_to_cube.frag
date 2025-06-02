@@ -13,7 +13,8 @@ layout(binding = 0) uniform sampler2D equirectTexture;
 layout(location = 0) in vec3 fragLocalPosition;
 layout(location = 0) out vec4 outColor;
 
-const vec2 invAtan = vec2(0.1591, 0.3183); // 1/(2*PI), 1/PI
+const float PI = 3.14159265359;
+const vec2 invAtan = vec2(1/(2*PI), 1/PI);
 
 vec2 sampleSphericalMap(vec3 v) {
     vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
@@ -27,5 +28,5 @@ void main() {
 
     direction = vec3(direction.z, direction.y, -direction.x);
     vec2 uv = sampleSphericalMap(direction);
-    outColor = texture(equirectTexture, uv);
+    outColor = vec4(texture(equirectTexture, uv).rgb, 1);
 }

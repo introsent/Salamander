@@ -31,28 +31,32 @@ void main() {
     outAlbedo = albedo;
 
     // --- Determine normal ---
-    vec3 worldNormal = normalize(vNormal); // Start with geometric normal
+    vec3 worldNormal = normalize(vNormal);
 
     if (normalTextureIndex < textureCount) {
-        // 1) Sample the tangent-space normal map
-        vec3 tspaceNormal = texture(normalTextures[normalTextureIndex], vTexCoord).xyz * 2.0 - 1.0;
+        // 1) Sample normal map with proper mipmapping
+        vec3 tspaceNormal = textureLod(normalTextures[normalTextureIndex], vTexCoord, 1.0).xyz;
+        tspaceNormal = tspaceNormal * 2.0 - 1.0;
 
-        // Optional: adjust normal intensity
+        // 2) Apply adjustable strength with normalization
         tspaceNormal.xy *= normalMapStrength;
         tspaceNormal = normalize(tspaceNormal);
 
-        // 2) Reconstruct T, B, N in world-space
+        // 3) Use pre-calculated TBN vectors from vertex shader
+        vec3 T = normalize(vTangent.xyz);
+        vec3 B = normalize(cross(worldNormal, T) * vTangent.w);
         vec3 N = worldNormal;
-        vec3 T = normalize(vTangent.xyz - dot(vTangent.xyz, N) * N); // Orthogonalize T to N
-        vec3 B = cross(N, T) * vTangent.w; // Correct bitangent with handedness
 
-        // 3) Build TBN matrix and transform
+        // 4) Build robust TBN matrix
         mat3 TBN = mat3(T, B, N);
-        worldNormal = normalize(TBN * tspaceNormal);
+
+        // 5) Apply with fallback to geometric normal
+        vec3 mappedNormal = TBN * tspaceNormal;
+        float lenSq = dot(mappedNormal, mappedNormal);
+        worldNormal = (lenSq > 0.001) ? normalize(mappedNormal) : worldNormal;
     }
 
-    // --- Store world-space normal into RGB channels ---
-    // Encode to [0..1] range for storage
+    // 6) Encode with reduced precision (avoids storage artifacts)
     outNormal = vec4(worldNormal * 0.5 + 0.5, 1.0);
 
     // --- Metallic / Roughness ---
