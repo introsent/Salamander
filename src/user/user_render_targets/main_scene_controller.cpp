@@ -95,14 +95,23 @@ void MainSceneController::createSamplers() {
     VkDevice deviceCopy   = m_shared->context->device();
 
     // G-buffer sampler
-    VkSamplerCreateInfo samplerInfo{};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_NEAREST;
-    samplerInfo.minFilter = VK_FILTER_NEAREST;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.anisotropyEnable = VK_FALSE;
+    VkSamplerCreateInfo samplerInfo = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = VK_FILTER_LINEAR,
+        .minFilter = VK_FILTER_LINEAR,
+        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .mipLodBias = 0.0f,
+        .anisotropyEnable = VK_TRUE,
+        .maxAnisotropy = 8.0f,
+        .compareEnable = VK_FALSE,
+        .minLod = 0.0f,
+        .maxLod = 8.0f,  // Match your mip levels
+        .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+        .unnormalizedCoordinates = VK_FALSE
+    };
     vkCreateSampler(m_shared->context->device(), &samplerInfo, nullptr, &m_globalData.gBufferSampler);
 
     VkSampler gbufferSamplerCopy = m_globalData.gBufferSampler;
@@ -240,7 +249,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
                 if (!materialMap.count(path)) {
                     materialMap[path] = m_globalData.materialTextures.size();
                     m_globalData.materialTextures.push_back(
-                        m_shared->textureManager->loadTexture(path)
+                        m_shared->textureManager->loadTexture(path, VK_FORMAT_R8G8B8A8_SRGB)
                     );
                 }
                 materialIndex = materialMap[path];
@@ -384,7 +393,7 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
 
 void MainSceneController::createIBLResources() {
     // Load HDR
-    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/bambanani_sunset.hdr");
+    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/circus_arena.hdr");
 
     // Create environment cube map
     m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R16G16B16A16_SFLOAT);
