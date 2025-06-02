@@ -384,10 +384,10 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
 
 void MainSceneController::createIBLResources() {
     // Load HDR
-    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/circus_arena.hdr");
+    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/bambanani_sunset.hdr");
 
     // Create environment cube map
-    m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R32G32B32A32_SFLOAT);
+    m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R16G16B16A16_SFLOAT);
 
 
     // Convert equirect to cube

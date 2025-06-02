@@ -108,7 +108,7 @@ VkDevice device = m_context->device();
         VK_DYNAMIC_STATE_SCISSOR
     };
 
-    VkFormat colorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+    VkFormat colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     VkPipelineRenderingCreateInfo renderingInfo{};
     renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     renderingInfo.colorAttachmentCount = 1;
@@ -199,6 +199,8 @@ CubeMapRenderer::CubeMap CubeMapRenderer::createCubeMap(uint32_t size, VkFormat 
     return cubeMap;
 }
 
+static int imageViews = 0;
+static int cubeMapViews = 0;
 void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) {
     VkDevice device = m_context->device();
 
@@ -221,7 +223,7 @@ void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) {
             throw std::runtime_error("Failed to create cube map face view");
         }
 
-        DeletionQueue::get().pushFunction("CubeFaceView_" + std::to_string(face),
+        DeletionQueue::get().pushFunction("CubeFaceView_" + std::to_string(++imageViews),
             [device, view = cubeMap.faceViews[face]]() {
                 vkDestroyImageView(device, view, nullptr);
             });
@@ -245,7 +247,7 @@ void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) {
         throw std::runtime_error("Failed to create cube map view");
     }
 
-    DeletionQueue::get().pushFunction("CubeMapView", [device, view = cubeMap.cubemapView]() {
+    DeletionQueue::get().pushFunction("CubeMapView_" + std::to_string(++cubeMapViews), [device, view = cubeMap.cubemapView]() {
         vkDestroyImageView(device, view, nullptr);
     });
 }
@@ -359,7 +361,7 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
 }
 
 CubeMapRenderer::CubeMap CubeMapRenderer::createDiffuseIrradianceMap(VkCommandBuffer cmd, const CubeMap &environmentMap, uint32_t size) {
- CubeMap irradianceMap = createCubeMap(size, VK_FORMAT_R32G32B32A32_SFLOAT);
+ CubeMap irradianceMap = createCubeMap(size, VK_FORMAT_R16G16B16A16_SFLOAT);
 
     if (!m_diffuseIrradiancePipeline) {
         createDiffuseIrradiancePipeline();
@@ -512,7 +514,7 @@ void CubeMapRenderer::createPipelines() {
         VK_DYNAMIC_STATE_SCISSOR
     };
 
-    VkFormat colorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+    VkFormat colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     VkPipelineRenderingCreateInfo renderingInfo{};
     renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     renderingInfo.colorAttachmentCount = 1;
