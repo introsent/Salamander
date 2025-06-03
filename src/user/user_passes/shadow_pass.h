@@ -14,11 +14,6 @@ public:
     void cleanup() override;
     void recreateSwapChain() override;
     void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) override;
-
-    struct LightViewProjection {
-        glm::mat4 view;
-        glm::mat4 projection;
-    };
 private:
     void createPipeline();
     void createDescriptors();
@@ -36,10 +31,8 @@ private:
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
     std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
 
+    UniformBuffer m_directionalLightingBuffer;
 
-    LightViewProjection m_lightViewProjection = {};
-    UniformBuffer m_lightViewProjectionBuffer;
-
-    static constexpr uint32_t SHADOW_MAP_SIZE = 2048;
+    static constexpr uint32_t SHADOW_MAP_SIZE = 4096;
 };
 

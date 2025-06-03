@@ -27,6 +27,7 @@ void MainSceneController::initialize(const RenderTarget::SharedResources& shared
     m_gBufferPass.initialize(shared, m_globalData, m_dependencies);
     m_lightingPass.initialize(shared, m_globalData, m_dependencies);
     m_toneMappingPass.initialize(shared, m_globalData, m_dependencies);
+    m_shadowPass.initialize(shared, m_globalData, m_dependencies);
 }
 
 void MainSceneController::cleanup() {
@@ -62,6 +63,7 @@ void MainSceneController::render(VkCommandBuffer cmd, uint32_t imageIndex) {
     );
 
     // Execute passes in rendering order
+    m_shadowPass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_depthPrepass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_gBufferPass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_lightingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
@@ -421,6 +423,7 @@ void MainSceneController::createIBLResources() {
     VkCommandBuffer cmd = m_shared->commandManager->beginSingleTimeCommands();
     m_cubeMapRenderer.renderEquirectToCube(cmd, m_hdrEquirect, m_envCubeMap);
     m_irradianceMap = m_cubeMapRenderer.createDiffuseIrradianceMap(cmd, m_envCubeMap, 128);
+
     m_shared->commandManager->endSingleTimeCommands(cmd);
 
     // Set in dependencies
