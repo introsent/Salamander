@@ -36,7 +36,7 @@ void main() {
     Vertex v = vertexBuffer.vertices[gl_VertexIndex];
 
     // Apply model scaling and transform to light space
-    vec3 scaledPos = v.pos * pushConstants.modelScale;
+    vec3 scaledPos = v.pos;
     vec4 clipPos = directionalLight.projection * directionalLight.view * vec4(scaledPos, 1.0);
 
     // PERSPECTIVE DIVIDE: Transform from clip space to NDC
