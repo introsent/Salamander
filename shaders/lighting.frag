@@ -178,10 +178,10 @@ void main() {
     vec3 irradiance = texture(gIrradianceMap, vec3(N.x, -N.y, N.z)).rgb * envIntensity;
 
     // Calculate ambient diffuse
-    vec3 diffuse =  irradiance;
+    vec3 diffuse = irradiance * albedo;
     vec3 ambient = kD * diffuse;
 
     // Final color (direct + indirect)
-    vec3 color = ambient;
+    vec3 color = ambient + Lo;
     outColor = vec4(color, 1.0);
 }
