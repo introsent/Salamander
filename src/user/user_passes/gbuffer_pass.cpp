@@ -162,7 +162,7 @@ void GBufferPass::createPipeline() {
     // Attachment formats
     std::array<VkFormat, 3> colorFormats = {
         VK_FORMAT_R8G8B8A8_SRGB,
-        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_R8G8B8A8_SRGB,
         VK_FORMAT_R8G8_UNORM
     };
     
@@ -268,7 +268,7 @@ void GBufferPass::createAttachments() {
     // Normal (UNORM)
     m_normalTexture = m_shared->textureManager->createTexture(
         extent.width, extent.height,
-        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_R8G8B8A8_SRGB,
         usage,
         VMA_MEMORY_USAGE_GPU_ONLY,
         VK_IMAGE_ASPECT_COLOR_BIT,

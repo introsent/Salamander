@@ -113,13 +113,7 @@ float calculatePointLightAttenuation(vec3 lightPos, vec3 fragPos, float lightRad
     return attenuation;
 }
 
-vec3 GetWorldPositionFromDepth(
-float depth,
-ivec2 fragCoords,
-mat4 invProj,
-mat4 invView,
-ivec2 resolution
-) {
+vec3 GetWorldPositionFromDepth(float depth, ivec2 fragCoords, mat4 invProj, mat4 invView, ivec2 resolution) {
     vec2 ndc;
     ndc.x = (float(fragCoords.x) / float(resolution.x)) * 2.0 - 1.0;
     ndc.y = (float(fragCoords.y) / float(resolution.y)) * 2.0 - 1.0;

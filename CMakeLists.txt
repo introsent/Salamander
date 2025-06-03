@@ -144,6 +144,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_render_targets/main_scene_controller.h
         src/user/user_render_targets/cube_map_renderer.cpp
         src/user/user_render_targets/cube_map_renderer.h
+        src/user/user_passes/shadow_pass.cpp
+        src/user/user_passes/shadow_pass.h
 )
 
 # Add ImGui source files with proper includes and links

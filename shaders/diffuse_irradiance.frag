@@ -18,9 +18,9 @@ const float SAMPLE_DELTA = 0.025;
 
 // Tangent space calculation
 void TangentToWorld(vec3 N, out vec3 T, out vec3 B) {
-    vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-    T = normalize(cross(up, N));
-    B = cross(N, T);
+    vec3 up = abs(N.y) < 0.9999999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    T = normalize(cross(N, up));
+    B = normalize(cross(T, N));
 }
 
 void main() {
