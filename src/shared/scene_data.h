@@ -19,6 +19,12 @@ struct MainSceneGlobalData {
     VkSampler depthSampler = VK_NULL_HANDLE;
     VkSampler hdrSampler = VK_NULL_HANDLE;
 
+    struct AABB {
+        glm::vec3 min;
+        glm::vec3 max;
+    };
+    AABB sceneAABB;
+
     // Frame data
     struct FrameData {
         VkDescriptorBufferInfo bufferInfo;

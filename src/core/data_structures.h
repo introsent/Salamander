@@ -67,6 +67,12 @@ struct PointLightData {
     float pointLightRadius;     // Maximum radius of influence for optimization
 };
 
+inline struct DirectionalLightData {
+    glm::vec3 directionalLightDirection;
+    glm::vec3 directionalLightColor;
+    float directionalLightIntensity;
+} directionalLight { glm::vec3{0.577f, -0.577, -0.577}, glm::vec3{ 1.f, 1.f, 1.f}, 10000.f};
+
 inline struct CameraExposure {
     float aperture;
     float shutterSpeed;

@@ -171,6 +171,24 @@ void MainSceneController::loadModel(const std::string& modelPath) {
     m_globalData.materialTextures.clear();
     m_globalData.normalTextures.clear();
 
+    if (gltfModel.vertices.empty()) {
+        // Empty model: set AABB to zero
+        m_globalData.sceneAABB = { .min = glm::vec3(0.0f), .max = glm::vec3(0.0f) };
+    } else {
+        // Initialize with extreme values
+        auto minAABB = glm::vec3(std::numeric_limits<float>::max());
+        auto maxAABB = glm::vec3(std::numeric_limits<float>::lowest());
+
+        // Find min/max across all vertices
+        for (const auto& vertex : gltfModel.vertices) {
+            minAABB = glm::min(minAABB, vertex.pos);
+            maxAABB = glm::max(maxAABB, vertex.pos);
+        }
+
+        // Store final AABB
+        m_globalData.sceneAABB = { .min = minAABB, .max = maxAABB };
+    }
+
     // Create default white texture for base color (index 0)
     unsigned char white[] = {255, 255, 255, 255};
     m_globalData.modelTextures.push_back(
@@ -402,7 +420,7 @@ void MainSceneController::createIBLResources() {
     // Convert equirect to cube
     VkCommandBuffer cmd = m_shared->commandManager->beginSingleTimeCommands();
     m_cubeMapRenderer.renderEquirectToCube(cmd, m_hdrEquirect, m_envCubeMap);
-    m_irradianceMap = m_cubeMapRenderer.createDiffuseIrradianceMap(cmd, m_envCubeMap, 64);
+    m_irradianceMap = m_cubeMapRenderer.createDiffuseIrradianceMap(cmd, m_envCubeMap, 128);
     m_shared->commandManager->endSingleTimeCommands(cmd);
 
     // Set in dependencies
