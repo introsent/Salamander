@@ -258,7 +258,7 @@ void LightingPass::updateDescriptors()
         };
 
         VkDescriptorImageInfo irradianceInfo = {
-            .sampler = m_globalData->hdrSampler,
+            .sampler = m_globalData->gBufferSampler,
             .imageView = m_dependencies->irradianceMap->view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
