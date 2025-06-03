@@ -7,6 +7,7 @@
 #include "user_passes/tone_mapping_pass.h"
 #include "data_structures.h"
 #include "uniform_buffer.h"
+#include "user_passes/shadow_pass.h"
 
 class MainSceneController {
 public:
@@ -28,6 +29,7 @@ private:
     GBufferPass m_gBufferPass;
     LightingPass m_lightingPass;
     ToneMappingPass m_toneMappingPass;
+    ShadowPass m_shadowPass;
 
     // Shared data
     MainSceneGlobalData m_globalData;

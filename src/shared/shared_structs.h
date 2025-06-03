@@ -15,3 +15,9 @@ struct PushConstants {
 struct TonePush {
     glm::vec2 screenSize;
 };
+
+struct ShadowPushConstants {
+    uint64_t vertexBufferAddress;
+    glm::vec3 modelScale;
+    uint32_t baseColorTextureIndex;
+};
