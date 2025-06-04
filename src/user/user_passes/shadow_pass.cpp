@@ -252,6 +252,7 @@ void ShadowPass::createLightMatrices() {
     // Calculate distance and position
     const float distance = maxProj - glm::dot(sceneCenter, lightDirection);
     const glm::vec3 lightPosition = sceneCenter - lightDirection * distance;
+    directionalLight.directionalLightPosition = lightPosition;
 
     // Calculate safe up vector
     const glm::vec3 up = glm::abs(glm:: dot(lightDirection, glm::vec3(0.f, 1.f, 0.f))) > 0.99f
