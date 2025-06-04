@@ -135,6 +135,25 @@ void MainSceneController::createSamplers() {
         vkDestroySampler(deviceCopy, depthSamplerCopy, nullptr);
     });
 
+
+    // Shadow depth sampler
+    VkSamplerCreateInfo shadowDepthSamplerInfo{};
+    shadowDepthSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    shadowDepthSamplerInfo.magFilter = VK_FILTER_LINEAR;
+    shadowDepthSamplerInfo.minFilter = VK_FILTER_LINEAR;
+    shadowDepthSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    shadowDepthSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    shadowDepthSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    shadowDepthSamplerInfo.compareEnable = VK_TRUE;
+    shadowDepthSamplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    vkCreateSampler(m_shared->context->device(), &depthSamplerInfo, nullptr, &m_globalData.shadowDepthSampler);
+
+    VkSampler shadowDepthSamplerCopy = m_globalData.shadowDepthSampler;
+    DeletionQueue::get().pushFunction("ShadowDepthSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy,  shadowDepthSamplerCopy]() {
+        vkDestroySampler(deviceCopy,  shadowDepthSamplerCopy, nullptr);
+    });
+
+
     // HDR sampler
     VkSamplerCreateInfo hdrSamplerInfo{};
     hdrSamplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
