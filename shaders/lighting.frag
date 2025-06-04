@@ -141,6 +141,8 @@ vec3 GetWorldPositionFromDepth(float depth, ivec2 fragCoords, mat4 invProj, mat4
 }
 
 void main() {
+    float envIntensity = 5000.f;
+
     ivec2 resolution = textureSize(gDepth, 0);
     mat4 invView = inverse(ubo.view);
     mat4 invProj = inverse(ubo.proj);
@@ -151,6 +153,14 @@ void main() {
     vec3 encodedNormal = texelFetch(gNormal, texCoord, 0).rgb;
     vec2 params = texelFetch(gParams, texCoord, 0).rg;
     float depth = texelFetch(gDepth, texCoord, 0).r;
+
+    if (depth >= 1.f)
+    {
+        const vec3 worldPos = GetWorldPositionFromDepth(1.f, texCoord, invProj, invView, resolution);
+        const vec3 sampleDirection = normalize(worldPos);
+        outColor = vec4(texture(gCubeMap, sampleDirection).rgb * envIntensity, 1.f);
+        return;
+    }
 
     vec3 N = normalize(encodedNormal * 2.0 - 1.0);
     float roughness = params.x;
@@ -183,7 +193,7 @@ void main() {
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
-    float envIntensity = 5000.f;
+
     // Sample irradiance cubemap (flip Y for coordinate system conversion)
     vec3 irradiance = texture(gIrradianceMap, vec3(N.x, -N.y, N.z)).rgb * envIntensity;
 
