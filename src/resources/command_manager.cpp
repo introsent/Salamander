@@ -78,7 +78,7 @@ std::unique_ptr<CommandBuffer> CommandManager::createCommandBuffer(VkCommandBuff
 }
 
 void CommandManager::recordCommandBuffer(
-    CommandBuffer& commandBuffer,
+    const CommandBuffer& commandBuffer,
     VkRenderPass renderPass,
     VkFramebuffer framebuffer,
     VkExtent2D extent,

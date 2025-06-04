@@ -69,7 +69,7 @@ void MainSceneController::render(VkCommandBuffer cmd, uint32_t imageIndex) {
     m_toneMappingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
 
 
-    // ─── Finally transition INTO PRESENT_SRC_KHR ───
+    // ─── transition INTO PRESENT_SRC_KHR ───
     ImageTransitionManager::transitionToPresent(
         cmd,
         m_shared->swapChain->getCurrentImage(imageIndex),
@@ -209,7 +209,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
         m_globalData.sceneAABB = { .min = minAABB, .max = maxAABB };
     }
 
-    // Create default white texture for base color (index 0)
+    // Create a default white texture for base color (index 0)
     unsigned char white[] = {255, 255, 255, 255};
     m_globalData.modelTextures.push_back(
         m_shared->textureManager->createTexture(white, 1, 1, 4)
@@ -231,7 +231,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
     );
     m_globalData.vertexBufferAddress = m_globalData.ssboBuffer.getDeviceAddress(m_shared->context->device());
 
-    // Create index buffer
+    // Create an index buffer
     m_globalData.indexBuffer = IndexBuffer(
         m_shared->bufferManager,
         m_shared->commandManager,
@@ -256,7 +256,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
                 const auto& texInfo = gltfModel.textures[mat.baseColorTexture];
                 std::string path = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
 
-                if (!baseColorMap.count(path)) {
+                if (!baseColorMap.contains(path)) {
                     baseColorMap[path] = m_globalData.modelTextures.size();
                     m_globalData.modelTextures.push_back(
                         m_shared->textureManager->loadTexture(path)
@@ -270,7 +270,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
                 const auto& texInfo = gltfModel.textures[mat.normalTexture];
                 std::string path = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
 
-                if (!normalMap.count(path)) {
+                if (!normalMap.contains(path)) {
                     normalMap[path] = m_globalData.normalTextures.size();
                     m_globalData.normalTextures.push_back(
                         m_shared->textureManager->loadTexture(path, VK_FORMAT_R8G8B8A8_UNORM)
@@ -284,7 +284,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
                 const auto& texInfo = gltfModel.textures[mat.metallicRoughnessTexture];
                 std::string path = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
 
-                if (!materialMap.count(path)) {
+                if (!materialMap.contains(path)) {
                     materialMap[path] = m_globalData.materialTextures.size();
                     m_globalData.materialTextures.push_back(
                         m_shared->textureManager->loadTexture(path, VK_FORMAT_R8G8B8A8_SRGB)
@@ -297,7 +297,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
                     std::to_string(mat.metallicFactor) + "_" +
                     std::to_string(mat.roughnessFactor);
 
-                auto it = std::find(defaultMaterialKeys.begin(), defaultMaterialKeys.end(), key);
+                auto it = std::ranges::find(defaultMaterialKeys, key);
                 if (it != defaultMaterialKeys.end()) {
                     materialIndex = std::distance(defaultMaterialKeys.begin(), it);
                 } else {
@@ -328,8 +328,8 @@ void MainSceneController::loadModel(const std::string& modelPath) {
 
 void MainSceneController::createBuffers() {
     // Create uniform buffers for each frame
-    VkDeviceSize uboSize = sizeof(UniformBufferObject);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        VkDeviceSize uboSize = sizeof(UniformBufferObject);
         m_uniformBuffers[i] = UniformBuffer(
             m_shared->bufferManager,
             m_shared->allocator,
@@ -341,7 +341,7 @@ void MainSceneController::createBuffers() {
             .range = uboSize
         };
 
-        // Create omni light buffer
+        // Create an omni light buffer
         VkDeviceSize lightSize = sizeof(PointLightData);
         m_omniLightBuffer[i] = UniformBuffer(
             m_shared->bufferManager,
@@ -360,14 +360,13 @@ void MainSceneController::createBuffers() {
             .range = lightSize
         };
 
-        // Create camera exposure buffer
-        VkDeviceSize exposureSize = sizeof(CameraExposure);
+        // Create a camera exposure buffer
+        constexpr VkDeviceSize exposureSize = sizeof(CameraExposure);
         m_cameraExposureBuffer[i] = UniformBuffer(
             m_shared->bufferManager,
             m_shared->allocator,
             exposureSize
         );
-        CameraExposure exposureData{};
         m_cameraExposureBuffer[i].update(camExpUBO);
 
         m_globalData.frameData[i].cameraExposureBufferInfo = {
@@ -381,7 +380,7 @@ void MainSceneController::createBuffers() {
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         // Model textures (base color)
         m_globalData.frameData[i].textureImageInfos.clear();
-        for (auto& tex : m_globalData.modelTextures) {
+        for (const auto& tex : m_globalData.modelTextures) {
             m_globalData.frameData[i].textureImageInfos.push_back({
                 .sampler = tex.sampler,
                 .imageView = tex.view,

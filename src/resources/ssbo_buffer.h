@@ -8,7 +8,7 @@ public:
     SSBOBuffer() = default;
     SSBOBuffer(
         BufferManager* bufferManager,
-        CommandManager* commandManager,
+        const CommandManager* commandManager,
         VmaAllocator alloc,
         const void* data,
         VkDeviceSize dataSize

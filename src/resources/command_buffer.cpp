@@ -5,7 +5,7 @@ CommandBuffer::CommandBuffer(VkCommandBuffer handle, VkCommandPool pool)
     : m_handle(handle), m_pool(pool) {
 }
 
-void CommandBuffer::begin(VkCommandBufferUsageFlags flags) {
+void CommandBuffer::begin(VkCommandBufferUsageFlags flags) const {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = flags;
@@ -15,12 +15,12 @@ void CommandBuffer::begin(VkCommandBufferUsageFlags flags) {
     }
 }
 
-void CommandBuffer::end() {
+void CommandBuffer::end() const {
     if (vkEndCommandBuffer(m_handle) != VK_SUCCESS) {
         throw std::runtime_error("Failed to end command buffer!");
     }
 }
 
-void CommandBuffer::reset() {
+void CommandBuffer::reset() const {
     vkResetCommandBuffer(m_handle, 0);
 }

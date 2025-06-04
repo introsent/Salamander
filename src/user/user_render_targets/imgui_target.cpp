@@ -72,7 +72,7 @@ void ImGuiTarget::createDescriptors() {
     m_descriptorManager = std::make_unique<ImGuiDescriptorManager>(m_shared->context->device());
 }
 
-void ImGuiTarget::initializeImGui() {
+void ImGuiTarget::initializeImGui() const {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();

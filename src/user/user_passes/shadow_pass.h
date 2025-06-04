@@ -17,7 +17,7 @@ public:
 private:
     void createPipeline();
     void createDescriptors();
-    void createLightMatrices();
+    void createLightMatrices() const;
     void createUniformBuffers();
     void createShadowMapTexture();
 

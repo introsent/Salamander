@@ -227,7 +227,7 @@ void ShadowPass::createDescriptors() {
     }
 }
 
-void ShadowPass::createLightMatrices() {
+void ShadowPass::createLightMatrices() const {
     const glm::vec3 sceneCenter = (m_globalData->sceneAABB.min + m_globalData->sceneAABB.max) / 2.0f;
     const glm::vec3 lightDirection = directionalLight.directionalLightDirection;
 

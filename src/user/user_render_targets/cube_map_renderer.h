@@ -22,7 +22,6 @@ struct CubeMapPushConstants {
 class CubeMapRenderer {
 public:
     void initialize(Context* context, BufferManager* bufferManager, TextureManager* textureManager);
-    void cleanup();
 
     struct CubeMap {
         ManagedTexture texture;
@@ -30,16 +29,16 @@ public:
         VkImageView cubemapView;  // View for entire cubemap
     };
 
-    CubeMap createCubeMap(uint32_t size, VkFormat format);
+    CubeMap createCubeMap(uint32_t size, VkFormat format) const;
     void renderEquirectToCube(VkCommandBuffer cmd,
                               const ManagedTexture& equirectTexture,
-                              CubeMap& cubeMap);
+                              const CubeMap& cubeMap) const;
 
     CubeMap createDiffuseIrradianceMap(VkCommandBuffer cmd, const CubeMap& environmentMap, uint32_t size);
 
 private:
     void createPipelines();
-    void createCubeFaceViews(CubeMap& cubeMap);
+    void createCubeFaceViews(CubeMap& cubeMap) const;
     void createCubeVertexData();
 
     void createDiffuseIrradiancePipeline();

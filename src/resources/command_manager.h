@@ -27,7 +27,7 @@ public:
 
     // Record a command buffer
     static void recordCommandBuffer(
-        CommandBuffer& commandBuffer,
+        const CommandBuffer& commandBuffer,
         VkRenderPass renderPass,
         VkFramebuffer framebuffer,
         VkExtent2D extent,
