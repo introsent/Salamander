@@ -75,7 +75,7 @@ inline struct DirectionalLightData {
     float directionalLightIntensity;
     glm::mat4 view;
     glm::mat4 projection;
-} directionalLight { glm::vec3{0.f, 0.f, 0.f}, glm::vec3{0.577f, -0.577, -0.577},
+} directionalLight { glm::vec3{0.f, 0.f, 0.f}, glm::vec3{0.f, -1.f, 0.f},
     glm::vec3{ 1.f, 1.f, 1.f}, 10000.f,
     glm::mat4{ 1.f }, glm::mat4{ 1.f } };
 

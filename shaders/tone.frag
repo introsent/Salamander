@@ -39,9 +39,10 @@ void main() {
 
     // 3) Apply exposure
     vec3 mapped = hdr * exposure;
-
+//
     // 4) Reinhard tone mapping: LDR = mapped / (mapped + 1)
     vec3 ldr = mapped / (mapped + vec3(1.0));
+
 
     // 5) Output; let SRGB swapchain handle gamma
     outColor = vec4(ldr, 1.0);

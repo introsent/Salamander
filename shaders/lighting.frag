@@ -15,12 +15,14 @@ layout(binding = 5, scalar) uniform LightData {
     float pointLightRadius;     // Maximum radius of influence for optimization
 } lightData;
 
-layout(binding = 8, scalar) uniform CameraExposure {
-    float aperture;      // f-stop, e.g. 2.8
-    float shutterSpeed;  // exposure time in seconds, e.g. 1/60.0
-    float ISO;           // sensitivity, e.g. 100.0
-    float ev100Override; // if >=0, use this EV100 instead of computing
-} camExp;
+layout(binding = 8, scalar) uniform DirectionalLightData {
+    vec3 directionalLightPosition;
+    vec3 directionalLightDirection;
+    vec3 directionalLightColor;
+    float directionalLightIntensity;
+    mat4 view;
+    mat4 projection;
+} directionalLight;
 
 // G-buffer textures
 layout(binding = 1) uniform sampler2D gAlbedo;
@@ -29,6 +31,7 @@ layout(binding = 3) uniform sampler2D gParams;
 layout(binding = 4) uniform sampler2D gDepth;
 layout(binding = 6) uniform samplerCube gCubeMap;
 layout(binding = 7) uniform samplerCube gIrradianceMap;
+layout(binding = 9) uniform sampler2D gShadowMap;
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 outColor;
@@ -113,6 +116,25 @@ float calculatePointLightAttenuation(vec3 lightPos, vec3 fragPos, float lightRad
     return attenuation;
 }
 
+float ShadowCalculation(vec3 worldPos) {
+    // Transform to light's clip space
+    vec4 lightSpacePos = directionalLight.projection * directionalLight.view * vec4(worldPos, 1.0);
+    lightSpacePos.xyz /= lightSpacePos.w; // Perspective divide
+
+    // Convert to [0,1] UV coordinates
+    vec3 shadowUV = vec3(lightSpacePos.xy * 0.5 + 0.5, lightSpacePos.z);
+    shadowUV.y = 1.0 - shadowUV.y; // Flip Y-axis
+
+    // Compare depth values
+    float closestDepth = texture(gShadowMap, shadowUV.xy).r;
+
+    if (closestDepth < shadowUV.z)
+    {
+        return 0.f;
+    }
+    return 1.f;
+}
+
 vec3 GetWorldPositionFromDepth(float depth, ivec2 fragCoords, mat4 invProj, mat4 invView, ivec2 resolution) {
     vec2 ndc;
     ndc.x = (float(fragCoords.x) / float(resolution.x)) * 2.0 - 1.0;
@@ -148,9 +170,10 @@ void main() {
     vec3 Lo = vec3(0.0);
 
     // Directional light
-    vec3 L_dir = normalize(-vec3(0.577, -0.577, -0.577));
+    vec3 L_dir = directionalLight.directionalLightDirection;
     vec3 radiance_dir = vec3(1.0) * 10000.f;
-    Lo += calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir, false);
+    float shadowTerm = ShadowCalculation(worldPos);
+    Lo +=  shadowTerm * calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir, false);
 
     // Point light
     vec3 L_point = normalize(lightData.pointLightPosition - worldPos);
@@ -177,5 +200,5 @@ void main() {
 
     // Final color (direct + indirect)
     vec3 color = ambient + Lo;
-    outColor = vec4(color, 1.0);
+    outColor = vec4(color , 1.0);
 }

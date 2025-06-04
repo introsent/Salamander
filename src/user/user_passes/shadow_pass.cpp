@@ -18,6 +18,7 @@ void ShadowPass::initialize(const RenderTarget::SharedResources &shared, MainSce
     createUniformBuffers();
     createDescriptors();
     createPipeline();
+
 }
 
 void ShadowPass::cleanup() {
@@ -205,6 +206,7 @@ void ShadowPass::createDescriptors() {
             .range = sizeof(DirectionalLightData)
         };
 
+        m_globalData->frameData[i].directionalLightBufferInfo = bufferInfo;
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
             {
                 .binding = 0,
