@@ -171,9 +171,9 @@ void main() {
 
     // Directional light
     vec3 L_dir = directionalLight.directionalLightDirection;
-    vec3 radiance_dir = vec3(1.0) * 10000.f;
     float shadowTerm = ShadowCalculation(worldPos);
-    Lo +=  shadowTerm * calculatePBRLighting(N, V, L_dir, albedo, metallic, roughness, radiance_dir, false);
+    vec3 radiance_dir = vec3(1.0) * 100000.f;
+    Lo += shadowTerm * calculatePBRLighting(N, V, -L_dir, albedo, metallic, roughness, radiance_dir, false);
 
     // Point light
     vec3 L_point = normalize(lightData.pointLightPosition - worldPos);

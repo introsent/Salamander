@@ -31,7 +31,7 @@ void LightingPass::recreateSwapChain() {
 void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
     // Transition HDR texture
     ImageTransitionManager::transitionColorAttachment(
-        cmd, m_hdrTexture.image, 
+        cmd, m_hdrTextures[frameIndex].image,
         VK_IMAGE_LAYOUT_UNDEFINED, 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
@@ -39,7 +39,7 @@ void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t im
     // Set up HDR attachment
     VkRenderingAttachmentInfo colorAttachment = {
       .sType         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView     = m_hdrTexture.view,
+        .imageView     = m_hdrTextures[frameIndex].view,
         .imageLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -86,7 +86,7 @@ void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t im
     // Transition to shader read
     ImageTransitionManager::transitionToShaderRead(
         cmd,
-         m_hdrTexture.image,
+         m_hdrTextures[frameIndex].image,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
@@ -178,21 +178,23 @@ void LightingPass::createPipeline() {
 }
 
 void LightingPass::createAttachments() {
-    const auto& extent = m_shared->swapChain->extent();
-    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
-                             VK_IMAGE_USAGE_SAMPLED_BIT | 
-                             VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    
-    m_hdrTexture = m_shared->textureManager->createTexture(
-        extent.width, extent.height,
-        VK_FORMAT_R32G32B32A32_SFLOAT,
-        usage,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        true
-    );
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        const auto& extent = m_shared->swapChain->extent();
+        VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                 VK_IMAGE_USAGE_SAMPLED_BIT |
+                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-    m_dependencies->hdrTexture = &m_hdrTexture;
+        m_hdrTextures[i] = m_shared->textureManager->createTexture(
+            extent.width, extent.height,
+            VK_FORMAT_R32G32B32A32_SFLOAT,
+            usage,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            true
+        );
+
+        m_dependencies->hdrTextures[i] = &m_hdrTextures[i];
+    }
 }
 
 void LightingPass::createDescriptors() {
@@ -233,22 +235,22 @@ void LightingPass::updateDescriptors()
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo albedoInfo = {
             .sampler = m_globalData->gBufferSampler,
-            .imageView = m_dependencies->albedoTexture->view,
+            .imageView = m_dependencies->albedoTextures[i]->view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkDescriptorImageInfo normalInfo = {
             .sampler = m_globalData->gBufferSampler,
-            .imageView = m_dependencies->normalTexture->view,
+            .imageView = m_dependencies->normalTextures[i]->view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkDescriptorImageInfo paramsInfo = {
             .sampler = m_globalData->gBufferSampler,
-            .imageView = m_dependencies->paramTexture->view,
+            .imageView = m_dependencies->paramTextures[i]->view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkDescriptorImageInfo depthInfo = {
             .sampler = m_globalData->depthSampler,
-            .imageView = m_dependencies->depthTexture->view,
+            .imageView = m_dependencies->depthTextures[i]->view,
             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
         };
 

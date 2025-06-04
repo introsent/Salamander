@@ -29,8 +29,8 @@ private:
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
     
     // Attachments
-    ManagedTexture m_albedoTexture;
-    ManagedTexture m_normalTexture;
-    ManagedTexture m_paramTexture;
-    ManagedTexture m_depthTexture;
+    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_depthTextures;
+    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_albedoTextures;
+    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_normalTextures;
+    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_paramTextures;
 };

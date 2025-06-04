@@ -55,7 +55,7 @@ void main() {
     Vertex v       = vb.vertices[gl_VertexIndex];
 
     // Scale & world‐transform position
-    vec3 scaledPos   = v.pos * pc.modelScale;
+    vec3 scaledPos   = v.pos;
     vec4 worldPos4   = ubo.model * vec4(scaledPos, 1.0);
     vWorldPos        = worldPos4.xyz;
 

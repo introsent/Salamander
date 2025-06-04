@@ -37,7 +37,6 @@ void MainSceneController::cleanup() {
     m_lightingPass.cleanup();
     m_gBufferPass.cleanup();
     m_depthPrepass.cleanup();
-    m_uniformBuffers.clear();
 }
 
 void MainSceneController::recreateSwapChain() {
@@ -313,7 +312,6 @@ void MainSceneController::loadModel(const std::string& modelPath) {
 void MainSceneController::createBuffers() {
     // Create uniform buffers for each frame
     VkDeviceSize uboSize = sizeof(UniformBufferObject);
-    m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         m_uniformBuffers[i] = UniformBuffer(
             m_shared->bufferManager,
@@ -325,43 +323,38 @@ void MainSceneController::createBuffers() {
             .offset = 0,
             .range = uboSize
         };
-    }
 
-    // Create omni light buffer
-    VkDeviceSize lightSize = sizeof(PointLightData);
-    m_omniLightBuffer = UniformBuffer(
-        m_shared->bufferManager,
-        m_shared->allocator,
-        lightSize
-    );
-    PointLightData lightData{};
-    lightData.pointLightPosition = glm::vec3(8.0f, 1.0f, 0.0f);
-    lightData.pointLightIntensity = 1000.f;
-    lightData.pointLightColor = glm::vec3(0.f, 0.f, 1.f);
-    lightData.pointLightRadius = 4.f;
-    m_omniLightBuffer.update(lightData);
-
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        // Create omni light buffer
+        VkDeviceSize lightSize = sizeof(PointLightData);
+        m_omniLightBuffer[i] = UniformBuffer(
+            m_shared->bufferManager,
+            m_shared->allocator,
+            lightSize
+        );
+        PointLightData lightData{};
+        lightData.pointLightPosition = glm::vec3(8.0f, 1.0f, 0.0f);
+        lightData.pointLightIntensity = 1000.f;
+        lightData.pointLightColor = glm::vec3(0.f, 0.f, 1.f);
+        lightData.pointLightRadius = 4.f;
+        m_omniLightBuffer[i].update(lightData);
         m_globalData.frameData[i].omniLightBufferInfo = {
-            .buffer = m_omniLightBuffer.handle(),
+            .buffer = m_omniLightBuffer[i].handle(),
             .offset = 0,
             .range = lightSize
         };
-    }
 
-    // Create camera exposure buffer
-    VkDeviceSize exposureSize = sizeof(CameraExposure);
-    m_cameraExposureBuffer = UniformBuffer(
-        m_shared->bufferManager,
-        m_shared->allocator,
-        exposureSize
-    );
-    CameraExposure exposureData{};
-    m_cameraExposureBuffer.update(camExpUBO);
+        // Create camera exposure buffer
+        VkDeviceSize exposureSize = sizeof(CameraExposure);
+        m_cameraExposureBuffer[i] = UniformBuffer(
+            m_shared->bufferManager,
+            m_shared->allocator,
+            exposureSize
+        );
+        CameraExposure exposureData{};
+        m_cameraExposureBuffer[i].update(camExpUBO);
 
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         m_globalData.frameData[i].cameraExposureBufferInfo = {
-            .buffer = m_cameraExposureBuffer.handle(),
+            .buffer = m_cameraExposureBuffer[i].handle(),
             .offset = 0,
             .range = exposureSize
         };

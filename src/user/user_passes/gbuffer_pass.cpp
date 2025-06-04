@@ -34,20 +34,20 @@ void GBufferPass::recreateSwapChain() {
 void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
     // Transition attachments
     ImageTransitionManager::transitionColorAttachment(
-        cmd, m_albedoTexture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        cmd, m_albedoTextures[frameIndex].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
     ImageTransitionManager::transitionColorAttachment(
-        cmd, m_normalTexture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        cmd, m_normalTextures[frameIndex].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
     ImageTransitionManager::transitionColorAttachment(
-        cmd, m_paramTexture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        cmd, m_paramTextures[frameIndex].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
     
     // Set up attachments
     std::array<VkRenderingAttachmentInfo, 3> colorAttachments = {{
         {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-            .imageView = m_albedoTexture.view,
+            .imageView = m_albedoTextures[frameIndex].view,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -55,7 +55,7 @@ void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t ima
         },
         {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-            .imageView = m_normalTexture.view,
+            .imageView = m_normalTextures[frameIndex].view,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -63,7 +63,7 @@ void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t ima
         },
         {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-            .imageView = m_paramTexture.view,
+            .imageView = m_paramTextures[frameIndex].view,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -74,7 +74,7 @@ void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t ima
 
     VkRenderingAttachmentInfo depthAttachment = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = m_dependencies->depthTexture->view,
+        .imageView = m_dependencies->depthTextures[frameIndex]->view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE
@@ -142,13 +142,13 @@ void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t ima
     
     // Transition attachments to shader read
     ImageTransitionManager::transitionToShaderRead(
-        cmd, m_albedoTexture.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        cmd, m_albedoTextures[frameIndex].image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
     ImageTransitionManager::transitionToShaderRead(
-        cmd, m_normalTexture.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        cmd, m_normalTextures[frameIndex].image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
     ImageTransitionManager::transitionToShaderRead(
-        cmd, m_paramTexture.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        cmd, m_paramTextures[frameIndex].image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
 
 }
@@ -254,56 +254,58 @@ void GBufferPass::createAttachments() {
     VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
                              VK_IMAGE_USAGE_SAMPLED_BIT | 
                              VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    
-    // Albedo (SRGB)
-    m_albedoTexture = m_shared->textureManager->createTexture(
-        extent.width, extent.height,
-        VK_FORMAT_R8G8B8A8_SRGB,
-        usage,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        true
-    );
-    
-    // Normal (UNORM)
-    m_normalTexture = m_shared->textureManager->createTexture(
-        extent.width, extent.height,
-        VK_FORMAT_R8G8B8A8_SRGB,
-        usage,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        true
-    );
-    
-    // Parameters (RG8)
-    m_paramTexture = m_shared->textureManager->createTexture(
-        extent.width, extent.height,
-        VK_FORMAT_R8G8_UNORM,
-        usage,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        true
-    );
 
-    VkImageUsageFlags depthUsage =
-           VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-           VK_IMAGE_USAGE_SAMPLED_BIT |
-           VK_IMAGE_USAGE_TRANSFER_DST_BIT;  // Allow for transitions
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        // Albedo (SRGB)
+        m_albedoTextures[i] = m_shared->textureManager->createTexture(
+            extent.width, extent.height,
+            VK_FORMAT_R8G8B8A8_SRGB,
+            usage,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            true
+        );
 
-    m_depthTexture = m_shared->textureManager->createTexture(
-        extent.width, extent.height,
-        VK_FORMAT_D32_SFLOAT,
-        depthUsage,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_IMAGE_ASPECT_DEPTH_BIT,
-        false
-    );
+        // Normal (UNORM)
+        m_normalTextures[i] = m_shared->textureManager->createTexture(
+            extent.width, extent.height,
+            VK_FORMAT_R8G8B8A8_SRGB,
+            usage,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            true
+        );
 
-    // Update dependencies
-    m_dependencies->albedoTexture = &m_albedoTexture;
-    m_dependencies->normalTexture = &m_normalTexture;
-    m_dependencies->paramTexture = &m_paramTexture;
-    m_dependencies->depthTexture = &m_depthTexture;
+        // Parameters (RG8)
+        m_paramTextures[i] = m_shared->textureManager->createTexture(
+            extent.width, extent.height,
+            VK_FORMAT_R8G8_UNORM,
+            usage,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            true
+        );
+
+        VkImageUsageFlags depthUsage =
+               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+               VK_IMAGE_USAGE_SAMPLED_BIT |
+               VK_IMAGE_USAGE_TRANSFER_DST_BIT;  // Allow for transitions
+
+        m_depthTextures[i] = m_shared->textureManager->createTexture(
+            extent.width, extent.height,
+            VK_FORMAT_D32_SFLOAT,
+            depthUsage,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
+            false
+        );
+
+        // Update dependencies
+        m_dependencies->albedoTextures[i] = &m_albedoTextures[i];
+        m_dependencies->normalTextures[i] = &m_normalTextures[i];
+        m_dependencies->paramTextures[i] = &m_paramTextures[i];
+        m_dependencies->depthTextures[i] = &m_depthTextures[i];
+    }
 }
 
 void GBufferPass::createDescriptors() {
