@@ -21,6 +21,7 @@ layout(buffer_reference, scalar) readonly buffer VertexBuffer {
 };
 
 layout(binding = 0, scalar) uniform DirectionalLightData {
+    vec3 directionalLightPosition;
     vec3 directionalLightDirection;
     vec3 directionalLightColor;
     float directionalLightIntensity;
