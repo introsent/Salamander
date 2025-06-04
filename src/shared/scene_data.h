@@ -39,12 +39,14 @@ struct MainSceneGlobalData {
 };
 
 struct PassDependencies {
-    // Inputs/Outputs
-    ManagedTexture* depthTexture;
-    ManagedTexture* albedoTexture;
-    ManagedTexture* normalTexture;
-    ManagedTexture* paramTexture;
-    ManagedTexture* hdrTexture;
+    // Per-frame textures
+    std::array<ManagedTexture*, MAX_FRAMES_IN_FLIGHT> depthTextures;
+    std::array<ManagedTexture*, MAX_FRAMES_IN_FLIGHT> albedoTextures;
+    std::array<ManagedTexture*, MAX_FRAMES_IN_FLIGHT> normalTextures;
+    std::array<ManagedTexture*, MAX_FRAMES_IN_FLIGHT> paramTextures;
+    std::array<ManagedTexture*, MAX_FRAMES_IN_FLIGHT> hdrTextures;
+
+    // Static Textures
     ManagedTexture* equirectTexture;
     ManagedTexture* cubeMap;
     ManagedTexture* irradianceMap;

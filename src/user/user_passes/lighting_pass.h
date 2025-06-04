@@ -30,5 +30,5 @@ private:
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
     
     // Attachments
-    ManagedTexture m_hdrTexture;
+    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_hdrTextures;
 };

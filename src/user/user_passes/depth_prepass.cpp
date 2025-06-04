@@ -122,7 +122,7 @@ void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t im
     // Transition the destination to TRANSFER_DST_OPTIMAL
     ImageTransitionManager::transitionDepthAttachment(
         cmd,
-        m_dependencies->depthTexture->image,
+        m_dependencies->depthTextures[frameIndex]->image,
         VK_IMAGE_LAYOUT_UNDEFINED,  // First use in this frame
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     );
@@ -143,7 +143,7 @@ void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t im
         cmd,
         m_dependencies->perFrameDepthTextures[frameIndex]->image,
         VK_IMAGE_LAYOUT_GENERAL,  // GENERAL layout supports transfer source operations
-        m_dependencies->depthTexture->image,
+        m_dependencies->depthTextures[frameIndex]->image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &copyRegion
@@ -152,7 +152,7 @@ void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t im
     // Transition the depth texture to shader read-only optimal for sampling
     ImageTransitionManager::transitionDepthAttachment(
         cmd,
-        m_dependencies->depthTexture->image,
+        m_dependencies->depthTextures[frameIndex]->image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
     );

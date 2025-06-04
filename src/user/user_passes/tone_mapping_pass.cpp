@@ -217,7 +217,7 @@ void ToneMappingPass::updateDescriptors()
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo hdrInfo = {
             .sampler = m_globalData->hdrSampler,
-            .imageView = m_dependencies->hdrTexture->view,
+            .imageView = m_dependencies->hdrTextures[i]->view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
 

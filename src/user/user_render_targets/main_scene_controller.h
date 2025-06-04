@@ -44,8 +44,7 @@ private:
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";
 
-    // Additional buffers needed
-    std::vector<UniformBuffer> m_uniformBuffers;
-    UniformBuffer m_omniLightBuffer;
-    UniformBuffer m_cameraExposureBuffer;
+    std::array<UniformBuffer, MAX_FRAMES_IN_FLIGHT> m_uniformBuffers;
+    std::array<UniformBuffer, MAX_FRAMES_IN_FLIGHT> m_omniLightBuffer;
+    std::array<UniformBuffer, MAX_FRAMES_IN_FLIGHT> m_cameraExposureBuffer;
 };
