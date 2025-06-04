@@ -17,6 +17,7 @@ struct MainSceneGlobalData {
     // Samplers
     VkSampler gBufferSampler = VK_NULL_HANDLE;
     VkSampler depthSampler = VK_NULL_HANDLE;
+    VkSampler shadowDepthSampler = VK_NULL_HANDLE;
     VkSampler hdrSampler = VK_NULL_HANDLE;
 
     struct AABB {

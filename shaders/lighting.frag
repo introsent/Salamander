@@ -31,7 +31,7 @@ layout(binding = 3) uniform sampler2D gParams;
 layout(binding = 4) uniform sampler2D gDepth;
 layout(binding = 6) uniform samplerCube gCubeMap;
 layout(binding = 7) uniform samplerCube gIrradianceMap;
-layout(binding = 9) uniform sampler2D gShadowMap;
+layout(binding = 9) uniform sampler2DShadow gShadowMap;
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 outColor;
@@ -125,14 +125,7 @@ float ShadowCalculation(vec3 worldPos) {
     vec3 shadowUV = vec3(lightSpacePos.xy * 0.5 + 0.5, lightSpacePos.z);
     shadowUV.y = 1.0 - shadowUV.y; // Flip Y-axis
 
-    // Compare depth values
-    float closestDepth = texture(gShadowMap, shadowUV.xy).r;
-
-    if (closestDepth < shadowUV.z)
-    {
-        return 0.f;
-    }
-    return 1.f;
+    return texture(gShadowMap, shadowUV);
 }
 
 vec3 GetWorldPositionFromDepth(float depth, ivec2 fragCoords, mat4 invProj, mat4 invView, ivec2 resolution) {
