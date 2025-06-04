@@ -26,10 +26,10 @@ void ShadowPass::cleanup() {
 void ShadowPass::recreateSwapChain() {
 }
 
-void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
-    // Transition shadow map to depth attachment
+void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t) {
+    // Transition shadow map to depth attachment layout
     ImageTransitionManager::transitionDepthAttachment(
-        cmd, m_shadowMapTexture.image,
+        cmd, m_dependencies->shadowMap->image,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     );
@@ -37,7 +37,7 @@ void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imag
     // Set up depth attachment for dynamic rendering
     VkRenderingAttachmentInfo depthAttachment = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = m_shadowMapTexture.view,
+        .imageView = m_dependencies->shadowMap->view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -61,6 +61,7 @@ void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imag
         0.0f, 1.0f
     };
     vkCmdSetViewport(cmd, 0, 1, &viewport);
+
     VkRect2D scissor = {{0, 0}, {SHADOW_MAP_SIZE, SHADOW_MAP_SIZE}};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
@@ -83,7 +84,7 @@ void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imag
     for (const auto& primitive : m_globalData->primitives) {
         ShadowPushConstants pc = {
             .vertexBufferAddress = m_globalData->vertexBufferAddress,
-            .modelScale = globalScale, // Should be stored per-primitive
+            .modelScale = globalScale,
             .baseColorTextureIndex = primitive.materialIndex
         };
 
@@ -104,10 +105,9 @@ void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imag
 
     vkCmdEndRendering(cmd);
 
-    // Transition to shader read
+    // Transition to shader read-only layout for main pass usage
     ImageTransitionManager::transitionDepthAttachment(
-        cmd,
-        m_shadowMapTexture.image,
+        cmd, m_dependencies->shadowMap->image,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
     );
@@ -276,6 +276,7 @@ void ShadowPass::createLightMatrices() {
     directionalLight.projection = glm::ortho(minLightSpace.x, maxLightSpace.x,
                                                 minLightSpace.y, maxLightSpace.y,
                                                 nearZ, farZ);
+    directionalLight.projection[1][1] *= -1; // Invert y-axis
 }
 
 void ShadowPass::createUniformBuffers() {
