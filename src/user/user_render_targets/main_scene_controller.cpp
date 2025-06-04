@@ -186,8 +186,6 @@ void MainSceneController::loadModel(const std::string& modelPath) {
         throw std::runtime_error("Failed to load GLTF model");
     }
 
-
-
     // Clear previous data
     m_globalData.modelTextures.clear();
     m_globalData.materialTextures.clear();
@@ -351,10 +349,10 @@ void MainSceneController::createBuffers() {
             lightSize
         );
         PointLightData lightData{};
-        lightData.pointLightPosition = glm::vec3(8.0f, 1.0f, 0.0f);
-        lightData.pointLightIntensity = 1000.f;
-        lightData.pointLightColor = glm::vec3(0.f, 0.f, 1.f);
-        lightData.pointLightRadius = 4.f;
+        lightData.pointLightPosition = glm::vec3(9.0f, 2.0f, -1.0f);
+        lightData.pointLightIntensity = 100000.f;
+        lightData.pointLightColor = glm::vec3(1.f, 0.f, 0.f);
+        lightData.pointLightRadius = 10.f;
         m_omniLightBuffer[i].update(lightData);
         m_globalData.frameData[i].omniLightBufferInfo = {
             .buffer = m_omniLightBuffer[i].handle(),
