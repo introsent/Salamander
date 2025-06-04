@@ -168,6 +168,8 @@ void MainSceneController::loadModel(const std::string& modelPath) {
         throw std::runtime_error("Failed to load GLTF model");
     }
 
+
+
     // Clear previous data
     m_globalData.modelTextures.clear();
     m_globalData.materialTextures.clear();

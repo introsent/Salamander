@@ -33,6 +33,7 @@ struct MainSceneGlobalData {
         std::vector<VkDescriptorImageInfo> normalImageInfos;
         VkDescriptorBufferInfo omniLightBufferInfo;
         VkDescriptorBufferInfo cameraExposureBufferInfo;
+        VkDescriptorBufferInfo directionalLightBufferInfo;
     };
     std::array<FrameData, MAX_FRAMES_IN_FLIGHT> frameData;
 };

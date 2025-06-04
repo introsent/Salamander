@@ -208,13 +208,14 @@ void LightingPass::createDescriptors() {
         .addBinding(5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         VK_SHADER_STAGE_FRAGMENT_BIT)// Lights
         .addBinding(6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // Cube map
         .addBinding(7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT) // Irradiance map
-        .addBinding(8, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  VK_SHADER_STAGE_FRAGMENT_BIT ) // Camera exposure
+        .addBinding(8, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  VK_SHADER_STAGE_FRAGMENT_BIT ) // Directional Light
+        .addBinding(9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  VK_SHADER_STAGE_FRAGMENT_BIT ) // Shadow map
         .build();
     
     // Descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 * MAX_FRAMES_IN_FLIGHT},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8 * MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 9 * MAX_FRAMES_IN_FLIGHT}
     };
     
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
@@ -261,6 +262,12 @@ void LightingPass::updateDescriptors()
             .sampler = m_globalData->hdrSampler,
             .imageView = m_dependencies->irradianceMap->view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+
+        VkDescriptorImageInfo shadowInfo = {
+            .sampler = m_globalData->depthSampler,
+            .imageView = m_dependencies->shadowMap->view,
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
         };
 
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
@@ -323,10 +330,19 @@ void LightingPass::updateDescriptors()
             {
                 .binding = 8,
                 .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .bufferInfo = &m_globalData->frameData[i].cameraExposureBufferInfo,
+                .bufferInfo = &m_globalData->frameData[i].directionalLightBufferInfo,
                 .descriptorCount = 1,
                 .isImage = false
+            },
+
+            {
+                .binding = 9,
+                .type =  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &shadowInfo,
+                .descriptorCount = 1,
+                .isImage = true
             }
+
         };
         m_descriptorManager->updateDescriptorSet(i, updates);
     }

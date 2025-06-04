@@ -54,7 +54,7 @@ namespace {
         const size_t vertexCount = posAccessor.count;
         for (size_t i = 0; i < vertexCount; ++i) {
             Vertex v{};
-            v.pos = glm::make_vec3(&positions[3 * i]);
+            v.pos = glm::make_vec3(&positions[3 * i]) *   globalScale ;
             v.texCoord = glm::make_vec2(&texCoords[2 * i]);
             v.normal   = glm::make_vec3(&normals[3*i]);
             if (hasTangents) {
