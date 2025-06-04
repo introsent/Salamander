@@ -14,10 +14,6 @@ void CubeMapRenderer::initialize(Context* context, BufferManager* bufferManager,
     createCubeVertexData();
 }
 
-void CubeMapRenderer::cleanup() {
-    // Resources are cleaned via DeletionQueue
-}
-
 void CubeMapRenderer::createCubeVertexData() {
     const std::vector<glm::vec3> cubeVertices = {
         // +X face
@@ -48,7 +44,7 @@ void CubeMapRenderer::createCubeVertexData() {
 
     VkDeviceSize bufferSize = sizeof(glm::vec3) * cubeVertices.size();
 
-    // Create staging buffer
+    // Create a staging buffer
     ManagedBuffer staging = m_bufferManager->createBuffer(
         bufferSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -187,7 +183,7 @@ VkDevice device = m_context->device();
     );
 }
 
-CubeMapRenderer::CubeMap CubeMapRenderer::createCubeMap(uint32_t size, VkFormat format) {
+CubeMapRenderer::CubeMap CubeMapRenderer::createCubeMap(uint32_t size, VkFormat format) const {
     CubeMap cubeMap;
     cubeMap.texture = m_textureManager->createCubeTexture(
        size, format,
@@ -201,7 +197,7 @@ CubeMapRenderer::CubeMap CubeMapRenderer::createCubeMap(uint32_t size, VkFormat 
 
 static int imageViews = 0;
 static int cubeMapViews = 0;
-void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) {
+void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) const {
     VkDevice device = m_context->device();
 
     // Create individual face views
@@ -229,7 +225,7 @@ void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) {
             });
     }
 
-    // Create cubemap view (for sampling)
+    // Create a cube map view (for sampling)
     VkImageViewCreateInfo cubeViewInfo{};
     cubeViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     cubeViewInfo.image = cubeMap.texture.image;
@@ -254,7 +250,7 @@ void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) {
 
 void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
                                          const ManagedTexture& equirectTexture,
-                                         CubeMap& cubeMap) {
+                                         const CubeMap& cubeMap) const {
 
     // Add equirect texture transition
     ImageTransitionManager::transitionImageLayout(
@@ -385,7 +381,7 @@ CubeMapRenderer::CubeMap CubeMapRenderer::createDiffuseIrradianceMap(VkCommandBu
     m_diffuseIrradianceDescriptorManager->updateDescriptorSet(0, updates);
 
 
-    // Transition irradiance map to render target
+    // Transition irradiance map to render a target
     ImageTransitionManager::transitionImageLayout(
         cmd, irradianceMap.texture.image,
         VK_IMAGE_LAYOUT_UNDEFINED,
@@ -467,13 +463,13 @@ void CubeMapRenderer::createPipelines() {
 
     VkDevice device = m_context->device();
 
-    // Create descriptor set layout
+    // Create a descriptor set layout
     DescriptorSetLayoutBuilder layoutBuilder(device);
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .build();
 
-    // Create descriptor pool
+    // Create a descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
     };

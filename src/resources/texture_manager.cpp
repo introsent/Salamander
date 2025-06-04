@@ -286,7 +286,7 @@ void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat forma
 
 void TextureManager::transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout,
                                                VkImageLayout newLayout, VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
-                                               VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const {
+                                               VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) {
 
     VkImageMemoryBarrier2 barrier{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,

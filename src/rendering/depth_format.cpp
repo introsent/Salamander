@@ -8,7 +8,7 @@ DepthFormat::DepthFormat(VkPhysicalDevice physicalDevice)
 
 // Finds a supported format from the given candidates based on the specified tiling and features
 VkFormat DepthFormat::findSupportedFormat(const std::vector<VkFormat>& candidates,
-    VkImageTiling tiling,
+    const VkImageTiling tiling,
     VkFormatFeatureFlags features) const {
     for (VkFormat format : candidates) {
         VkFormatProperties props;

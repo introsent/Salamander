@@ -40,7 +40,7 @@ namespace {
         const float* normals = reinterpret_cast<const float*>(
         &model.buffers[normView.buffer].data[normView.byteOffset + normAccessor.byteOffset]);
 
-        bool hasTangents = primitive.attributes.find("TANGENT") != primitive.attributes.end();
+        bool hasTangents = primitive.attributes.contains("TANGENT");
         const float* tangents = nullptr;
         if (hasTangents) {
             const auto& tanAccessor = model.accessors[primitive.attributes.at("TANGENT")];

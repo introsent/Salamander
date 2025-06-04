@@ -29,8 +29,6 @@ void ToneMappingPass::recreateSwapChain() {
 }
 
 void ToneMappingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
-    VkImage swapImage = m_shared->swapChain->getCurrentImage(frameIndex);
-
     // ─── Set up your color attachment for tone mapping ───
     VkRenderingAttachmentInfo colorAttachment = {
         .sType         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
@@ -56,8 +54,8 @@ void ToneMappingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t
       // dynamic viewport/scissor
       VkViewport viewport = {
           0.0f, 0.0f,
-          float(m_shared->swapChain->extent().width),
-          float(m_shared->swapChain->extent().height),
+          static_cast<float>(m_shared->swapChain->extent().width),
+          static_cast<float>(m_shared->swapChain->extent().height),
           0.0f, 1.0f
       };
       vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -77,8 +75,8 @@ void ToneMappingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t
       // push constants
       TonePush pc {
           glm::vec2{
-              float(m_shared->swapChain->extent().width),
-              float(m_shared->swapChain->extent().height)
+              static_cast<float>(m_shared->swapChain->extent().width),
+              static_cast<float>(m_shared->swapChain->extent().height)
           }
       };
       vkCmdPushConstants(
@@ -211,8 +209,7 @@ void ToneMappingPass::createDescriptors() {
     updateDescriptors();
 }
 
-void ToneMappingPass::updateDescriptors()
-{
+void ToneMappingPass::updateDescriptors() const {
     // Update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo hdrInfo = {

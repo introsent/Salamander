@@ -26,7 +26,7 @@ public:
     VkPipelineLayout layout() const { return m_pipelineLayout; }
 
 private:
-    void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
+    void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule) const;
     void createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout, VkPushConstantRange pushConstantRange);
 
     Context* m_context;

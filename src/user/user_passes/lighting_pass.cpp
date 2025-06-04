@@ -229,8 +229,7 @@ void LightingPass::createDescriptors() {
     updateDescriptors();
 }
 
-void LightingPass::updateDescriptors()
-{
+void LightingPass::updateDescriptors() const {
     // Update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo albedoInfo = {

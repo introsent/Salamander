@@ -1,6 +1,5 @@
 #include "uniform_buffer.h"
 #include "data_structures.h"
-#include <cstring>
 
 UniformBuffer::UniformBuffer(BufferManager* bufferManager, VmaAllocator alloc, VkDeviceSize bufferSize)
     : allocator(alloc), size(bufferSize)

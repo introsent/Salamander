@@ -3,7 +3,6 @@
 #include <stdexcept>
 
 #include "deletion_queue.h"
-#include "shared/shared_structs.h"
 
 static std::vector<char> readFile(const std::string& filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -24,7 +23,7 @@ Pipeline::Pipeline(
     VkDescriptorSetLayout descriptorSetLayout,
     const PipelineConfig& config,
     VkPushConstantRange pushConstantRange
-) : m_context(context){
+) : m_context(context), m_pipelineLayout(nullptr) {
     createPipelineLayout(descriptorSetLayout, pushConstantRange);
 
     auto vertCode = readFile(config.vertShaderPath);
@@ -82,23 +81,23 @@ Pipeline::Pipeline(
     pipelineInfo.pNext = &renderingInfo;
 
     if (vkCreateGraphicsPipelines(
-        m_context->device(),
-        VK_NULL_HANDLE,
-        1,
-        &pipelineInfo,
-        nullptr,
-        &m_pipeline
-    ) != VK_SUCCESS) {
+            m_context->device(),
+            VK_NULL_HANDLE,
+            1,
+            &pipelineInfo,
+            nullptr,
+            &m_pipeline
+        ) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline");
     }
 
-    VkDevice   deviceCopy = m_context->device();
+    VkDevice deviceCopy = m_context->device();
     VkPipeline pipelineCopy = m_pipeline;
 
     static int pipelineID = 0;
     DeletionQueue::get().pushFunction("Pipeline" + std::to_string(pipelineID++), [deviceCopy, pipelineCopy]() {
         vkDestroyPipeline(deviceCopy, pipelineCopy, nullptr);
-        });
+    });
 
     vkDestroyShaderModule(m_context->device(), vertShaderModule, nullptr);
     if (hasFragmentShader) {
@@ -106,7 +105,7 @@ Pipeline::Pipeline(
     }
 }
 
-void Pipeline::createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule) {
+void Pipeline::createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule) const {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.codeSize = code.size();

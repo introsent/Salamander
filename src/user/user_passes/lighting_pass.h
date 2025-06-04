@@ -18,7 +18,7 @@ private:
     void createPipeline();
     void createAttachments();
     void createDescriptors();
-    void updateDescriptors();
+    void updateDescriptors() const;
 
     // Resources
     const RenderTarget::SharedResources* m_shared = nullptr;

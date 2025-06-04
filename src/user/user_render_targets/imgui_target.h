@@ -15,7 +15,7 @@ public:
 private:
     void createRenderingResources();
     void createDescriptors();
-    void initializeImGui();
+    void initializeImGui() const;
 
     std::unique_ptr<Pipeline> m_pipeline;
     std::unique_ptr<ImGuiDescriptorManager> m_descriptorManager;

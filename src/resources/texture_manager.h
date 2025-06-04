@@ -54,10 +54,10 @@ public:
                                  uint32_t layers, VkImageCreateFlags flags) const;
 
 
-    void transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image,
-    VkImageLayout oldLayout, VkImageLayout newLayout,
-    VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
-    VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) const;
+    static void transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image,
+                                          VkImageLayout oldLayout, VkImageLayout newLayout,
+                                          VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
+                                          VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask);
 
     const std::vector<ManagedTexture>& getTextures() const { return m_managedTextures; }
 
