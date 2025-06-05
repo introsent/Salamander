@@ -5,6 +5,7 @@
 #include "deletion_queue.h"
 
 #include <chrono>
+#include <fstream>
 #include <stdexcept>
 
 #include "user/user_render_targets/main_scene_target.h"
@@ -262,6 +263,14 @@ void Renderer::markFramebufferResized() {
 
 
 void Renderer::cleanup() {
+    /* Debugging VMA */
+    char* StatsString = nullptr;
+    vmaBuildStatsString( m_allocator, &StatsString, true);
+    {
+        std::ofstream OutStats{ "VmaStats.json" };
+        OutStats << StatsString;
+    }
+    vmaFreeStatsString( m_allocator, StatsString);
     for (auto& target : m_renderTargets) {
         target->cleanup();
     }
