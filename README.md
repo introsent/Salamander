@@ -2,6 +2,7 @@
   <h1>Salamander</h1>
   <p>Ivans Minajevs</p>
   <hr>
+  <a href="https://github.com/Howest-DAE-GD/graphics-programming-2-vulkan-project-introsent">https://github.com/Howest-DAE-GD/graphics-programming-2-vulkan-project-introsent</a> 
   <p>
     Salamander is a 3D rendering engine built with Vulkan using C++ 20.
     The software in question functions as a standalone graphics engine, with the purpose of demonstrating the capabilities of the Vulkan framework.
