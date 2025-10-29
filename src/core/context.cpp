@@ -42,67 +42,28 @@ bool Context::checkDeviceExtensionSupport(VkPhysicalDevice device) const {
 }
 
 bool Context::isDeviceSuitable(VkPhysicalDevice device) const {
+    // Check queue families
     QueueFamilyIndices indices = findQueueFamilies(device);
-
-    // Get device properties to check version
-    VkPhysicalDeviceProperties deviceProps;
-    vkGetPhysicalDeviceProperties(device, &deviceProps);
-
-    // Check for required extensions
-    bool extensionsSupported = checkDeviceExtensionSupport(device);
-
-    // Always check swap chain support if using presentation
-    bool swapChainAdequate = false;
-    if (extensionsSupported) {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-        swapChainAdequate = !swapChainSupport.formats.empty() &&
-                          !swapChainSupport.presentModes.empty();
+    if (!indices.isComplete()) {
+        return false;
     }
 
-    // Unified feature checking using Vulkan 1.3 structure
-    VkPhysicalDeviceFeatures2 supportedFeatures2{};
-    supportedFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-
-    // For Vulkan 1.3+, use core features structure
-    VkPhysicalDeviceVulkan13Features vulkan13Features{};
-    vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-
-    // Chain structures based on version
-    if (deviceProps.apiVersion >= VK_MAKE_VERSION(1, 3, 0)) {
-        supportedFeatures2.pNext = &vulkan13Features;
-    } else {
-        // Fallback to KHR extensions if using older Vulkan
-        VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
-        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-
-        VkPhysicalDeviceDynamicRenderingFeaturesKHR dynRenderingFeatures{};
-        dynRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-
-        sync2Features.pNext = &dynRenderingFeatures;
-        supportedFeatures2.pNext = &sync2Features;
+    // Check device extensions
+    if (!checkDeviceExtensionSupport(device)) {
+        return false;
     }
 
-    vkGetPhysicalDeviceFeatures2(device, &supportedFeatures2);
-
-    // Feature validation
-    bool featuresSupported = true;
-    featuresSupported &= indices.isComplete();
-    featuresSupported &= (supportedFeatures2.features.samplerAnisotropy == VK_TRUE);
-
-    if (deviceProps.apiVersion >= VK_MAKE_VERSION(1, 3, 0)) {
-        featuresSupported &= (vulkan13Features.synchronization2 == VK_TRUE);
-        featuresSupported &= (vulkan13Features.dynamicRendering == VK_TRUE);
-    } else {
-        auto* sync2Features = reinterpret_cast<VkPhysicalDeviceSynchronization2FeaturesKHR*>(supportedFeatures2.pNext);
-        auto* dynRendering = reinterpret_cast<VkPhysicalDeviceDynamicRenderingFeaturesKHR*>(sync2Features->pNext);
-
-        featuresSupported &= (sync2Features->synchronization2 == VK_TRUE);
-        featuresSupported &= (dynRendering->dynamicRendering == VK_TRUE);
+    // Check swap chain support
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+    bool swapChainAdequate = !swapChainSupport.formats.empty() &&
+                             !swapChainSupport.presentModes.empty();
+    if (!swapChainAdequate) {
+        return false;
     }
 
-    return featuresSupported &&
-           extensionsSupported &&
-           swapChainAdequate;
+    // Query and validate features
+    SupportedDeviceFeatures features = queryDeviceFeatures(device);
+    return validateRequiredFeatures(features);
 }
 
 SupportedDeviceFeatures Context::queryDeviceFeatures(VkPhysicalDevice device)
@@ -150,6 +111,62 @@ SupportedDeviceFeatures Context::queryDeviceFeatures(VkPhysicalDevice device)
     vkGetPhysicalDeviceFeatures2(device, &features.coreFeatures);
 
     return features;
+}
+
+bool Context::validateRequiredFeatures(const SupportedDeviceFeatures& features)
+{
+    // Check core feature (not in one IF statement for better debugging)
+    if (features.coreFeatures.features.samplerAnisotropy != VK_TRUE)
+    {
+        return false;
+    }
+    if (features.coreFeatures.features.shaderInt64 != VK_TRUE)
+    {
+        return false;
+    }
+
+    // Check Vulkan 1.2 features
+    if (features.features12.bufferDeviceAddress != VK_TRUE)
+    {
+        return false;
+    }
+    if (features.features12.runtimeDescriptorArray != VK_TRUE)
+    {
+        return false;
+    }
+    if (features.features12.scalarBlockLayout != VK_TRUE)
+    {
+        return false;
+    }
+
+    // Check synchornization2 and dynamic rendering
+    // for Vulkan >= 1.3
+    if (features.usingVulkan13)
+    {
+        if (features.features13.synchronization2 != VK_TRUE)
+        {
+            return false;
+        }
+        if (features.features13.dynamicRendering != VK_TRUE)
+        {
+            return false;
+        }
+    }
+    // for Vulkan < 1.3
+    else
+    {
+        if (features.sync2FeaturesKHR.synchronization2 != VK_TRUE)
+        {
+            return false;
+        }
+        if (features.dynamicRenderingFeaturesKHR.dynamicRendering != VK_TRUE)
+        {
+            return false;
+        }
+    }
+
+    // if non-failed - validation is passed
+    return true;
 }
 
 std::vector<const char*> Context::getRequiredInstanceExtensions(bool enableValidation) {
@@ -254,6 +271,7 @@ void Context::selectPhysicalDevice() {
         if (isDeviceSuitable(device)) {
             m_physicalDevice = device;
             m_queueFamilies = findQueueFamilies(device);
+            m_supportedFeatures = queryDeviceFeatures(device);
             break;
         }
     }
@@ -288,7 +306,7 @@ SwapChainSupportDetails Context::querySwapChainSupport(VkPhysicalDevice device) 
 /* Creates a logical device from the selected physical device.
    Also retrieves the graphics and presentation queues from the created device. */
 void Context::createLogicalDevice() {
-  QueueFamilyIndices indices = findQueueFamilies(m_physicalDevice);
+    QueueFamilyIndices indices = findQueueFamilies(m_physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(),
@@ -304,35 +322,59 @@ void Context::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    // ============ Vulkan 1.2 features ============
-    VkPhysicalDeviceVulkan12Features features12{};
-    features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    features12.bufferDeviceAddress = VK_TRUE;    // For buffer references
-    features12.runtimeDescriptorArray = VK_TRUE; // For GL_EXT_buffer_reference
-    features12.scalarBlockLayout = VK_TRUE;     // For GL_EXT_scalar_block_layout
+    // Enable already queried features
 
-    // ============ Vulkan 1.3 features ============
-    VkPhysicalDeviceVulkan13Features features13{};
-    features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    features13.synchronization2 = VK_TRUE;
-    features13.dynamicRendering = VK_TRUE;
+    VkPhysicalDeviceFeatures2 enabledFeatures{};
+    enabledFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
-    // ============ Base device features ============
-    VkPhysicalDeviceFeatures2 deviceFeatures2{};
-    deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
-    deviceFeatures2.features.shaderInt64 = VK_TRUE; // For 64-bit addresses
+    // Enable core features
+    enabledFeatures.features.samplerAnisotropy = VK_TRUE;
+    enabledFeatures.features.shaderInt64 = VK_TRUE;
 
-    // ============ Feature chain ============
-    features12.pNext = &features13;     // 1.2-> 1.3
-    deviceFeatures2.pNext = &features12; // Base -> 1.2 -> 1.3
+    // Vulkan 1.2 features
+    VkPhysicalDeviceVulkan12Features enabled12{};
+    enabled12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    enabled12.bufferDeviceAddress = VK_TRUE;
+    enabled12.runtimeDescriptorArray = VK_TRUE;
+    enabled12.scalarBlockLayout = VK_TRUE;
 
+    void* pNext = &enabled12; // Start building the chain
 
+    // Create variables before IF statement to avoid dangling pointer
+    VkPhysicalDeviceVulkan13Features enabled13{};
+    VkPhysicalDeviceSynchronization2FeaturesKHR enabledSync2{};
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR enabledDynRendering{};
+
+    if (m_supportedFeatures.usingVulkan13) {
+        // Vulkan 1.3 path
+        enabled13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        enabled13.synchronization2 = VK_TRUE;
+        enabled13.dynamicRendering = VK_TRUE;
+
+        // Chain: enabled12 -> enabled13
+        enabled12.pNext = &enabled13;
+    } else {
+        // KHR extension path
+        enabledSync2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+        enabledSync2.synchronization2 = VK_TRUE;
+
+        enabledDynRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+        enabledDynRendering.dynamicRendering = VK_TRUE;
+
+        // Chain: enabled12 -> enabledSync2 -> enabledDynRendering
+        enabledSync2.pNext = &enabledDynRendering;
+        enabled12.pNext = &enabledSync2;
+    }
+
+    // Attach the entire chain to enabledFeatures
+    enabledFeatures.pNext = pNext;
+
+    // Create device
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.pNext = &deviceFeatures2; // Attach feature chain
+    createInfo.pNext = &enabledFeatures; // Attach our feature chain
     createInfo.enabledExtensionCount = static_cast<uint32_t>(m_deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = m_deviceExtensions.data();
 
@@ -343,12 +385,10 @@ void Context::createLogicalDevice() {
         createInfo.enabledLayerCount = 0;
     }
 
-
     if (vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create logical device!");
     }
 
-    // Rest of the function remains the same...
     DeletionQueue::get().pushFunction("Device", [this]() {
         if (m_device != VK_NULL_HANDLE) {
             vkDestroyDevice(m_device, nullptr);

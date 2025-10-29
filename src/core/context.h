@@ -72,8 +72,8 @@ private:
     // Query and store device features
     static SupportedDeviceFeatures queryDeviceFeatures(VkPhysicalDevice device) ;
 
-    // NEW: Validate that required features are supported
-    bool validateRequiredFeatures(const SupportedDeviceFeatures& features) const;
+    // Validate that required features are supported
+    static bool validateRequiredFeatures(const SupportedDeviceFeatures& features);
 
     static std::vector<const char*> getRequiredInstanceExtensions(bool enableValidation);
 
@@ -87,8 +87,8 @@ private:
     DebugMessenger* m_debugMessenger;
     bool m_enableValidation = false;
 
-    // This now actually gets populated and used!
-    SupportedDeviceFeatures m_supportedFeatures;
+
+    SupportedDeviceFeatures m_supportedFeatures {};
 
     std::vector<const char*> m_validationLayers = {
         "VK_LAYER_KHRONOS_validation",
