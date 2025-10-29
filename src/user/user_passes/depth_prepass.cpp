@@ -214,7 +214,7 @@ void DepthPrepass::createPipeline() {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = VK_TRUE,
         .depthWriteEnable = VK_TRUE,
-        .depthCompareOp = VK_COMPARE_OP_LESS,
+        .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE
     };
@@ -249,21 +249,13 @@ void DepthPrepass::createDescriptors() {
         .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
         .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
                    static_cast<uint32_t>(m_globalData->modelTextures.size()))
-        .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
-                   static_cast<uint32_t>(m_globalData->normalTextures.size()))
-        .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
-                   static_cast<uint32_t>(m_globalData->materialTextures.size()))
         .build();
 
     // Descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-         static_cast<uint32_t>(m_globalData->modelTextures.size() * MAX_FRAMES_IN_FLIGHT)},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-         static_cast<uint32_t>(m_globalData->normalTextures.size() * MAX_FRAMES_IN_FLIGHT)},
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-         static_cast<uint32_t>(m_globalData->materialTextures.size() * MAX_FRAMES_IN_FLIGHT)}
+         static_cast<uint32_t>(m_globalData->modelTextures.size() * MAX_FRAMES_IN_FLIGHT)}
     };
 
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
@@ -288,20 +280,6 @@ void DepthPrepass::createDescriptors() {
                 .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .imageInfo = m_globalData->frameData[i].textureImageInfos.data(),
                 .descriptorCount = static_cast<uint32_t>(m_globalData->modelTextures.size()),
-                .isImage = true
-            },
-            {
-                .binding = 2,
-                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageInfo = m_globalData->frameData[i].normalImageInfos.data(),
-                .descriptorCount = static_cast<uint32_t>(m_globalData->normalTextures.size()),
-                .isImage = true
-            },
-            {
-                .binding = 5,
-                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageInfo = m_globalData->frameData[i].materialImageInfos.data(),
-                .descriptorCount = static_cast<uint32_t>(m_globalData->materialTextures.size()),
                 .isImage = true
             }
         };
