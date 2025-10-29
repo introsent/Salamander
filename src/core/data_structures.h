@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #define GLM_FORCE_ALIGNED_GENTYPES
 #define GLM_ENABLE_EXPERIMENTAL
+#include <memory>
 #include <glm/gtx/hash.hpp>
 
 #include "command_buffer.h"

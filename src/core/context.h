@@ -8,6 +8,18 @@
 #include "window.h"
 #include "debug_messenger.h"
 
+// Since user can use different vulkan version, added alterative KHR extensions
+struct SupportedDeviceFeatures {
+    VkPhysicalDeviceFeatures2 coreFeatures{};
+    VkPhysicalDeviceVulkan12Features features12{};
+    VkPhysicalDeviceVulkan13Features features13{};
+
+    // Alternative: KHR extensions for Vulkan < 1.3
+    VkPhysicalDeviceSynchronization2FeaturesKHR sync2FeaturesKHR{};
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeaturesKHR{};
+
+    bool usingVulkan13 = false; // Track which path we're using
+};
 
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -15,13 +27,12 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-// simple QueueFamilyIndices structure
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
-    std::optional<uint32_t> presentFamily; 
+    std::optional<uint32_t> presentFamily;
 
     bool isComplete() const {
-        return graphicsFamily.has_value()  && presentFamily.has_value();
+        return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
 
@@ -54,15 +65,18 @@ private:
     void selectPhysicalDevice();
     void createLogicalDevice();
 
-    
     bool checkValidationLayerSupport() const;
     bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
     bool isDeviceSuitable(VkPhysicalDevice device) const;
 
-    static std::vector<const char*> getRequiredInstanceExtensions(bool enableValidation);
-    static std::vector<const char*> getRequiredDeviceExtensions(bool enableValidation);
+    // Query and store device features
+    static SupportedDeviceFeatures queryDeviceFeatures(VkPhysicalDevice device) ;
 
-	
+    // NEW: Validate that required features are supported
+    bool validateRequiredFeatures(const SupportedDeviceFeatures& features) const;
+
+    static std::vector<const char*> getRequiredInstanceExtensions(bool enableValidation);
+
     VkInstance m_instance = VK_NULL_HANDLE;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
     VkDevice m_device = VK_NULL_HANDLE;
@@ -73,7 +87,9 @@ private:
     DebugMessenger* m_debugMessenger;
     bool m_enableValidation = false;
 
-    // list of validation layers and device extensions.
+    // This now actually gets populated and used!
+    SupportedDeviceFeatures m_supportedFeatures;
+
     std::vector<const char*> m_validationLayers = {
         "VK_LAYER_KHRONOS_validation",
     };

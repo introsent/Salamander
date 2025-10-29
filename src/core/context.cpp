@@ -105,6 +105,53 @@ bool Context::isDeviceSuitable(VkPhysicalDevice device) const {
            swapChainAdequate;
 }
 
+SupportedDeviceFeatures Context::queryDeviceFeatures(VkPhysicalDevice device)
+{
+    SupportedDeviceFeatures features;
+
+    // Get device properties to check Vulkan version
+    VkPhysicalDeviceProperties deviceProps;
+    vkGetPhysicalDeviceProperties(device, &deviceProps);
+
+    // Determine if we're using Vulkan 1.3 core or KHR extensions
+    features.usingVulkan13 = (deviceProps.apiVersion >= VK_MAKE_VERSION(1, 3, 0));
+
+    // Initialize core features structure (always first in chain despite the Vulkan version)
+    features.coreFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    // Path for Vulkan >= 1.3
+    if (features.usingVulkan13) {
+        // Initialize Vulkan 1.2 features
+        features.features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+        // Initialize Vulkan 1.3 features
+        features.features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+        // Chain: coreFeatures -> features12 -> features13
+        features.features12.pNext = &features.features13;
+        features.coreFeatures.pNext = &features.features12;
+
+    // Path for Vulkan < 1.3
+    } else {
+        // Initialize Vulkan 1.2 features
+        features.features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+        // Initialize KHR extension features
+        features.sync2FeaturesKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+        features.dynamicRenderingFeaturesKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+
+        // Chain: coreFeatures -> features12 -> sync2 -> dynamicRendering
+        features.sync2FeaturesKHR.pNext = &features.dynamicRenderingFeaturesKHR;
+        features.features12.pNext = &features.sync2FeaturesKHR;
+        features.coreFeatures.pNext = &features.features12;
+    }
+
+    // Query all features at once using the chained structure
+    vkGetPhysicalDeviceFeatures2(device, &features.coreFeatures);
+
+    return features;
+}
+
 std::vector<const char*> Context::getRequiredInstanceExtensions(bool enableValidation) {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = nullptr;
@@ -112,19 +159,6 @@ std::vector<const char*> Context::getRequiredInstanceExtensions(bool enableValid
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
     if (enableValidation) {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-    return extensions;
-}
-
-std::vector<const char*> Context::getRequiredDeviceExtensions(bool enableDebugUtils) {
-    std::vector<const char*> extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-        // …any other device extensions (e.g. ray tracing, portability, etc.)
-    };
-
-    if (enableDebugUtils) {
-        // This is what actually allows vkGetDeviceProcAddr(m_device, "vkSetDebugUtilsObjectNameEXT") to return non-null.
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
     return extensions;
