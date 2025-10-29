@@ -102,20 +102,7 @@ void Renderer::initializeSharedResources(Camera* camera) {
         m_context->device(), m_allocator, m_commandManager.get(), m_bufferManager.get(), m_context->debugMessenger()
     );
 
-    VkExtent2D extent = m_swapChain->extent();
 
-
-    //SharedResources:
-    //    Context* context;
-    //    Window* window;
-    //    SwapChain* swapChain;
-    //    CommandManager* commandManager;
-    //    BufferManager* bufferManager;
-    //    TextureManager* textureManager;
-    //    uint32_t currentFrame;
-    //    VmaAllocator allocator;
-    //    VkImageView depthImageView;
-    //};
     m_sharedResources = {
         .context = m_context,
         .window = m_window,
@@ -138,6 +125,7 @@ void Renderer::drawFrame() {
 
     // Wait for fence before doing anything
     vkWaitForFences(m_context->device(), 1, &currentFrame.inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
 
     // Try to acquire next image
     uint32_t imageIndex;
@@ -161,8 +149,6 @@ void Renderer::drawFrame() {
     for (auto& target : m_renderTargets) {
         target->updateUniformBuffers(); // Move update here
     }
-
-    vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
 
     // Reset and record command buffer
     currentFrame.commandBuffer->reset();
