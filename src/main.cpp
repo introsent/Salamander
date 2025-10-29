@@ -1,5 +1,6 @@
 #include <iostream>
 #include "application.h"
+
 int main() {
     VulkanApplication app;
     try {
