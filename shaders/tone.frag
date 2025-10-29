@@ -17,11 +17,14 @@ layout(set = 0, binding = 1) uniform CameraExposure {
 
 layout(location = 0) out vec4 outColor;
 
-float computeExposure(float N, float t, float S, float ev100Override) {
+float computeExposure(in float aperture,
+                      in float shutterSpeed,
+                      in float ISO,
+                      in float ev100Override) {
     float ev100 = (ev100Override >= 0.0)
     ? ev100Override
-    : log2( (N * N) / t ) - log2( S / 100.0 );
-    return 1.0 / (1.2 * exp2(ev100));
+    : log2( pow(aperture, 2) / shutterSpeed * 100 / ISO);
+    return 1.0 / max((1.2 * pow(2.f, ev100)), 0.0001f);
 }
 
 void main() {

@@ -49,7 +49,7 @@ void main() {
 
             irradiance += texture(environmentMap, sampleVec).rgb *
             cos(theta) * sin(theta);
-            nrSamples++;
+            ++nrSamples;
         }
     }
     irradiance = PI * irradiance * (1.0 / float(nrSamples));
