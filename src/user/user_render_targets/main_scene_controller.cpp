@@ -1,9 +1,12 @@
 ﻿#include "main_scene_controller.h"
 
 #include "deletion_queue.h"
-#include "loaders/gltf_loader.h"
 #include "depth_format.h"
 #include "image_transition_manager.h"
+
+#ifdef USE_TINYGLTF
+    #include "loaders/gltf_loader.h"
+#endif
 
 void MainSceneController::initialize(const RenderTarget::SharedResources& shared) {
     m_shared = &shared;
@@ -181,6 +184,7 @@ void MainSceneController::createSamplers() {
 }
 
 void MainSceneController::loadModel(const std::string& modelPath) {
+#ifdef USE_TINYGLTF
     GLTFModel gltfModel;
     if (!GLTFLoader::LoadFromFile(modelPath, gltfModel)) {
         throw std::runtime_error("Failed to load GLTF model");
@@ -324,6 +328,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
             .normalTextureIndex = normalIndex
         });
     }
+    #endif
 }
 
 void MainSceneController::createBuffers() {

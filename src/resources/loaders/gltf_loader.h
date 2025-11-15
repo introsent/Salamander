@@ -26,8 +26,6 @@ struct GLTFTexture {
     std::string uri;
 };
 
-inline glm::vec3 globalScale{1.0f, 1.0f, 1.0f};
-
 struct GLTFModel {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;

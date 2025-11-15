@@ -39,6 +39,8 @@ struct MainSceneGlobalData {
     std::array<FrameData, MAX_FRAMES_IN_FLIGHT> frameData;
 };
 
+inline glm::vec3 globalScale{1.0f, 1.0f, 1.0f};
+
 struct PassDependencies {
     // Per-frame textures
     std::array<ManagedTexture*, MAX_FRAMES_IN_FLIGHT> depthTextures;

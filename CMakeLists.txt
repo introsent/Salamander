@@ -8,6 +8,25 @@ project(Salamander)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+# USER SETTING: Loader selection options
+option(USE_ASSIMP "Build with Assimp loader" OFF)
+option(USE_TINYGLTF "Build with tinygltf loader (header-only)" ON)
+
+if(USE_ASSIMP AND USE_TINYGLTF)
+    message(FATAL_ERROR "Only one loader may be enabled: set either -DUSE_ASSIMP=ON or -DUSE_TINYGLTF=ON")
+endif()
+message(STATUS "Model loader selection:")
+if(USE_ASSIMP)
+    message(STATUS "  Using Assimp")
+elseif(USE_TINYGLTF)
+    message(STATUS "  Using tinygltf")
+else()
+    message(STATUS "  No explicit loader chosen. Defaulting to assimp")
+    set(USE_ASSIMP ON)
+endif()
+
+
 # Check if Vulkan is installed
 find_package(Vulkan REQUIRED)
 if (NOT Vulkan_FOUND)
@@ -38,17 +57,22 @@ FetchContent_Declare(
 )
 set(GLM_ENABLE_CXX_20 ON)
 
-# Fetch ASSIMP
-FetchContent_Declare(
-        assimp
-        GIT_REPOSITORY https://github.com/assimp/assimp.git
-        GIT_TAG master
-        GIT_SHALLOW ON
-)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
-set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+if(USE_ASSIMP)
+    # Fetch ASSIMP
+    FetchContent_Declare(
+            assimp
+            GIT_REPOSITORY https://github.com/assimp/assimp.git
+            GIT_TAG master
+            GIT_SHALLOW ON
+    )
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
+    set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+
+    FetchContent_MakeAvailable(assimp)
+
+endif()
 
 # Fetch Vulkan Memory Allocator (VMA)
 FetchContent_Declare(
@@ -59,11 +83,12 @@ FetchContent_Declare(
 )
 
 # Fetch all dependencies
-FetchContent_MakeAvailable(glfw glm vma assimp)
+FetchContent_MakeAvailable(glfw glm vma)
 
 
 # Define the path to your stb headers
 set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path to stb headers")
+
 
 # Set the project source files
 set(${PROJECT_NAME}_SOURCES
@@ -71,7 +96,6 @@ set(${PROJECT_NAME}_SOURCES
     "src/includes/vma_impl.cpp"
     "src/includes/stb_image.h"
     "src/includes/tiny_obj_loader.h"
-    "src/includes/tiny_gltf.h"
     "src/includes/stb_image_write.h"
     "src/includes/json.hpp"
     "src/core/window.h"
@@ -126,41 +150,51 @@ set(${PROJECT_NAME}_SOURCES
     "src/user/user_executors/imgui_pass_executor.h"
     "src/rendering/descriptors/descriptor_set_layout_builder.cpp"
     "src/rendering/descriptors/descriptor_set_layout_builder.h"
-    src/rendering/descriptors/descriptor_pool_builder.cpp
-    src/rendering/descriptors/descriptor_pool_builder.h
-    src/user/user_descriptor_managers/main_descriptor_manager.cpp
-    src/user/user_descriptor_managers/main_descriptor_manager.h
-    src/user/user_descriptor_managers/imgui_descriptor_manager.cpp
-    src/user/user_descriptor_managers/imgui_descriptor_manager.h
-    src/rendering/target/render_target.h
-        src/user/user_render_targets/main_scene_target.cpp
-        src/user/user_render_targets/main_scene_target.h
-    src/user/user_render_targets/imgui_target.cpp
-    src/user/user_render_targets/imgui_target.h
-        src/rendering/image_transition_manager.h
-    src/resources/ssbo_buffer.cpp
-    src/resources/ssbo_buffer.h
-    src/rendering/camera/camera.cpp
-    src/rendering/camera/camera.h
-        src/resources/loaders/gltf_loader.cpp
-        src/resources/loaders/gltf_loader.h
-        src/user/user_passes/depth_prepass.cpp
-        src/user/user_passes/depth_prepass.h
-        src/user/user_passes/gbuffer_pass.cpp
-        src/user/user_passes/gbuffer_pass.h
-        src/user/user_passes/lighting_pass.cpp
-        src/user/user_passes/lighting_pass.h
-        src/user/user_passes/tone_mapping_pass.cpp
-        src/user/user_passes/tone_mapping_pass.h
-        src/user/user_render_targets/main_scene_controller.cpp
-        src/user/user_render_targets/main_scene_controller.h
-        src/user/user_render_targets/cube_map_renderer.cpp
-        src/user/user_render_targets/cube_map_renderer.h
-        src/user/user_passes/shadow_pass.cpp
-        src/user/user_passes/shadow_pass.h
-        src/resources/loaders/assimp_loader.cpp
-        src/resources/loaders/assimp_loader.h
+    "src/rendering/descriptors/descriptor_pool_builder.cpp"
+    "src/rendering/descriptors/descriptor_pool_builder.h"
+    "src/user/user_descriptor_managers/main_descriptor_manager.cpp"
+    "src/user/user_descriptor_managers/main_descriptor_manager.h"
+    "src/user/user_descriptor_managers/imgui_descriptor_manager.cpp"
+    "src/user/user_descriptor_managers/imgui_descriptor_manager.h"
+    "src/rendering/target/render_target.h"
+    "src/user/user_render_targets/main_scene_target.cpp"
+    "src/user/user_render_targets/main_scene_target.h"
+    "src/user/user_render_targets/imgui_target.cpp"
+    "src/user/user_render_targets/imgui_target.h"
+    "src/rendering/image_transition_manager.h"
+    "src/resources/ssbo_buffer.cpp"
+    "src/resources/ssbo_buffer.h"
+    "src/rendering/camera/camera.cpp"
+    "src/rendering/camera/camera.h"
+    "src/user/user_passes/depth_prepass.cpp"
+    "src/user/user_passes/depth_prepass.h"
+    "src/user/user_passes/gbuffer_pass.cpp"
+    "src/user/user_passes/gbuffer_pass.h"
+    "src/user/user_passes/lighting_pass.cpp"
+    "src/user/user_passes/lighting_pass.h"
+    "src/user/user_passes/tone_mapping_pass.cpp"
+    "src/user/user_passes/tone_mapping_pass.h"
+    "src/user/user_render_targets/main_scene_controller.cpp"
+    "src/user/user_render_targets/main_scene_controller.h"
+    "src/user/user_render_targets/cube_map_renderer.cpp"
+    "src/user/user_render_targets/cube_map_renderer.h"
+    "src/user/user_passes/shadow_pass.cpp"
+    "src/user/user_passes/shadow_pass.h"
 )
+
+
+if (USE_TINYGLTF)
+    list(APPEND ${PROJECT_NAME}_SOURCES
+            "src/includes/tiny_gltf.h"
+            "src/resources/loaders/gltf_loader.cpp"
+            "src/resources/loaders/gltf_loader.h"
+    )
+elseif (USE_ASSIMP)
+    list(APPEND ${PROJECT_NAME}_SOURCES
+            "src/resources/loaders/assimp_loader.cpp"
+            "src/resources/loaders/assimp_loader.h"
+    )
+endif()
 
 # Add ImGui source files with proper includes and links
 add_library(ImGui STATIC
@@ -190,14 +224,24 @@ target_link_libraries(ImGui PRIVATE
 # Add the project executable
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 
+if (USE_TINYGLTF)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USE_TINYGLTF)
+elseif (USE_ASSIMP)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USE_ASSIMP)
+endif()
+
 # Link libraries and include directories
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     ImGui 
     Vulkan::Vulkan 
     glfw 
     glm
-    assimp::assimp
 )
+if (USE_ASSIMP)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        assimp::assimp
+    )
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ${vma_SOURCE_DIR}/include

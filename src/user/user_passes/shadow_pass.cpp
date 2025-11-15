@@ -4,7 +4,10 @@
 #include "deletion_queue.h"
 #include "image_transition_manager.h"
 #include "descriptors/descriptor_set_layout_builder.h"
-#include "loaders/gltf_loader.h"
+
+#ifdef USE_TINYGLTF
+    #include "loaders/gltf_loader.h"
+#endif
 
 void ShadowPass::initialize(const RenderTarget::SharedResources &shared, MainSceneGlobalData &globalData,
                             PassDependencies &dependencies) {
