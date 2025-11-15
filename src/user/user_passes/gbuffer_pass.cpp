@@ -4,9 +4,12 @@
 #include "pipeline.h"
 #include "descriptors/descriptor_set_layout_builder.h"
 #include "image_transition_manager.h"
-#include "loaders/gltf_loader.h"
 #include "shared/scene_data.h"
 #include "target/render_target.h"
+
+#ifdef USE_TINYGLTF
+    #include "loaders/gltf_loader.h"
+#endif
 
 void GBufferPass::initialize(const RenderTarget::SharedResources& shared,
                              MainSceneGlobalData& globalData,

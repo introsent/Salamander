@@ -1,12 +1,13 @@
 ﻿// gltf_loader.cpp
 #include "gltf_loader.h"
-#include <tiny_gltf.h>
 #include <glm/gtc/type_ptr.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <iostream>
 #include <tiny_gltf.h>
+#include "shared/scene_data.h"
 
 namespace {
     void ProcessPrimitive(

@@ -5,7 +5,11 @@
 #include "image_transition_manager.h"
 #include "pipeline.h"
 #include "descriptors/descriptor_set_layout_builder.h"
-#include "loaders/gltf_loader.h"
+#include "shared/scene_data.h"
+
+#ifdef USE_TINYGLTF
+    #include "loaders/gltf_loader.h"
+#endif
 
 void DepthPrepass::initialize(const RenderTarget::SharedResources& shared,
                               MainSceneGlobalData& globalData,
