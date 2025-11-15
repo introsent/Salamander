@@ -10,7 +10,7 @@ struct MainSceneGlobalData {
     std::vector<ManagedTexture> materialTextures;
     std::vector<ManagedTexture> normalTextures;
     std::vector<GLTFPrimitiveData> primitives;
-    SSBOBuffer ssboBuffer;
+    SSBOBuffer vertexBuffer;
     uint64_t vertexBufferAddress;
     IndexBuffer indexBuffer;
 

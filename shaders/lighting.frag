@@ -119,18 +119,13 @@ float calculatePointLightAttenuation(vec3 lightPos, vec3 fragPos, float lightRad
 }
 
 float ShadowCalculation(vec3 worldPos) {
+    // Transform to light's clip space
     vec4 lightSpacePos = directionalLight.projection * directionalLight.view * vec4(worldPos, 1.0);
-    lightSpacePos.xyz /= lightSpacePos.w;
+    lightSpacePos /= lightSpacePos.w; // Perspective divide
 
+    // Convert to [0,1] UV coordinates
     vec3 shadowUV = vec3(lightSpacePos.xy * 0.5 + 0.5, lightSpacePos.z);
-    shadowUV.y = 1.0 - shadowUV.y;
-
-    // Check if position is within shadow map bounds
-    if (shadowUV.x < 0.0 || shadowUV.x > 1.0 ||
-    shadowUV.y < 0.0 || shadowUV.y > 1.0 ||
-    shadowUV.z > 1.0) {
-        return 1.0; // Outside shadow map = fully lit
-    }
+    shadowUV.y = 1.0 - shadowUV.y; // Flip Y-axis
 
     return texture(gShadowMap, shadowUV);
 }

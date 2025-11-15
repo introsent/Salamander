@@ -222,14 +222,14 @@ void MainSceneController::loadModel(const std::string& modelPath) {
     std::vector<std::string> defaultMaterialKeys; // Local deduplication
 
     // Create SSBO for vertices
-    m_globalData.ssboBuffer = SSBOBuffer(
+    m_globalData.vertexBuffer = SSBOBuffer(
         m_shared->bufferManager,
         m_shared->commandManager,
         m_shared->allocator,
         gltfModel.vertices.data(),
         sizeof(Vertex) * gltfModel.vertices.size()
     );
-    m_globalData.vertexBufferAddress = m_globalData.ssboBuffer.getDeviceAddress(m_shared->context->device());
+    m_globalData.vertexBufferAddress = m_globalData.vertexBuffer.getDeviceAddress(m_shared->context->device());
 
     // Create an index buffer
     m_globalData.indexBuffer = IndexBuffer(

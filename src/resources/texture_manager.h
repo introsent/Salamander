@@ -43,8 +43,8 @@ public:
 
     ManagedTexture& createTexture(uint32_t width, uint32_t height, VkFormat format,
         VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
-        VkImageAspectFlags aspect, bool createSampler = false);
-    ManagedTexture& createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels);
+        VkImageAspectFlags aspect, bool createSampler = false, const std::string& debugName = "");
+    ManagedTexture& createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels, const std::string& debugName = "");
 
     ManagedTexture& createCubeTexture(uint32_t size, VkFormat format,
                                      VkImageUsageFlags usage, VmaMemoryUsage memoryUsage);

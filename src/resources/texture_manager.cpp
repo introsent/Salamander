@@ -137,7 +137,7 @@ ManagedTexture& TextureManager::loadHDRTexture(const std::string& path) {
 }
 
 ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, VkFormat format,
-                                              VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler)
+                                              VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler, const std::string& debugName)
 {
     ManagedTexture texture;
 
@@ -149,11 +149,18 @@ ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, V
         texture.sampler = TextureManager::createSampler();
     }
 
+    if (!debugName.empty())
+    {
+        m_debugMessenger->setObjectName(
+        reinterpret_cast<uint64_t>(texture.image),
+        VK_OBJECT_TYPE_IMAGE, debugName.c_str());
+    }
+
     m_managedTextures.push_back(texture);
     return m_managedTextures.back();
 }
 
-ManagedTexture& TextureManager::createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels) {
+ManagedTexture& TextureManager::createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels, const std::string&  debugName) {
     // Determine format based on channels
     VkFormat format = VK_FORMAT_R8G8B8A8_SRGB; // Default to RGBA
     if (channels == 1) {
@@ -206,6 +213,13 @@ ManagedTexture& TextureManager::createTexture(const unsigned char* data, uint32_
     // Create image view and sampler
     texture.view = createImageView(texture.image, format, VK_IMAGE_ASPECT_COLOR_BIT);
     texture.sampler = createSampler();
+
+    if (!debugName.empty())
+    {
+        m_debugMessenger->setObjectName(
+        reinterpret_cast<uint64_t>(texture.image),
+        VK_OBJECT_TYPE_IMAGE, debugName.c_str());
+    }
 
     // Add to managed textures
     m_managedTextures.push_back(texture);

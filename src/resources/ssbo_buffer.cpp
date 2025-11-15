@@ -25,7 +25,7 @@ SSBOBuffer::SSBOBuffer(
         dataSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT |
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, // critical for SSBO
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, // critical for vertex SSBO
         VMA_MEMORY_USAGE_AUTO
     ).buffer;
 
