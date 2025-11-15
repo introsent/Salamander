@@ -120,7 +120,6 @@ void Renderer::initializeSharedResources(Camera* camera) {
 
 
 void Renderer::drawFrame() {
-    //vkDeviceWaitIdle(m_context->device());
     Frame& currentFrame = m_frames[m_currentFrame];
 
     // Wait for fence before doing anything

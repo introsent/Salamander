@@ -38,6 +38,18 @@ FetchContent_Declare(
 )
 set(GLM_ENABLE_CXX_20 ON)
 
+# Fetch ASSIMP
+FetchContent_Declare(
+        assimp
+        GIT_REPOSITORY https://github.com/assimp/assimp.git
+        GIT_TAG master
+        GIT_SHALLOW ON
+)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+
 # Fetch Vulkan Memory Allocator (VMA)
 FetchContent_Declare(
     vma
@@ -47,7 +59,7 @@ FetchContent_Declare(
 )
 
 # Fetch all dependencies
-FetchContent_MakeAvailable(glfw glm vma)
+FetchContent_MakeAvailable(glfw glm vma assimp)
 
 
 # Define the path to your stb headers
@@ -146,6 +158,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_render_targets/cube_map_renderer.h
         src/user/user_passes/shadow_pass.cpp
         src/user/user_passes/shadow_pass.h
+        src/resources/loaders/assimp_loader.cpp
+        src/resources/loaders/assimp_loader.h
 )
 
 # Add ImGui source files with proper includes and links
@@ -182,12 +196,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Vulkan::Vulkan 
     glfw 
     glm
+    assimp::assimp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ${vma_SOURCE_DIR}/include
     ${STB_INCLUDE_DIR}
     ${glfw_SOURCE_DIR}/include
+    ${assimp_SOURCE_DIR}/include
     ${Vulkan_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
@@ -224,7 +240,7 @@ foreach(SHADER ${SHADER_FILES})
 
     add_custom_command(
         OUTPUT ${SPIRV_OUTPUT}
-        COMMAND ${GLSLC} ${SHADER} -o ${SPIRV_OUTPUT}
+        COMMAND ${GLSLC} ${SHADER} -o ${SPIRV_OUTPUT} -g
         DEPENDS ${SHADER}
         COMMENT "Compiling shader ${SHADER_NAME}${SHADER_EXT} -> ${SHADER_NAME}_${SHADER_TYPE}.spv"
         VERBATIM
