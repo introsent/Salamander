@@ -6,7 +6,7 @@
 #include "descriptors/descriptor_set_layout_builder.h"
 
 #ifdef USE_TINYGLTF
-    #include "loaders/gltf_loader.h"
+    #include "loaders/tinygltf_loader.h"
 #endif
 
 void ShadowPass::initialize(const RenderTarget::SharedResources &shared, MainSceneGlobalData &globalData,

@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 # USER SETTING: Loader selection options
-option(USE_ASSIMP "Build with Assimp loader" OFF)
-option(USE_TINYGLTF "Build with tinygltf loader (header-only)" ON)
+option(USE_ASSIMP "Build with Assimp loader" ON)
+option(USE_TINYGLTF "Build with tinygltf loader (header-only)" OFF)
 
 if(USE_ASSIMP AND USE_TINYGLTF)
     message(FATAL_ERROR "Only one loader may be enabled: set either -DUSE_ASSIMP=ON or -DUSE_TINYGLTF=ON")
@@ -180,14 +180,16 @@ set(${PROJECT_NAME}_SOURCES
     "src/user/user_render_targets/cube_map_renderer.h"
     "src/user/user_passes/shadow_pass.cpp"
     "src/user/user_passes/shadow_pass.h"
+        src/resources/loaders/assimp_loader.cpp
+        src/resources/loaders/gltf_loader.h
 )
 
 
 if (USE_TINYGLTF)
     list(APPEND ${PROJECT_NAME}_SOURCES
             "src/includes/tiny_gltf.h"
-            "src/resources/loaders/gltf_loader.cpp"
-            "src/resources/loaders/gltf_loader.h"
+            "src/resources/loaders/tinygltf_loader.cpp"
+            "src/resources/loaders/tinygltf_loader.h"
     )
 elseif (USE_ASSIMP)
     list(APPEND ${PROJECT_NAME}_SOURCES

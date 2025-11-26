@@ -8,7 +8,7 @@
 #include "shared/scene_data.h"
 
 #ifdef USE_TINYGLTF
-    #include "loaders/gltf_loader.h"
+    #include "loaders/tinygltf_loader.h"
 #endif
 
 void DepthPrepass::initialize(const RenderTarget::SharedResources& shared,

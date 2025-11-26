@@ -11,6 +11,10 @@
     #include "loaders/gltf_loader.h"
 #endif
 
+#ifdef USE_ASSIMP
+    #include "loaders/assimp_loader.h"
+#endif
+
 void GBufferPass::initialize(const RenderTarget::SharedResources& shared,
                              MainSceneGlobalData& globalData,
                              PassDependencies& dependencies) {

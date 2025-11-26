@@ -8,6 +8,10 @@
     #include "loaders/gltf_loader.h"
 #endif
 
+#ifdef USE_ASSIMP
+    #include "loaders/assimp_loader.h"
+#endif
+
 void MainSceneController::initialize(const RenderTarget::SharedResources& shared) {
     m_shared = &shared;
     
@@ -328,7 +332,14 @@ void MainSceneController::loadModel(const std::string& modelPath) {
             .normalTextureIndex = normalIndex
         });
     }
-    #endif
+#endif
+#ifdef USE_ASSIMP
+    GLTFLoader::GLTFModel gltfModel;
+    if (!AssimpLoader::LoadFromFile(modelPath, gltfModel)) {
+        throw std::runtime_error("Failed to load GLTF model");
+    }
+
+#endif
 }
 
 void MainSceneController::createBuffers() {

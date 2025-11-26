@@ -1,40 +1,43 @@
-﻿// gltf_loader.h
-#pragma once
-#include <vector>
-#include <glm/glm.hpp>
-#include <string>
+//
+// Created by ivans on 11/26/2025.
+//
 
+#ifndef SALAMANDER_GLTF_LOADER_H
+#define SALAMANDER_GLTF_LOADER_H
+
+#include <vector>
+#include <string>
 #include "data_structures.h"
 
-struct GLTFPrimitive {
-    uint32_t vertexOffset;
-    uint32_t vertexCount;
-    uint32_t indexOffset;
-    uint32_t indexCount;
-    uint32_t materialIndex;
-};
-
-struct GLTFMaterial {
-    int   baseColorTexture   = -1;
-    int   metallicRoughnessTexture = -1;
-    int   normalTexture      = -1;
-    float metallicFactor     = 1.0f;
-    float roughnessFactor    = 1.0f;
-};
-
-struct GLTFTexture {
-    std::string uri;
-};
-
-struct GLTFModel {
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    std::vector<GLTFPrimitive> primitives;
-    std::vector<GLTFMaterial> materials;
-    std::vector<GLTFTexture> textures;
-};
-
-class GLTFLoader {
+class GLTFLoader
+{
 public:
-    static bool LoadFromFile(const std::string& path, GLTFModel& outModel);
+    struct GLTFPrimitive {
+        uint32_t vertexOffset;
+        uint32_t vertexCount;
+        uint32_t indexOffset;
+        uint32_t indexCount;
+        uint32_t materialIndex;
+    };
+
+    struct GLTFMaterial {
+        int   baseColorTexture   = -1;
+        int   metallicRoughnessTexture = -1;
+        int   normalTexture      = -1;
+        float metallicFactor     = 1.0f;
+        float roughnessFactor    = 1.0f;
+    };
+
+    struct GLTFTexture {
+        std::string uri;
+    };
+
+    struct GLTFModel {
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+        std::vector<GLTFPrimitive> primitives;
+        std::vector<GLTFMaterial> materials;
+        std::vector<GLTFTexture> textures;
+    };
 };
+#endif //SALAMANDER_GLTF_LOADER_H

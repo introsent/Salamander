@@ -1,5 +1,5 @@
 ﻿// gltf_loader.cpp
-#include "gltf_loader.h"
+#include "tinygltf_loader.h"
 #include <glm/gtc/type_ptr.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
@@ -13,11 +13,11 @@ namespace {
     void ProcessPrimitive(
         const tinygltf::Model& model,
         const tinygltf::Primitive& primitive,
-        GLTFModel& result,
+        GLTFLoader::GLTFModel& result,
         size_t& vertexOffset,
         size_t& indexOffset)
     {
-        GLTFPrimitive primData;
+        GLTFLoader::GLTFPrimitive primData;
         primData.vertexOffset = static_cast<uint32_t>(vertexOffset);
         primData.indexOffset = static_cast<uint32_t>(indexOffset);
         primData.materialIndex = primitive.material;
@@ -101,7 +101,7 @@ namespace {
     }
 }
 
-bool GLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
+bool TinyGLTFLoader::LoadFromFile(const std::string& path, GLTFModel& outModel) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err, warn;

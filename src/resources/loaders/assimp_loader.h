@@ -5,11 +5,14 @@
 #ifndef SALAMANDER_ASSIMP_LOADER_H
 #define SALAMANDER_ASSIMP_LOADER_H
 
+#include "loaders/gltf_loader.h"
 #include "string"
 
-class AssimpLoader
+class AssimpLoader : GLTFLoader
 {
-    static bool LoadFromFile(const std::string& path);
+public:
+
+    static bool LoadFromFile(const std::string& path, GLTFModel& outModel);
 };
 
 

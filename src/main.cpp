@@ -1,6 +1,7 @@
 #include <iostream>
 #include "application.h"
 
+#define STB_IMAGE_IMPLEMENTATION
 int main() {
     VulkanApplication app;
     try {
