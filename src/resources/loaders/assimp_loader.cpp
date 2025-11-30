@@ -29,11 +29,20 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
         const aiMesh* mesh = scene->mMeshes[meshInx];
 
 
+        const aiVector3D zero3D (0.0f, 0.0f, 0.0f);
         for (unsigned int vertexInx = 0 ; vertexInx < mesh->mNumVertices ; vertexInx++)
         {
             Vertex vertex = {};
             const aiVector3D* pos = &(mesh->mVertices[vertexInx]);
+            const aiVector3D* normal = &(mesh->mNormals[vertexInx]);
+            const aiVector3D* tangent = &(mesh->mTangents[vertexInx]);
+            const aiVector3D* texCoord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][vertexInx])
+                                                                            : &zero3D;
+
             vertex.pos = glm::vec3(pos->x, pos->y, pos->z);
+            vertex.normal = glm::vec3(normal->x, normal->y, normal->z);
+            vertex.tangent = glm::vec4(tangent->x, tangent->y, tangent->z, 1);
+            vertex.texCoord = glm::vec2(texCoord->x, texCoord->y);
 
             outModel.vertices.push_back(vertex);
         }
