@@ -61,6 +61,14 @@ bool Context::isDeviceSuitable(VkPhysicalDevice device) const {
         return false;
     }
 
+    // Check Max Per Stage Descriptor Samplers
+    VkPhysicalDeviceProperties deviceProperties{};
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    if (deviceProperties.limits.maxPerStageDescriptorSamplers < 100)
+    {
+        return false;
+    }
+
     // Query and validate features
     SupportedDeviceFeatures features = queryDeviceFeatures(device);
     return validateRequiredFeatures(features);
