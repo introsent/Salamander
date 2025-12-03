@@ -3,10 +3,10 @@
 //
 
 #include <assimp/Importer.hpp>      // C++ importer interface
-#include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
 #include "assimp_loader.h"
 
+#include <config.h>
 #include <iostream>
 
 bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
@@ -25,57 +25,121 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
     }
 
     outModel = GLTFModel{};
+    size_t vertexOffset = 0;
+    size_t indexOffset  = 0;
     for (unsigned int meshInx = 0 ; meshInx < scene->mNumMeshes ; meshInx++) {
+
         const aiMesh* mesh = scene->mMeshes[meshInx];
-
-        const aiVector3D zero3D (0.0f, 0.0f, 0.0f);
-        for (unsigned int vertexInx = 0 ; vertexInx < mesh->mNumVertices ; vertexInx++)
-        {
-            Vertex vertex = {};
-            const aiVector3D* pos = &(mesh->mVertices[vertexInx]);
-            const aiVector3D* normal = &(mesh->mNormals[vertexInx]);
-            const aiVector3D* tangent = &(mesh->mTangents[vertexInx]);
-            const aiVector3D* texCoord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][vertexInx])
-                                                                            : &zero3D;
-
-            vertex.pos = glm::vec3(pos->x, pos->y, pos->z);
-            vertex.normal = glm::vec3(normal->x, normal->y, normal->z);
-            vertex.tangent = glm::vec4(tangent->x, tangent->y, tangent->z, 1);
-            vertex.texCoord = glm::vec2(texCoord->x, texCoord->y);
-
-            // Fill vertices vector
-            outModel.vertices.push_back(vertex);
-        }
-
-        for (unsigned int faceInx = 0; faceInx < mesh->mNumFaces; faceInx++)
-        {
-            const aiFace& face = mesh->mFaces[faceInx];
-
-            if (face.mNumIndices != 3)
-            {
-                std::cerr << "Number of indices must be 3" << std::endl;
-            }
-
-            // Fill indices vector
-            outModel.indices.push_back(face.mIndices[0]);
-            outModel.indices.push_back(face.mIndices[1]);
-            outModel.indices.push_back(face.mIndices[2]);
-        }
-
-        GLTFPrimitive primitive {};
-        primitive.materialIndex = mesh->mMaterialIndex;
-        outModel.primitives.push_back(primitive);
+        ProcessMesh(mesh, outModel, vertexOffset, indexOffset);
     }
 
 
-    //for (unsigned int textureInx = 0; textureInx < scene->mNumTextures; textureInx++)
-    //{
-    //    const aiTexture* texture = scene->mTextures[textureInx];
-    //    outModel.textures.push_back ( {  .uri =  texture->mFilename.C_Str() });
-    //}
+    for (unsigned int materialInx = 0; materialInx < scene->mNumMaterials; materialInx++) {
+        aiMaterial* aiMaterial = scene->mMaterials[materialInx];
 
+        GLTFMaterial material{};
+        material.baseColorTexture = -1;
+        material.metallicRoughnessTexture = -1;
+        material.normalTexture = -1;
+
+        // Albedo
+        if (aiMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
+            aiString texturePath;
+            aiMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
+
+            std::string texPath = texturePath.C_Str();
+            material.baseColorTexture = outModel.textures.size();
+            outModel.textures.push_back({ texPath });
+        }
+
+        // Normal
+        if (aiMaterial->GetTextureCount(aiTextureType_NORMALS) > 0) {
+            aiString texturePath;
+            aiMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath);
+
+            std::string texPath = texturePath.C_Str();
+            material.normalTexture = outModel.textures.size();
+            outModel.textures.push_back({ texPath });
+        }
+
+        // Metallic / Roughness
+        if (aiMaterial->GetTextureCount(aiTextureType_METALNESS) > 0) {
+            aiString texturePath;
+            aiMaterial->GetTexture(aiTextureType_METALNESS, 0, &texturePath);
+
+            std::string texPath = texturePath.C_Str();
+            material.metallicRoughnessTexture = outModel.textures.size();
+            outModel.textures.push_back({ texPath });
+        }
+
+        outModel.materials.push_back(material);
+    }
 
     // We're done. Everything will be cleaned up by the importer destructor
     return true;
 
+}
+
+void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& vertexOffset, size_t& indexOffset)
+{
+        GLTFPrimitive primitive{};
+
+        primitive.vertexOffset = static_cast<uint32_t>(vertexOffset);
+        primitive.indexOffset  = static_cast<uint32_t>(indexOffset);
+        primitive.materialIndex = mesh->mMaterialIndex;
+
+        // Load vertices
+        const aiVector3D zero3D(0.f, 0.f, 0.f);
+
+        size_t vertexCount = mesh->mNumVertices;
+        outModel.vertices.reserve(outModel.vertices.size() + vertexCount);
+
+        for (size_t i = 0; i < vertexCount; i++)
+        {
+            Vertex vertex{};
+
+            const aiVector3D& position  = mesh->mVertices[i];
+            const aiVector3D& normal = mesh->HasNormals()       ? mesh->mNormals[i]        : zero3D;
+            const aiVector3D& tangent = mesh->HasTangentsAndBitangents()
+                                        ? mesh->mTangents[i] : zero3D;
+            const aiVector3D& uv   = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][i] : zero3D;
+
+            vertex.pos      = glm::vec3(position.x,  position.y,  position.z);
+            vertex.normal   = glm::vec3(normal.x, normal.y, normal.z);
+            vertex.texCoord = glm::vec2(uv.x,   uv.y);
+            vertex.tangent  = glm::vec4(tangent.x, tangent.y, tangent.z, 1.0f);
+
+            outModel.vertices.push_back(vertex);
+        }
+
+        // Load indices
+        size_t meshIndexCount = 0;
+        outModel.indices.reserve(outModel.indices.size() + mesh->mNumFaces * 3);
+
+        for (unsigned int f = 0; f < mesh->mNumFaces; f++)
+        {
+            const aiFace& face = mesh->mFaces[f];
+
+            if (face.mNumIndices != 3)
+            {
+                std::cerr << "[AssimpLoader] Warning: non-triangular face encountered; skipping." << std::endl;
+                continue;
+            }
+
+            outModel.indices.push_back(face.mIndices[0] + vertexOffset);
+            outModel.indices.push_back(face.mIndices[1] + vertexOffset);
+            outModel.indices.push_back(face.mIndices[2] + vertexOffset);
+
+            meshIndexCount += 3;
+        }
+
+        primitive.vertexCount = static_cast<uint32_t>(vertexCount);
+        primitive.indexCount  = static_cast<uint32_t>(meshIndexCount);
+
+        // Store final primitive entry
+        outModel.primitives.push_back(primitive);
+
+        // Update global offsets
+        vertexOffset += vertexCount;
+        indexOffset  += meshIndexCount;
 }

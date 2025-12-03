@@ -193,6 +193,14 @@ void MainSceneController::loadModel(const std::string& modelPath) {
     if (!GLTFLoader::LoadFromFile(modelPath, gltfModel)) {
         throw std::runtime_error("Failed to load GLTF model");
     }
+#endif
+#ifdef USE_ASSIMP
+    GLTFLoader::GLTFModel gltfModel;
+    if (!AssimpLoader::LoadFromFile(modelPath, gltfModel)) {
+        throw std::runtime_error("Failed to load GLTF model");
+    }
+
+#endif
 
     // Clear previous data
     m_globalData.modelTextures.clear();
@@ -332,14 +340,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
             .normalTextureIndex = normalIndex
         });
     }
-#endif
-#ifdef USE_ASSIMP
-    GLTFLoader::GLTFModel gltfModel;
-    if (!AssimpLoader::LoadFromFile(modelPath, gltfModel)) {
-        throw std::runtime_error("Failed to load GLTF model");
-    }
 
-#endif
 }
 
 void MainSceneController::createBuffers() {
