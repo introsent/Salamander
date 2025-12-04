@@ -57,13 +57,18 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
         }
 
         // Normal
-        if (aiMaterial->GetTextureCount(aiTextureType_NORMALS) > 0) {
+        if (aiMaterial->GetTextureCount(aiTextureType_NORMALS) > 0 ||
+         aiMaterial->GetTextureCount(aiTextureType_HEIGHT) > 0)
+        {
             aiString texturePath;
-            aiMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath);
 
-            std::string texPath = texturePath.C_Str();
-            material.normalTexture = outModel.textures.size();
-            outModel.textures.push_back({ texPath });
+            if (aiMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath) == AI_SUCCESS ||
+                aiMaterial->GetTexture(aiTextureType_HEIGHT, 0, &texturePath) == AI_SUCCESS)
+            {
+                std::string texPath = texturePath.C_Str();
+                material.normalTexture = outModel.textures.size();
+                outModel.textures.push_back({ texPath });
+            }
         }
 
         // Metallic / Roughness
@@ -106,12 +111,19 @@ void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& 
             const aiVector3D& normal = mesh->HasNormals()       ? mesh->mNormals[i]        : zero3D;
             const aiVector3D& tangent = mesh->HasTangentsAndBitangents()
                                         ? mesh->mTangents[i] : zero3D;
+            const aiVector3D& bitangent = mesh->HasTangentsAndBitangents() ? mesh->mBitangents[i] : zero3D;
             const aiVector3D& uv   = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][i] : zero3D;
 
+            glm::vec3 T(tangent.x, tangent.y, tangent.z);
+            glm::vec3 B(bitangent.x, bitangent.y, bitangent.z);
+            glm::vec3 N(normal.x, normal.y, normal.z);
+
             vertex.pos      = glm::vec3(position.x,  position.y,  position.z) * globalScale;
-            vertex.normal   = glm::vec3(normal.x, normal.y, normal.z);
-            vertex.texCoord = glm::vec2(uv.x , -uv.y ) ;
-            vertex.tangent  = glm::vec4(tangent.x, tangent.y, tangent.z, 1.0f);
+            vertex.normal   = N;
+            vertex.texCoord = glm::vec2(uv.x , -uv.y);
+
+            float w = (glm::dot(glm::cross(T, B), N) < 0) ? -1.0f : 1.0f;
+            vertex.tangent  = glm::vec4(tangent.x, tangent.y, tangent.z, w);
 
             outModel.vertices.push_back(vertex);
         }
