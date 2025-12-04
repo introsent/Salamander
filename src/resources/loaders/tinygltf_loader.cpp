@@ -2,8 +2,8 @@
 #include "tinygltf_loader.h"
 #include <glm/gtc/type_ptr.hpp>
 
+#define STB
 #define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <iostream>
 #include <tiny_gltf.h>

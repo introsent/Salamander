@@ -2,6 +2,7 @@
 #include "buffer_manager.h"
 #include "command_manager.h"
 
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <stdexcept>

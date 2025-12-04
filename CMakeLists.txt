@@ -180,14 +180,13 @@ set(${PROJECT_NAME}_SOURCES
     "src/user/user_render_targets/cube_map_renderer.h"
     "src/user/user_passes/shadow_pass.cpp"
     "src/user/user_passes/shadow_pass.h"
-        src/resources/loaders/assimp_loader.cpp
-        src/resources/loaders/gltf_loader.h
+    "src/includes/tiny_gltf.h"
 )
 
 
 if (USE_TINYGLTF)
     list(APPEND ${PROJECT_NAME}_SOURCES
-            "src/includes/tiny_gltf.h"
+
             "src/resources/loaders/tinygltf_loader.cpp"
             "src/resources/loaders/tinygltf_loader.h"
     )

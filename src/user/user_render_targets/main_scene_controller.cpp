@@ -1,8 +1,11 @@
 ﻿#include "main_scene_controller.h"
 
+#include <iostream>
+
 #include "deletion_queue.h"
 #include "depth_format.h"
 #include "image_transition_manager.h"
+#include "loaders/tinygltf_loader.h"
 
 #ifdef USE_TINYGLTF
     #include "loaders/gltf_loader.h"
@@ -189,8 +192,8 @@ void MainSceneController::createSamplers() {
 
 void MainSceneController::loadModel(const std::string& modelPath) {
 #ifdef USE_TINYGLTF
-    GLTFModel gltfModel;
-    if (!GLTFLoader::LoadFromFile(modelPath, gltfModel)) {
+    GLTFLoader::GLTFModel gltfModel;
+    if (!TinyGLTFLoader::LoadFromFile(modelPath, gltfModel)) {
         throw std::runtime_error("Failed to load GLTF model");
     }
 #endif
@@ -340,7 +343,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
             .normalTextureIndex = normalIndex
         });
     }
-
+    std::cout << "Loading finished" << std::endl;
 }
 
 void MainSceneController::createBuffers() {

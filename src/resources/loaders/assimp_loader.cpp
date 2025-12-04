@@ -5,7 +5,7 @@
 #include <assimp/Importer.hpp>      // C++ importer interface
 #include <assimp/postprocess.h>     // Post processing flags
 #include "assimp_loader.h"
-
+#include "shared/scene_data.h"
 #include <config.h>
 #include <iostream>
 
@@ -24,6 +24,10 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
         return false;
     }
 
+    aiVector3D position, scale;
+    aiQuaternion rotation;
+    scene->mRootNode->mTransformation.Decompose(scale, rotation, position);
+    globalScale = glm::vec3(scale.x, scale.y, scale.z);
     outModel = GLTFModel{};
     size_t vertexOffset = 0;
     size_t indexOffset  = 0;
@@ -104,9 +108,9 @@ void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& 
                                         ? mesh->mTangents[i] : zero3D;
             const aiVector3D& uv   = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][i] : zero3D;
 
-            vertex.pos      = glm::vec3(position.x,  position.y,  position.z);
+            vertex.pos      = glm::vec3(position.x,  position.y,  position.z) * globalScale;
             vertex.normal   = glm::vec3(normal.x, normal.y, normal.z);
-            vertex.texCoord = glm::vec2(uv.x,   uv.y);
+            vertex.texCoord = glm::vec2(uv.x , -uv.y ) ;
             vertex.tangent  = glm::vec4(tangent.x, tangent.y, tangent.z, 1.0f);
 
             outModel.vertices.push_back(vertex);
@@ -142,4 +146,17 @@ void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& 
         // Update global offsets
         vertexOffset += vertexCount;
         indexOffset  += meshIndexCount;
+}
+
+aiNode* AssimpLoader::FindMeshNode(const aiScene* scene, unsigned meshIndex, aiNode* node)
+{
+    for (unsigned i = 0; i < node->mNumMeshes; ++i)
+    if (node->mMeshes[i] == meshIndex)
+        return node;
+
+    for (unsigned i = 0; i < node->mNumChildren; ++i)
+        if (auto* found = FindMeshNode(scene, meshIndex, node->mChildren[i]))
+            return found;
+
+    return nullptr;
 }

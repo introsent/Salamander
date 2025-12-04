@@ -16,6 +16,7 @@ public:
     static bool LoadFromFile(const std::string& path, GLTFModel& outModel);
 private:
     static void ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& vertexOffset, size_t& indexOffset);
+    static aiNode* FindMeshNode(const aiScene* scene, unsigned meshIndex, aiNode* node);
 };
 
 
