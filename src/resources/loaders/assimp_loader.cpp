@@ -31,10 +31,22 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
     outModel = GLTFModel{};
     size_t vertexOffset = 0;
     size_t indexOffset  = 0;
-    for (unsigned int meshInx = 0 ; meshInx < scene->mNumMeshes ; meshInx++) {
-
+    for (unsigned int meshInx = 0 ; meshInx < scene->mNumMeshes ; meshInx++)
+    {
         const aiMesh* mesh = scene->mMeshes[meshInx];
-        ProcessMesh(mesh, outModel, vertexOffset, indexOffset);
+
+        aiNode* meshNode = FindMeshNode(scene, meshInx, scene->mRootNode);
+        glm::mat4 globalTransform = GetNodeGlobalTransform(meshNode);
+
+        // Extract scale
+        const glm::vec3 meshScale = {
+            glm::length(glm::vec3(globalTransform[0])),
+            glm::length(glm::vec3(globalTransform[1])),
+            glm::length(glm::vec3(globalTransform[2]))
+        };
+
+
+        ProcessMesh(mesh, outModel, vertexOffset, indexOffset, meshScale);
     }
 
 
@@ -57,13 +69,11 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
         }
 
         // Normal
-        if (aiMaterial->GetTextureCount(aiTextureType_NORMALS) > 0 ||
-         aiMaterial->GetTextureCount(aiTextureType_HEIGHT) > 0)
+        if (aiMaterial->GetTextureCount(aiTextureType_NORMALS) > 0)
         {
             aiString texturePath;
 
-            if (aiMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath) == AI_SUCCESS ||
-                aiMaterial->GetTexture(aiTextureType_HEIGHT, 0, &texturePath) == AI_SUCCESS)
+            if (aiMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath) == AI_SUCCESS)
             {
                 std::string texPath = texturePath.C_Str();
                 material.normalTexture = outModel.textures.size();
@@ -89,7 +99,9 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
 
 }
 
-void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& vertexOffset, size_t& indexOffset)
+void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel,
+                            size_t& vertexOffset, size_t& indexOffset,
+                            const glm::vec3& meshScale)
 {
         GLTFPrimitive primitive{};
 
@@ -118,9 +130,9 @@ void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& 
             glm::vec3 B(bitangent.x, bitangent.y, bitangent.z);
             glm::vec3 N(normal.x, normal.y, normal.z);
 
-            vertex.pos      = glm::vec3(position.x,  position.y,  position.z) * globalScale;
+            vertex.pos      = glm::vec3(position.x,  position.y,  position.z) * meshScale;
             vertex.normal   = N;
-            vertex.texCoord = glm::vec2(uv.x , -uv.y);
+            vertex.texCoord = glm::vec2(uv.x , -uv.y); // -Y for Vulkan
 
             float w = (glm::dot(glm::cross(T, B), N) < 0) ? -1.0f : 1.0f;
             vertex.tangent  = glm::vec4(tangent.x, tangent.y, tangent.z, w);
@@ -160,15 +172,37 @@ void AssimpLoader::ProcessMesh(const aiMesh* mesh, GLTFModel& outModel, size_t& 
         indexOffset  += meshIndexCount;
 }
 
+glm::mat4 AssimpLoader::GetNodeGlobalTransform(const aiNode* node)
+{
+    glm::mat4 transform = AiMatToGlm(node->mTransformation);
+    const aiNode* parent = node->mParent;
+
+    while (parent)
+    {
+        transform = AiMatToGlm(parent->mTransformation) * transform;
+        parent = parent->mParent;
+    }
+
+    return transform;
+}
+
 aiNode* AssimpLoader::FindMeshNode(const aiScene* scene, unsigned meshIndex, aiNode* node)
 {
     for (unsigned i = 0; i < node->mNumMeshes; ++i)
-    if (node->mMeshes[i] == meshIndex)
-        return node;
+    {
+        if (node->mMeshes[i] == meshIndex)
+        {
+            return node;
+        }
+    }
 
     for (unsigned i = 0; i < node->mNumChildren; ++i)
+    {
         if (auto* found = FindMeshNode(scene, meshIndex, node->mChildren[i]))
+        {
             return found;
+        }
+    }
 
     return nullptr;
 }
