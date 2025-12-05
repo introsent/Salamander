@@ -181,6 +181,10 @@ set(${PROJECT_NAME}_SOURCES
     "src/user/user_passes/shadow_pass.cpp"
     "src/user/user_passes/shadow_pass.h"
     "src/includes/tiny_gltf.h"
+        src/resources/texture.cpp
+        src/resources/texture.h
+        src/resources/image.cpp
+        src/resources/image.h
 )
 
 
