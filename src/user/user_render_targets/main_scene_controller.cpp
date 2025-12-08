@@ -17,8 +17,6 @@
 
 void MainSceneController::initialize(const RenderTarget::SharedResources& shared) {
     m_shared = &shared;
-    
-    createSamplers();
     loadModel(MODEL_PATH);
     createBuffers();
 
@@ -100,94 +98,6 @@ void MainSceneController::updateUniformBuffers() const {
     ubo.cameraPosition = m_shared->camera->Position;
 
     m_uniformBuffers[*m_shared->currentFrame].update(ubo);
-}
-
-void MainSceneController::createSamplers() {
-    VkDevice deviceCopy   = m_shared->context->device();
-
-    // G-buffer sampler
-    VkSamplerCreateInfo samplerInfo = {
-        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = VK_FILTER_LINEAR,
-        .minFilter = VK_FILTER_LINEAR,
-        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .mipLodBias = 0.0f,
-        .anisotropyEnable = VK_TRUE,
-        .maxAnisotropy = 8.0f,
-        .compareEnable = VK_FALSE,
-        .minLod = 0.0f,
-        .maxLod = 8.0f,  // Match your mip levels
-        .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-        .unnormalizedCoordinates = VK_FALSE
-    };
-    vkCreateSampler(m_shared->context->device(), &samplerInfo, nullptr, &m_globalData.gBufferSampler);
-
-    VkSampler gbufferSamplerCopy = m_globalData.gBufferSampler;
-    DeletionQueue::get().pushFunction("GbufferSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy, gbufferSamplerCopy]() {
-        vkDestroySampler(deviceCopy, gbufferSamplerCopy, nullptr);
-    });
-
-    // Depth sampler
-    VkSamplerCreateInfo depthSamplerInfo{};
-    depthSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    depthSamplerInfo.magFilter = VK_FILTER_NEAREST;
-    depthSamplerInfo.minFilter = VK_FILTER_NEAREST;
-    depthSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    depthSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    depthSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    vkCreateSampler(m_shared->context->device(), &depthSamplerInfo, nullptr, &m_globalData.depthSampler);
-
-    VkSampler depthSamplerCopy = m_globalData.depthSampler;
-    DeletionQueue::get().pushFunction("DepthSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy, depthSamplerCopy]() {
-        vkDestroySampler(deviceCopy, depthSamplerCopy, nullptr);
-    });
-
-
-    // Shadow depth sampler
-    VkSamplerCreateInfo shadowDepthSamplerInfo{};
-    shadowDepthSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    shadowDepthSamplerInfo.magFilter = VK_FILTER_LINEAR;
-    shadowDepthSamplerInfo.minFilter = VK_FILTER_LINEAR;
-    shadowDepthSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    shadowDepthSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    shadowDepthSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    shadowDepthSamplerInfo.compareEnable = VK_TRUE;
-    shadowDepthSamplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-    vkCreateSampler(m_shared->context->device(), &depthSamplerInfo, nullptr, &m_globalData.shadowDepthSampler);
-
-    VkSampler shadowDepthSamplerCopy = m_globalData.shadowDepthSampler;
-    DeletionQueue::get().pushFunction("ShadowDepthSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy,  shadowDepthSamplerCopy]() {
-        vkDestroySampler(deviceCopy,  shadowDepthSamplerCopy, nullptr);
-    });
-
-
-    // HDR sampler
-    VkSamplerCreateInfo hdrSamplerInfo{};
-    hdrSamplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    hdrSamplerInfo.magFilter    = VK_FILTER_LINEAR;
-    hdrSamplerInfo.minFilter    = VK_FILTER_LINEAR;
-    hdrSamplerInfo.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    hdrSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    hdrSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    hdrSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    hdrSamplerInfo.mipLodBias   = 0.0f;
-    hdrSamplerInfo.minLod       = 0.0f;
-    hdrSamplerInfo.maxLod       = 0.0f;
-    hdrSamplerInfo.unnormalizedCoordinates = VK_FALSE;
-    hdrSamplerInfo.anisotropyEnable        = VK_FALSE;
-    hdrSamplerInfo.maxAnisotropy           = 1.0f;
-    hdrSamplerInfo.compareEnable           = VK_FALSE;
-    hdrSamplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
-    hdrSamplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-    vkCreateSampler(m_shared->context->device(), &hdrSamplerInfo, nullptr, &m_globalData.hdrSampler);
-
-    VkSampler samplerCopy = m_globalData.hdrSampler;
-    DeletionQueue::get().pushFunction("ToneMappingSampler_" + std::to_string(TextureManager::getSamplerIndex()), [deviceCopy, samplerCopy]() {
-        vkDestroySampler(deviceCopy, samplerCopy, nullptr);
-    });
 }
 
 void MainSceneController::loadModel(const std::string& modelPath) {
@@ -437,7 +347,7 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
         static_cast<unsigned char>(metallicFactor * 255),
         255
     };
-    ManagedTexture tex = m_shared->textureManager->createTexture(data, 1, 1, 4);
+    Texture tex = m_shared->textureManager->createTexture(data, 1, 1, 4);
     m_globalData.materialTextures.push_back(tex);
     return static_cast<uint32_t>(m_globalData.materialTextures.size() - 1);
 }

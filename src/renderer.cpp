@@ -72,7 +72,7 @@ void Renderer::createCommandBuffers() {
 
     for (auto& frame : m_frames) {
         frame.commandBuffer = m_commandManager->createCommandBuffer();
-        frame.depthTexture = m_textureManager->createTexture(
+        frame.depthTexture = &m_textureManager->createTexture(
            extent.width,
            extent.height,
            m_depthFormat->handle(),
@@ -142,8 +142,8 @@ void Renderer::drawFrame() {
     }
     m_sharedResources.currentFrame = &m_currentFrame;
 
-    m_sharedResources.depthImageView = currentFrame.depthTexture.view;
-    m_sharedResources.depthImage = currentFrame.depthTexture.image;
+    m_sharedResources.depthImageView = currentFrame.depthTexture->getDescriptorInfo().imageView;
+    m_sharedResources.depthImage = currentFrame.depthTexture->getImage()->handle();
 
     for (auto& target : m_renderTargets) {
         target->updateUniformBuffers(); // Move update here
@@ -225,7 +225,7 @@ void Renderer::recreateSwapChain() {
     VkExtent2D extent = m_swapChain->extent();
     for (auto& frame : m_frames) {
         frame.commandBuffer = m_commandManager->createCommandBuffer();
-        frame.depthTexture = m_textureManager->createTexture(
+        frame.depthTexture = &m_textureManager->createTexture(
            extent.width,
            extent.height,
            m_depthFormat->handle(),

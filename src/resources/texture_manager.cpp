@@ -1,28 +1,21 @@
 #include "texture_manager.h"
 #include "buffer_manager.h"
 #include "command_manager.h"
-
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <stdexcept>
 #include "deletion_queue.h"
 
-static int imageID = 0;
-// Define and initialize static member
-int TextureManager::samplerIndex = 0;
-
-TextureManager::TextureManager(VkDevice device, VmaAllocator allocator,
-                             CommandManager* commandManager, BufferManager* bufferManager, DebugMessenger* debugMessenger)
-    : m_device(device), m_allocator(allocator),
-      m_commandManager(commandManager), m_bufferManager(bufferManager), m_debugMessenger(debugMessenger)
+TextureManager::TextureManager(VkDevice device, VmaAllocator allocator, CommandManager* cmdManager,
+    BufferManager* bufferManager, DebugMessenger* debugMessenger) :
+    m_device(device), m_allocator(allocator), m_commandManager(cmdManager), m_bufferManager(bufferManager),
+    m_debugMessenger(debugMessenger)
 {
+
 }
 
-ManagedTexture& TextureManager::loadTexture(
-    const std::string& filepath,
-    VkFormat           format
-) {
+Texture& TextureManager::loadTexture(const std::string& filepath, bool generateMips, VkFormat format)
+{
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(
         filepath.c_str(), &texWidth, &texHeight, &texChannels,
@@ -46,43 +39,39 @@ ManagedTexture& TextureManager::loadTexture(
     vmaUnmapMemory(m_allocator, staging.allocation);
     stbi_image_free(pixels);
 
+    uint32_t mipsLevels = 1;
+    if (generateMips)
+    {
+        mipsLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+    }
+
+
     // Create the GPU image with the supplied format
-    ManagedTexture texture;
-    createImage(
-        texWidth, texHeight,
+    auto image = std::make_unique<Image>(m_allocator);
+    image->create(texWidth, texHeight,
         format,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        texture.image, texture.allocation
-    );
+        VMA_MEMORY_USAGE_GPU_ONLY, 1, 0, mipsLevels);
 
     // Transition, copy, and transition again
-    transitionImageLayout(
-        texture.image, format,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-    );
-    copyBufferToImage(staging.buffer, texture.image, texWidth, texHeight);
-    transitionImageLayout(
-        texture.image, format,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    );
+    VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
+    image->transitionLayout(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    image->copyFromBuffer(cmd, staging.buffer);
+    image->transitionLayout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    m_commandManager->endSingleTimeCommands(cmd);
 
-    // Create the view with the same format
-    texture.view = createImageView(
-        texture.image,
-        format,
-        VK_IMAGE_ASPECT_COLOR_BIT
-    );
-    texture.sampler = createSampler();
+    // Create texture based on image
+    auto texture = std::make_unique<Texture>(m_device);
+    texture->create(std::move(image)); // image view and sampler creation already in create
+    texture->createImageView();
+    texture->createSampler();
 
-    m_managedTextures.push_back(texture);
-    return m_managedTextures.back();
+    m_textures.insert({filepath, std::move(texture)});
+    return *m_textures.at(filepath);
 }
 
-ManagedTexture& TextureManager::loadHDRTexture(const std::string& path) {
+Texture& TextureManager::loadHDRTexture(const std::string& path) {
     int width, height, channels;
     float* pixels = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
     if (!pixels) {
@@ -103,398 +92,136 @@ ManagedTexture& TextureManager::loadHDRTexture(const std::string& path) {
     vmaUnmapMemory(m_allocator, staging.allocation);
     stbi_image_free(pixels);
 
-    ManagedTexture texture;
+    // Create the GPU image with the supplied format
     VkFormat format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    createImage(
-        width, height,
+    auto image = std::make_unique<Image>(m_allocator);
+    image->create(width, height,
         format,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        texture.image, texture.allocation
-    );
+        VMA_MEMORY_USAGE_GPU_ONLY, 1, 0, 1);
 
-    transitionImageLayout(
-        texture.image, format,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-    );
-    copyBufferToImage(staging.buffer, texture.image, width, height);
-    transitionImageLayout(
-        texture.image, format,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    );
+    VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
+    image->transitionLayout(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    image->copyFromBuffer(cmd, staging.buffer);
+    image->transitionLayout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    m_commandManager->endSingleTimeCommands(cmd);
 
-    texture.view = createImageView(
-        texture.image,
-        format,
-        VK_IMAGE_ASPECT_COLOR_BIT
-    );
-    texture.sampler = createSampler();
+    // Create texture based on image
+    auto texture = std::make_unique<Texture>(m_device);
+    texture->create(std::move(image)); // image view and sampler creation already in create
+    texture->createImageView();
+    texture->createSampler();
 
-    m_managedTextures.push_back(texture);
-    return m_managedTextures.back();
+    m_textures.insert({path, std::move(texture)});
+    return *m_textures.at(path);
 }
 
-ManagedTexture& TextureManager::createTexture(uint32_t width, uint32_t height, VkFormat format,
-                                              VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImageAspectFlags aspect, bool createSampler, const std::string& debugName)
+Texture& TextureManager::createTexture(
+    uint32_t width, uint32_t height,
+    VkFormat format,
+    VkImageUsageFlags usage,
+    VmaMemoryUsage memoryUsage,
+    VkImageAspectFlags aspect,
+    bool generateMipMap,
+    bool createSampler,
+    const std::string& debugName)
 {
-    ManagedTexture texture;
+    auto image = std::make_unique<Image>(m_allocator);
+    image->create(width, height, format,
+                  VK_IMAGE_TILING_OPTIMAL,
+                  usage, memoryUsage,
+                  1, 0, 1);
 
-    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL, usage, memoryUsage,
-        texture.image, texture.allocation);
-    texture.view = createImageView(texture.image, format, aspect);
-
-    if (createSampler) {
-        texture.sampler = TextureManager::createSampler();
-    }
-
-    if (!debugName.empty())
+    auto texture = std::make_unique<Texture>(m_device);
+    texture->create(std::move(image));
+    texture->createImageView();
+    if (createSampler)
     {
-        m_debugMessenger->setObjectName(
-        reinterpret_cast<uint64_t>(texture.image),
-        VK_OBJECT_TYPE_IMAGE, debugName.c_str());
+        texture->createSampler();
     }
 
-    m_managedTextures.push_back(texture);
-    return m_managedTextures.back();
+    if (!debugName.empty()) {
+        texture->setDebugName(m_debugMessenger, debugName);
+    }
+
+    m_textures.insert({debugName, std::move(texture)});
+    return *m_textures.at(debugName);
 }
 
-ManagedTexture& TextureManager::createTexture(const unsigned char* data, uint32_t width, uint32_t height, uint32_t channels, const std::string&  debugName) {
-    // Determine format based on channels
-    VkFormat format = VK_FORMAT_R8G8B8A8_SRGB; // Default to RGBA
-    if (channels == 1) {
-        format = VK_FORMAT_R8_UNORM;
-    } else if (channels == 2) {
-        format = VK_FORMAT_R8G8_UNORM;
-    } else if (channels == 3) {
-        format = VK_FORMAT_R8G8B8_SRGB;
-    }
+Texture& TextureManager::createTexture(const unsigned char* data, uint32_t width, uint32_t height,
+                uint32_t channels, bool generateMipMaps, const std::string&  debugName)
+{
 
-    // Calculate image size
+    VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+    if (channels == 1) format = VK_FORMAT_R8_UNORM;
+    else if (channels == 2) format = VK_FORMAT_R8G8_UNORM;
+    else if (channels == 3) format = VK_FORMAT_R8G8B8_SRGB;
+
     VkDeviceSize imageSize = width * height * channels;
 
-    // Create staging buffer
     ManagedBuffer staging = m_bufferManager->createBuffer(
-        imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
+        imageSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU
     );
 
-    // Copy data to staging buffer
-    void* mappedData;
-    vmaMapMemory(m_allocator, staging.allocation, &mappedData);
-    memcpy(mappedData, data, static_cast<size_t>(imageSize));
+    void* mapped;
+    vmaMapMemory(m_allocator, staging.allocation, &mapped);
+    memcpy(mapped, data, static_cast<size_t>(imageSize));
     vmaUnmapMemory(m_allocator, staging.allocation);
 
-    // Create image
-    ManagedTexture texture;
-    texture.width = width;
-    texture.height = height;
-    texture.format = format;
-    texture.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    texture.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-    texture.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-    texture.hasSampler = true;
+    const uint32_t mipLevels = generateMipMaps
+        ? static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1
+        : 1;
 
-    createImage(width, height, format, VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY, texture.image, texture.allocation);
+    auto image = std::make_unique<Image>(m_allocator);
+    image->create(width, height, format,
+                  VK_IMAGE_TILING_OPTIMAL,
+                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                  VMA_MEMORY_USAGE_GPU_ONLY, 1, 0, mipLevels);
 
-    // Transition image layout for copy operation
-    transitionImageLayout(texture.image, format,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
+    image->transitionLayout(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    image->copyFromBuffer(cmd, staging.buffer);
+    image->transitionLayout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    m_commandManager->endSingleTimeCommands(cmd);
 
-    // Copy buffer data to image
-    copyBufferToImage(staging.buffer, texture.image, width, height);
+    auto texture = std::make_unique<Texture>(m_device);
+    texture->create(std::move(image));
+    texture->createImageView();
+    texture->createSampler();
 
-    // Transition image layout for shader access
-    transitionImageLayout(texture.image, format,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    // Create image view and sampler
-    texture.view = createImageView(texture.image, format, VK_IMAGE_ASPECT_COLOR_BIT);
-    texture.sampler = createSampler();
-
-    if (!debugName.empty())
-    {
-        m_debugMessenger->setObjectName(
-        reinterpret_cast<uint64_t>(texture.image),
-        VK_OBJECT_TYPE_IMAGE, debugName.c_str());
+    if (!debugName.empty()) {
+        texture->setDebugName(m_debugMessenger, debugName);
     }
 
-    // Add to managed textures
-    m_managedTextures.push_back(texture);
-    return m_managedTextures.back();
+    m_textures.insert({debugName, std::move(texture)});
+    return *m_textures.at(debugName);
 }
 
-ManagedTexture& TextureManager::createCubeTexture(uint32_t size, VkFormat format,
+Texture& TextureManager::createCubeTexture(uint32_t size, VkFormat format,
                                                 VkImageUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
-    ManagedTexture texture;
-    createImage(
-        size, size, format,
-        VK_IMAGE_TILING_OPTIMAL,
-        usage,
-        memoryUsage,
-        texture.image, texture.allocation,
-        6,  // layers for cube map
-        VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT  // cube map flag
+    auto image = std::make_unique<Image>(m_allocator);
+    image->create(size, size, format,
+                  VK_IMAGE_TILING_OPTIMAL,
+                  usage,
+                  memoryUsage,
+                  1, // mipLevels
+                  0, // flags if needed
+                  6  // layers for cubemap
     );
 
-    texture.width = size;
-    texture.height = size;
-    texture.format = format;
-    texture.usage = usage;
-    texture.memoryUsage = memoryUsage;
-    texture.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-    texture.hasSampler = false; // We'll create sampler later
+    auto texture = std::make_unique<Texture>(m_device);
+    texture->create(std::move(image));
+    texture->createCubeImageView();
+    texture->createCubeSampler();
 
-    // Don't create view here - we'll create face views separately
-    texture.view = VK_NULL_HANDLE;
+    texture->setDebugName(m_debugMessenger, "CubeMap");
 
-    m_debugMessenger->setObjectName(
-    reinterpret_cast<uint64_t>(texture.image),
-    VK_OBJECT_TYPE_IMAGE,
-    "CubeMap_Image"
-);
+    std::string key = "CubeTexture_" + std::to_string(m_textures.size());
+    m_textures.insert({ key, std::move(texture) });
 
-    m_managedTextures.push_back(texture);
-    return m_managedTextures.back();
-}
-
-void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat format,
-                                 VkImageTiling tiling, VkImageUsageFlags usage,
-                                 VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation,
-                                 uint32_t layers, VkImageCreateFlags flags) const  // Add layers and flags
-{
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.flags = flags;  // Add flags
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent = { width, height, 1 };
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = layers;  // Use layers
-    imageInfo.format = format;
-    imageInfo.tiling = tiling;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = usage;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = memoryUsage;
-
-    if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create Vulkan image!");
-    }
-
-    VmaAllocator allocCopy = m_allocator;
-    VkImage       imageCopy = image;
-    VmaAllocation allocHandle = allocation;
-
-
-    DeletionQueue::get().pushFunction("Image_" + std::to_string(imageID++),
-        [allocCopy, imageCopy, allocHandle]() {
-            vmaDestroyImage(allocCopy, imageCopy, allocHandle);
-        });
-}
-
-void TextureManager::transitionSwapChainLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout,
-                                               VkImageLayout newLayout, VkPipelineStageFlags2 srcStageMask, VkPipelineStageFlags2 dstStageMask,
-                                               VkAccessFlags2 srcAccessMask, VkAccessFlags2 dstAccessMask) {
-
-    VkImageMemoryBarrier2 barrier{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-        .srcStageMask = srcStageMask,
-        .srcAccessMask = srcAccessMask,
-        .dstStageMask = dstStageMask,
-        .dstAccessMask = dstAccessMask,
-        .oldLayout = oldLayout,
-        .newLayout = newLayout,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = image,
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1
-        }
-    };
-
-    VkDependencyInfo dependencyInfo{
-        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers = &barrier
-    };
-
-    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-
-}
-
-
-void TextureManager::createImage(uint32_t width, uint32_t height, VkFormat format,
-                                 VkImageTiling tiling, VkImageUsageFlags usage,
-                                 VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation) const
-{
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent = { width, height, 1 };
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.format = format;
-    imageInfo.tiling = tiling;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = usage;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.usage = memoryUsage;
-
-    if (vmaCreateImage(m_allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create Vulkan image!");
-    }
-
-    VmaAllocator allocCopy = m_allocator;
-    VkImage       imageCopy = image;
-    VmaAllocation allocHandle = allocation;
-
-
-    DeletionQueue::get().pushFunction("Image_" + std::to_string(imageID++),[allocCopy, imageCopy, allocHandle]() {
-        vmaDestroyImage(allocCopy, imageCopy, allocHandle);
-        });
-}
-
-VkImageView TextureManager::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) const {
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = format;
-    viewInfo.subresourceRange.aspectMask = aspectFlags;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    VkImageView imageView;
-    if (vkCreateImageView(m_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create image view!");
-    }
-    VkDevice     deviceCopy = m_device;
-    VkImageView  viewCopy = imageView;
-
-    static int imageViewIndex = 0;
-    DeletionQueue::get().pushFunction("ImageViewTexture_" + std::to_string(imageViewIndex++), [deviceCopy, viewCopy]() {
-        vkDestroyImageView(deviceCopy, viewCopy, nullptr);
-        });
-    return imageView;
-}
-
-VkSampler TextureManager::createSampler() const {
-    VkSamplerCreateInfo samplerInfo{};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.anisotropyEnable = VK_TRUE;
-    samplerInfo.maxAnisotropy = 16.0f;
-    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    samplerInfo.unnormalizedCoordinates = VK_FALSE;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-    VkSampler sampler;
-    if (vkCreateSampler(m_device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create sampler!");
-    }
-    VkDevice deviceCopy = m_device;
-    VkSampler samplerCopy = sampler;
-
-    DeletionQueue::get().pushFunction("Sampler_" + std::to_string( samplerIndex++), [deviceCopy, samplerCopy]() {
-        vkDestroySampler(deviceCopy, samplerCopy, nullptr);
-        });
-
-    return sampler;
-}
-
-void TextureManager::transitionImageLayout(VkImage image, VkFormat format,
-                                         VkImageLayout oldLayout, VkImageLayout newLayout) const
-{
-    VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
-
-    VkImageMemoryBarrier2 barrier{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-        .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
-        .srcAccessMask = 0,
-        .dstStageMask = VK_PIPELINE_STAGE_2_NONE,
-        .dstAccessMask = 0,
-        .oldLayout = oldLayout,
-        .newLayout = newLayout,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = image,
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1
-        }
-    };
-
-    // Common transitions for texture uploading
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-        newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-             newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    {
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-        barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-    }
-    else {
-        throw std::invalid_argument("Unsupported layout transition!");
-    }
-
-    // Define a dependency (synchronization scope) between commands before and after the barrier.
-    VkDependencyInfo dependencyInfo{
-        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers = &barrier
-    };
-
-    // Insert a memory barrier into the command buffer
-    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-
-    m_commandManager->endSingleTimeCommands(cmd);
-}
-
-void TextureManager::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const {
-    VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
-
-    VkBufferImageCopy region{};
-    region.bufferOffset = 0;
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-    region.imageOffset = { 0, 0, 0 };
-    region.imageExtent = { width, height, 1 };
-
-    vkCmdCopyBufferToImage(cmd, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-    m_commandManager->endSingleTimeCommands(cmd);
+    return *m_textures.at(key);
 }

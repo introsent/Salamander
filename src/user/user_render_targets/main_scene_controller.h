@@ -18,7 +18,6 @@ public:
     void updateUniformBuffers() const;
 
 private:
-    void createSamplers();
     void loadModel(const std::string& path);
     void createBuffers();
     uint32_t createDefaultMaterialTexture(float metallicFactor, float roughnessFactor);
@@ -39,7 +38,7 @@ private:
     CubeMapRenderer m_cubeMapRenderer;
     CubeMapRenderer::CubeMap m_envCubeMap;
     CubeMapRenderer::CubeMap m_irradianceMap;
-    ManagedTexture m_hdrEquirect;
+    std::unique_ptr<Texture> m_hdrEquirect;
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";

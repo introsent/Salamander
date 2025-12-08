@@ -9,6 +9,7 @@
 
 #include "command_buffer.h"
 #include "texture_manager.h"
+#include "texture.h"
 
 struct Vertex {
     glm::vec3 pos;
@@ -59,7 +60,7 @@ struct Frame {
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
     VkFence inFlightFence;
-    ManagedTexture depthTexture;
+    Texture* depthTexture;
 };
 
 struct PointLightData {

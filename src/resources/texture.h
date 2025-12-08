@@ -16,6 +16,13 @@ public:
     void createImageView();
     void createSampler();
 
+    // for cube map
+    void createCubeImageView();
+    void createCubeSampler();
+
+    [[nodiscard]] Image* getImage() const { return m_image.get(); };
+    void setDebugName(const DebugMessenger* debug, const std::string& name);
+
     [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const;
 private:
     VkDevice m_device;
