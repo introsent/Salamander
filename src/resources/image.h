@@ -11,7 +11,7 @@
 class Image
 {
 public:
-    Image(VmaAllocator allocator);
+    explicit Image(VmaAllocator allocator);
 
     void create(uint32_t width, uint32_t height,
                 VkFormat format,
@@ -53,6 +53,7 @@ public:
     [[nodiscard]] VkImageCreateFlags flags() const { return m_flags; }
     [[nodiscard]] VkImageAspectFlags aspect() const { return m_aspect; }
     [[nodiscard]] uint32_t layers() const { return m_layers; }
+
 private:
     VmaAllocator m_allocator;
 
