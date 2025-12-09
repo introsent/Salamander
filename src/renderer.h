@@ -4,7 +4,6 @@
 #include "target/render_target.h"
 #include <memory>
 #include <vector>
-#include "image_views.h"
 #include "depth_format.h"
 
 class Renderer {
