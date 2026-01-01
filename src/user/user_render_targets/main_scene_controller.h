@@ -11,7 +11,7 @@
 
 class MainSceneController {
 public:
-    void initialize(const RenderTarget::SharedResources& shared);
+    void initialize(const SharedResources& shared);
     void cleanup();
     void recreateSwapChain();
     void render(VkCommandBuffer cmd, uint32_t imageIndex);
@@ -33,12 +33,12 @@ private:
     // Shared data
     MainSceneGlobalData m_globalData;
     PassDependencies m_dependencies;
-    const RenderTarget::SharedResources* m_shared = nullptr;
+    const SharedResources* m_shared = nullptr;
 
     CubeMapRenderer m_cubeMapRenderer;
     CubeMapRenderer::CubeMap m_envCubeMap;
     CubeMapRenderer::CubeMap m_irradianceMap;
-    std::unique_ptr<Texture> m_hdrEquirect;
+    Texture* m_hdrEquirect;
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     const std::string MODEL_PATH = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";

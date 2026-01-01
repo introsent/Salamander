@@ -3,9 +3,8 @@
 #include "config.h"
 #include "pipeline.h"
 #include "descriptors/descriptor_set_layout_builder.h"
-#include "image_transition_manager.h"
 
-void LightingPass::initialize(const RenderTarget::SharedResources& shared,
+void LightingPass::initialize(const SharedResources& shared,
                              MainSceneGlobalData& globalData,
                              PassDependencies& dependencies) {
     m_shared = &shared;
@@ -24,40 +23,56 @@ void LightingPass::cleanup() {
 }
 
 void LightingPass::recreateSwapChain() {
+    // clean up old HDR textures
+    m_shared->textureManager->destroyTexture("HDR");
+
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_hdrTextures[i] = nullptr;
+    }
+
+    // create new attachments
     createAttachments();
+
+    // update descriptors
     updateDescriptors();
 }
 
 void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
-    // Transition HDR texture
-    ImageTransitionManager::transitionColorAttachment(
-        cmd, m_hdrTextures[frameIndex].image,
-        VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+    // transition HDR texture to color attachment
+    m_hdrTextures[frameIndex]->getImage()->transitionLayoutEx(
+        cmd,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
     );
-    
-    // Set up HDR attachment
+
+    // set up HDR attachment
     VkRenderingAttachmentInfo colorAttachment = {
-      .sType         = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView     = m_hdrTextures[frameIndex].view,
-        .imageLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue    = {0.0f, 0.0f, 0.0f, 1.0f}
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView   = m_hdrTextures[frameIndex]->getDescriptorInfo().imageView,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue  = {.color = {0.0f, 0.0f, 0.0f, 1.0f}}
     };
-    
+
     VkRenderingInfo renderInfo = {
-        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea           = {{0, 0}, m_shared->swapChain->extent()},
         .layerCount           = 1,
         .colorAttachmentCount = 1,
-        .pColorAttachments    = & colorAttachment,
+        .pColorAttachments    = &colorAttachment,
         .pDepthAttachment     = nullptr
     };
-    
+
     vkCmdBeginRendering(cmd, &renderInfo);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->handle());
-    // Set dynamic viewport/scissor
+
+    // dynamic viewport / scissor
     VkViewport viewport = {
         0.0f, 0.0f,
         static_cast<float>(m_shared->swapChain->extent().width),
@@ -65,30 +80,37 @@ void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t im
         0.0f, 1.0f
     };
     vkCmdSetViewport(cmd, 0, 1, &viewport);
+
     VkRect2D scissor = {{0, 0}, m_shared->swapChain->extent()};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    // bind index buffer
     vkCmdBindIndexBuffer(cmd, m_globalData->indexBuffer.handle(), 0, VK_INDEX_TYPE_UINT32);
-    // Bind descriptor set
+
+    // bind descriptor set
     vkCmdBindDescriptorSets(
-        cmd, 
+        cmd,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_pipeline->layout(),
         0, 1,
         &m_descriptorManager->getDescriptorSets()[frameIndex],
         0, nullptr
     );
-    
-    // Fullscreen triangle
+
+    // fullscreen triangle
     vkCmdDraw(cmd, 3, 1, 0, 0);
-    
+
     vkCmdEndRendering(cmd);
 
-    // Transition to shader read
-    ImageTransitionManager::transitionToShaderRead(
+    // transition HDR to shader read
+    m_hdrTextures[frameIndex]->getImage()->transitionLayoutEx(
         cmd,
-         m_hdrTextures[frameIndex].image,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT
     );
 }
 
@@ -104,7 +126,7 @@ void LightingPass::createPipeline() {
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachmentFormats = &hdrFormat;
     
-    // Blend state (no blending)
+    // blend state (no blending)
     VkPipelineColorBlendAttachmentState blendAttachment{};
     blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | 
                                     VK_COLOR_COMPONENT_G_BIT | 
@@ -184,21 +206,21 @@ void LightingPass::createAttachments() {
                                  VK_IMAGE_USAGE_SAMPLED_BIT |
                                  VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-        m_hdrTextures[i] = m_shared->textureManager->createTexture(
+        m_hdrTextures[i] = &m_shared->textureManager->createTexture(
             extent.width, extent.height,
             VK_FORMAT_R32G32B32A32_SFLOAT,
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            true
+            false, true, "HDR"
         );
 
-        m_dependencies->hdrTextures[i] = &m_hdrTextures[i];
+        m_dependencies->hdrTextures[i] = m_hdrTextures[i];
     }
 }
 
 void LightingPass::createDescriptors() {
-    // Descriptor layout (matches original)
+    // descriptor layout
     DescriptorSetLayoutBuilder layoutBuilder(m_shared->context->device());
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
@@ -214,7 +236,7 @@ void LightingPass::createDescriptors() {
         .addBinding(9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  VK_SHADER_STAGE_FRAGMENT_BIT ) // Shadow map
         .build();
     
-    // Descriptor pool
+    // descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 * MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 9 * MAX_FRAMES_IN_FLIGHT}
@@ -230,44 +252,44 @@ void LightingPass::createDescriptors() {
 }
 
 void LightingPass::updateDescriptors() const {
-    // Update descriptor sets
+    // update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo albedoInfo = {
-            .sampler = m_globalData->gBufferSampler,
-            .imageView = m_dependencies->albedoTextures[i]->view,
+            .sampler = m_dependencies->albedoTextures[i]->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->albedoTextures[i]->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkDescriptorImageInfo normalInfo = {
-            .sampler = m_globalData->gBufferSampler,
-            .imageView = m_dependencies->normalTextures[i]->view,
+            .sampler = m_dependencies->normalTextures[i]->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->normalTextures[i]->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkDescriptorImageInfo paramsInfo = {
-            .sampler = m_globalData->gBufferSampler,
-            .imageView = m_dependencies->paramTextures[i]->view,
+            .sampler =  m_dependencies->paramTextures[i]->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->paramTextures[i]->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkDescriptorImageInfo depthInfo = {
-            .sampler = m_globalData->depthSampler,
-            .imageView = m_dependencies->depthTextures[i]->view,
+            .sampler = (*m_shared->frames)[i].depthTexture->getDescriptorInfo().sampler,
+            .imageView = (*m_shared->frames)[i].depthTexture->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
         };
 
         VkDescriptorImageInfo cubeTextureInfo = {
-            .sampler = m_globalData->hdrSampler,
-            .imageView = m_dependencies->cubeMap->view,
+            .sampler =  m_dependencies->cubeMap->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->cubeMap->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
 
         VkDescriptorImageInfo irradianceInfo = {
-            .sampler = m_globalData->hdrSampler,
-            .imageView = m_dependencies->irradianceMap->view,
+            .sampler = m_dependencies->irradianceMap->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->irradianceMap->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
 
         VkDescriptorImageInfo shadowInfo = {
-            .sampler = m_globalData->shadowDepthSampler,
-            .imageView = m_dependencies->shadowMap->view,
+            .sampler = m_dependencies->shadowMap->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->shadowMap->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
         };
 

@@ -4,7 +4,7 @@
 #include "pipeline.h"
 #include "descriptors/descriptor_set_layout_builder.h"
 
-void ToneMappingPass::initialize(const RenderTarget::SharedResources& shared,
+void ToneMappingPass::initialize(const SharedResources& shared,
                                  MainSceneGlobalData& globalData,
                                  PassDependencies& dependencies) {
     m_shared = &shared;
@@ -103,11 +103,11 @@ void ToneMappingPass::createPipeline() {
     renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachmentFormats = &swapFormat;
-    renderingInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED; // Explicit for clarity
+    renderingInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
 
     // Blend state (no blending)
     VkPipelineColorBlendAttachmentState blendAttachment{};
-    blendAttachment.blendEnable = VK_FALSE; // Explicitly disabled
+    blendAttachment.blendEnable = VK_FALSE;
     blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
                                    VK_COLOR_COMPONENT_G_BIT |
                                    VK_COLOR_COMPONENT_B_BIT |
@@ -156,8 +156,8 @@ void ToneMappingPass::createPipeline() {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = VK_FALSE,
         .depthWriteEnable = VK_FALSE,
-        .depthCompareOp = VK_COMPARE_OP_ALWAYS, // Explicit for completeness
-        .stencilTestEnable = VK_FALSE           // Explicit for completeness
+        .depthCompareOp = VK_COMPARE_OP_ALWAYS, // explicit for completeness
+        .stencilTestEnable = VK_FALSE           // explicit for completeness
     };
     
     config.colorBlendAttachments = {blendAttachment};
@@ -186,14 +186,14 @@ void ToneMappingPass::createPipeline() {
 }
 
 void ToneMappingPass::createDescriptors() {
-    // Descriptor layout
+    // descriptor layout
     DescriptorSetLayoutBuilder layoutBuilder(m_shared->context->device());
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .addBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .build();
     
-    // Descriptor pool
+    // descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT}
@@ -210,11 +210,11 @@ void ToneMappingPass::createDescriptors() {
 }
 
 void ToneMappingPass::updateDescriptors() const {
-    // Update descriptor sets
+    // update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo hdrInfo = {
-            .sampler = m_globalData->hdrSampler,
-            .imageView = m_dependencies->hdrTextures[i]->view,
+            .sampler = m_dependencies->hdrTextures[i]->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->hdrTextures[i]->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
 

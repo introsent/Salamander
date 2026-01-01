@@ -24,14 +24,14 @@ public:
     void initialize(Context* context, BufferManager* bufferManager, TextureManager* textureManager);
 
     struct CubeMap {
-        ManagedTexture texture;
-        std::array<VkImageView, 6> faceViews;
-        VkImageView cubemapView;  // View for entire cubemap
+        Texture* texture = nullptr;
+        std::array<VkImageView, 6> faceViews{};
+        VkImageView cubemapView{};  // View for entire cubemap
     };
 
-    CubeMap createCubeMap(uint32_t size, VkFormat format) const;
+    [[nodiscard]] CubeMap createCubeMap(uint32_t size, VkFormat format) const;
     void renderEquirectToCube(VkCommandBuffer cmd,
-                              const ManagedTexture& equirectTexture,
+                              const Texture* equirectTexture,
                               const CubeMap& cubeMap) const;
 
     CubeMap createDiffuseIrradianceMap(VkCommandBuffer cmd, const CubeMap& environmentMap, uint32_t size);

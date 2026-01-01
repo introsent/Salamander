@@ -11,7 +11,7 @@ TextureManager::TextureManager(VkDevice device, VmaAllocator allocator, CommandM
     m_device(device), m_allocator(allocator), m_commandManager(cmdManager), m_bufferManager(bufferManager),
     m_debugMessenger(debugMessenger)
 {
-
+    createCommonSamplers();
 }
 
 Texture& TextureManager::loadTexture(const std::string& filepath, bool generateMips, VkFormat format)
@@ -65,7 +65,7 @@ Texture& TextureManager::loadTexture(const std::string& filepath, bool generateM
     auto texture = std::make_unique<Texture>(m_device);
     texture->create(std::move(image)); // image view and sampler creation already in create
     texture->createImageView();
-    texture->createSampler();
+    texture->setSampler(m_defaultSampler);
 
     m_textures.insert({filepath, std::move(texture)});
     return *m_textures.at(filepath);
@@ -111,7 +111,7 @@ Texture& TextureManager::loadHDRTexture(const std::string& path) {
     auto texture = std::make_unique<Texture>(m_device);
     texture->create(std::move(image)); // image view and sampler creation already in create
     texture->createImageView();
-    texture->createSampler();
+    texture->setSampler(m_defaultSampler);
 
     m_textures.insert({path, std::move(texture)});
     return *m_textures.at(path);
@@ -138,7 +138,14 @@ Texture& TextureManager::createTexture(
     texture->createImageView();
     if (createSampler)
     {
-        texture->createSampler();
+        if (format == VK_FORMAT_D32_SFLOAT) {
+            texture->setSampler(m_depthSampler);
+        }
+        else
+        {
+            texture->setSampler(m_defaultSampler);
+        }
+
     }
 
     if (!debugName.empty()) {
@@ -190,7 +197,7 @@ Texture& TextureManager::createTexture(const unsigned char* data, uint32_t width
     auto texture = std::make_unique<Texture>(m_device);
     texture->create(std::move(image));
     texture->createImageView();
-    texture->createSampler();
+    texture->setSampler(m_defaultSampler);
 
     if (!debugName.empty()) {
         texture->setDebugName(m_debugMessenger, debugName);
@@ -204,19 +211,20 @@ Texture& TextureManager::createCubeTexture(uint32_t size, VkFormat format,
                                                 VkImageUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
     auto image = std::make_unique<Image>(m_allocator);
-    image->create(size, size, format,
+    image->create(size, size,
+                  format,
                   VK_IMAGE_TILING_OPTIMAL,
                   usage,
                   memoryUsage,
-                  1, // mipLevels
-                  0, // flags if needed
-                  6  // layers for cubemap
+                  6, // layers for cubemap
+                  VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, // flags if needed
+                  1  // mip levels
     );
 
     auto texture = std::make_unique<Texture>(m_device);
     texture->create(std::move(image));
     texture->createCubeImageView();
-    texture->createCubeSampler();
+    texture->setSampler(m_cubeSampler);
 
     texture->setDebugName(m_debugMessenger, "CubeMap");
 
@@ -224,4 +232,56 @@ Texture& TextureManager::createCubeTexture(uint32_t size, VkFormat format,
     m_textures.insert({ key, std::move(texture) });
 
     return *m_textures.at(key);
+}
+
+void TextureManager::destroyTexture(Texture &texture) {
+    for (auto it = m_textures.begin(); it != m_textures.end(); ++it) {
+        if (it->second.get() == &texture) {
+            m_textures.erase(it);
+            return;
+        }
+    }
+}
+
+void TextureManager::destroyTexture(const std::string &key) {
+    auto it = m_textures.find(key);
+    if (it != m_textures.end()) {
+        m_textures.erase(it);
+    }
+}
+
+void TextureManager::createCommonSamplers() {
+    // Default sampler
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+    vkCreateSampler(m_device, &samplerInfo, nullptr, &m_defaultSampler);
+
+    // Cube sampler
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = 16.0f;
+    vkCreateSampler(m_device, &samplerInfo, nullptr, &m_cubeSampler);
+
+    // Depth sampler
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
+    samplerInfo.anisotropyEnable = VK_FALSE;
+    vkCreateSampler(m_device, &samplerInfo, nullptr, &m_depthSampler);
+
+    // Register for cleanup
+    VkDevice dev = m_device;
+    VkSampler s1 = m_defaultSampler, s2 = m_cubeSampler, s3 = m_depthSampler;
+    DeletionQueue::get().pushFunction("CommonSamplers", [dev, s1, s2, s3]() {
+        vkDestroySampler(dev, s1, nullptr);
+        vkDestroySampler(dev, s2, nullptr);
+        vkDestroySampler(dev, s3, nullptr);
+    });
 }

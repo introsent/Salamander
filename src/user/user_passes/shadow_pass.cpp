@@ -9,7 +9,7 @@
     #include "loaders/tinygltf_loader.h"
 #endif
 
-void ShadowPass::initialize(const RenderTarget::SharedResources &shared, MainSceneGlobalData &globalData,
+void ShadowPass::initialize(const SharedResources &shared, MainSceneGlobalData &globalData,
                             PassDependencies &dependencies) {
 
     m_globalData = &globalData;
@@ -17,7 +17,6 @@ void ShadowPass::initialize(const RenderTarget::SharedResources &shared, MainSce
     m_shared = &shared;
 
     createLightMatrices();
-    createShadowMapTexture();
     createUniformBuffers();
     createDescriptors();
     createPipeline();
@@ -31,48 +30,61 @@ void ShadowPass::recreateSwapChain() {
 }
 
 void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t) {
-    // Transition shadow map to depth attachment layout
-    ImageTransitionManager::transitionDepthAttachment(
-        cmd, m_dependencies->shadowMap->image,
+
+    Image* shadowImage = m_dependencies->shadowMap->getImage();
+    const glm::ivec2 shadowSize = shadowImage->size();
+
+    // transition shadow map to depth attachment
+    shadowImage->transitionLayoutEx(
+        cmd,
         VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        0,
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
     );
 
-    // Set up depth attachment for dynamic rendering
-    VkRenderingAttachmentInfo depthAttachment = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = m_dependencies->shadowMap->view,
+    // depth attachment
+    VkRenderingAttachmentInfo depthAttachment{
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView   = m_dependencies->shadowMap->getDescriptorInfo().imageView,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {.depthStencil = {1.0f, 0}}
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue  = {.depthStencil = {1.0f, 0}}
     };
 
-    VkRenderingInfo renderingInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea = {{0, 0}, {SHADOW_MAP_SIZE, SHADOW_MAP_SIZE}},
-        .layerCount = 1,
+    VkRenderingInfo renderingInfo{
+        .sType            = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea       = {{0, 0},
+                             {static_cast<uint32_t>(shadowSize.x),
+                              static_cast<uint32_t>(shadowSize.y)}},
+        .layerCount       = 1,
         .pDepthAttachment = &depthAttachment
     };
 
     vkCmdBeginRendering(cmd, &renderingInfo);
 
-    // Set viewport/scissor
-    VkViewport viewport = {
+    // viewport & scissor
+    VkViewport viewport{
         0.0f, 0.0f,
-        static_cast<float>(SHADOW_MAP_SIZE),
-        static_cast<float>(SHADOW_MAP_SIZE),
+        static_cast<float>(shadowSize.x),
+        static_cast<float>(shadowSize.y),
         0.0f, 1.0f
     };
     vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-    VkRect2D scissor = {{0, 0}, {SHADOW_MAP_SIZE, SHADOW_MAP_SIZE}};
+    VkRect2D scissor{
+        {0, 0},
+        {static_cast<uint32_t>(shadowSize.x),
+         static_cast<uint32_t>(shadowSize.y)}
+    };
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    // Bind pipeline
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->handle());
 
-    // Bind descriptor set
+    // descriptor set
     vkCmdBindDescriptorSets(
         cmd,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -82,13 +94,18 @@ void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t) {
         0, nullptr
     );
 
-    vkCmdBindIndexBuffer(cmd, m_globalData->indexBuffer.handle(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(
+        cmd,
+        m_globalData->indexBuffer.handle(),
+        0,
+        VK_INDEX_TYPE_UINT32
+    );
 
-    // Draw all meshes
+    // draw geometry
     for (const auto& primitive : m_globalData->primitives) {
-        ShadowPushConstants pc = {
-            .vertexBufferAddress = m_globalData->vertexBufferAddress,
-            .modelScale = globalScale,
+        ShadowPushConstants pc{
+            .vertexBufferAddress   = m_globalData->vertexBufferAddress,
+            .modelScale            = globalScale,
             .baseColorTextureIndex = primitive.materialIndex
         };
 
@@ -102,20 +119,29 @@ void ShadowPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t) {
         );
 
         vkCmdDrawIndexed(
-            cmd, primitive.indexCount, 1,
-            primitive.indexOffset, 0, 0
+            cmd,
+            primitive.indexCount,
+            1,
+            primitive.indexOffset,
+            0,
+            0
         );
     }
 
     vkCmdEndRendering(cmd);
 
-    // Transition to shader read-only layout for main pass usage
-    ImageTransitionManager::transitionDepthAttachment(
-        cmd, m_dependencies->shadowMap->image,
+    // transition for sampling in lighting pass
+    shadowImage->transitionLayoutEx(
+        cmd,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT
     );
 }
+
 
 void ShadowPass::createPipeline() {
     static constexpr std::array<VkDynamicState, 2> dynamicStates = {
@@ -171,7 +197,7 @@ void ShadowPass::createPipeline() {
     // Dynamic rendering configuration
     VkPipelineRenderingCreateInfo renderingInfo{};
     renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    renderingInfo.depthAttachmentFormat = m_shadowMapTexture.format;
+    renderingInfo.depthAttachmentFormat = m_dependencies->shadowMap->getImage()->format();
     config.rendering = renderingInfo;
 
     m_pipeline = std::make_unique<Pipeline>(
@@ -245,7 +271,7 @@ void ShadowPass::createLightMatrices() const {
         {m_globalData->sceneAABB.max.x,  m_globalData->sceneAABB.max.y, m_globalData->sceneAABB.max.z},
     };
 
-    //Project corners onto light direction
+    // project corners onto light direction
     float minProj = FLT_MAX;
     float maxProj = -FLT_MAX;
     for (const auto& corner : corners) {
@@ -254,20 +280,20 @@ void ShadowPass::createLightMatrices() const {
         maxProj = std::max(maxProj, proj);
     }
 
-    // Calculate distance and position
+    // calculate distance and position
     const float distance = maxProj - glm::dot(sceneCenter, lightDirection);
     const glm::vec3 lightPosition = sceneCenter - lightDirection * distance;
     directionalLight.directionalLightPosition = lightPosition;
 
-    // Calculate safe up vector
+    // calculate safe up vector
     const glm::vec3 up = glm::abs(glm:: dot(lightDirection, glm::vec3(0.f, 1.f, 0.f))) > 0.99f
     ? glm::vec3(0.f, 0.f, 1.f)
     : glm::vec3(0.f, 1.f, 0.f);
 
-    // Use lightPosition with center to generate view matrix
+    // use lightPosition with center to generate view matrix
     directionalLight.view = glm::lookAt(lightPosition, sceneCenter, up);
 
-    // Find min/max in view/light space
+    // find min/max in view/light space
     glm::vec3 minLightSpace(FLT_MAX);
     glm::vec3 maxLightSpace(-FLT_MAX);
     for (const auto& corner : corners) {
@@ -276,7 +302,7 @@ void ShadowPass::createLightMatrices() const {
         maxLightSpace = glm::max(maxLightSpace, transformedCorner);
     }
 
-    // Create orthographic projection matrix
+    // create orthographic projection matrix
     const float nearZ = 0.0f;
     const float farZ = maxLightSpace.z - minLightSpace.z;
     directionalLight.projection = glm::ortho(minLightSpace.x, maxLightSpace.x,
@@ -293,44 +319,4 @@ void ShadowPass::createUniformBuffers() {
         );
 
     m_directionalLightingBuffer.update(directionalLight);
-}
-
-void ShadowPass::createShadowMapTexture() {
-    VkDevice device = m_shared->context->device();
-
-    m_shadowMapTexture = m_shared->textureManager->createTexture(
-        SHADOW_MAP_SIZE, SHADOW_MAP_SIZE,
-        VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        VK_IMAGE_ASPECT_DEPTH_BIT,
-        false, "ShadowMapTexture"
-    );
-    m_shadowMapTexture.format = VK_FORMAT_D32_SFLOAT;
-
-    // Create sampler with compare enabled
-    VkSamplerCreateInfo samplerInfo = {};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-    samplerInfo.compareEnable = VK_TRUE;
-    samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-    samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 1.0f;
-
-    vkCreateSampler(m_shared->context->device(), &samplerInfo, nullptr, &m_shadowMapTexture.sampler);
-
-    VkSampler mapTextureSamplerCopy = m_shadowMapTexture.sampler;
-
-    DeletionQueue::get().pushFunction("ShadowMapSampler_" + std::to_string(TextureManager::getSamplerIndex()), [device, mapTextureSamplerCopy]() {
-            vkDestroySampler(device, mapTextureSamplerCopy, nullptr);
-        });
-
-    m_dependencies->shadowMap = &m_shadowMapTexture;
-
 }

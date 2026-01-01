@@ -2,7 +2,7 @@
 #include "target/render_target.h"
 #include "main_scene_controller.h"
 
-class MainSceneTarget : public RenderTarget {
+class MainSceneTarget final : public RenderTarget {
 public:
     void initialize(const SharedResources& shared) override;
     void render(VkCommandBuffer commandBuffer, uint32_t imageIndex) override;

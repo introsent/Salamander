@@ -1,9 +1,9 @@
 ﻿#include "gbuffer_pass.h"
 
-#include "config.h"
+#include <config.h>
+
 #include "pipeline.h"
 #include "descriptors/descriptor_set_layout_builder.h"
-#include "image_transition_manager.h"
 #include "shared/scene_data.h"
 #include "target/render_target.h"
 
@@ -15,7 +15,7 @@
     #include "loaders/assimp_loader.h"
 #endif
 
-void GBufferPass::initialize(const RenderTarget::SharedResources& shared,
+void GBufferPass::initialize(const SharedResources& shared,
                              MainSceneGlobalData& globalData,
                              PassDependencies& dependencies) {
     m_shared = &shared;
@@ -35,72 +35,107 @@ void GBufferPass::cleanup() {
 }
 
 void GBufferPass::recreateSwapChain() {
+    // 1. clean up old attachments by key
+    m_shared->textureManager->destroyTexture("Albedo");
+    m_shared->textureManager->destroyTexture("Normal");
+    m_shared->textureManager->destroyTexture("Param");
+
+    // reset pointers
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_albedoTextures[i] = nullptr;
+        m_normalTextures[i] = nullptr;
+        m_paramTextures[i] = nullptr;
+    }
+
+    // 2. create new attachments with new extent
     createAttachments();
+
+    // 3. update descriptors
+    updateDescriptors();
 }
 
 void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) {
-    // Transition attachments
-    ImageTransitionManager::transitionColorAttachment(
-        cmd, m_albedoTextures[frameIndex].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+    // transition gbuffer texture to color attachment
+    m_albedoTextures[frameIndex]->getImage()->transitionLayoutEx(
+        cmd,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
     );
-    ImageTransitionManager::transitionColorAttachment(
-        cmd, m_normalTextures[frameIndex].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+    m_normalTextures[frameIndex]->getImage()->transitionLayoutEx(
+        cmd,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
     );
-    ImageTransitionManager::transitionColorAttachment(
-        cmd, m_paramTextures[frameIndex].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+    m_paramTextures[frameIndex]->getImage()->transitionLayoutEx(
+        cmd,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
     );
-    
-    // Set up attachments
+
+    // set up attachments
     std::array<VkRenderingAttachmentInfo, 3> colorAttachments = {{
         {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-            .imageView = m_albedoTextures[frameIndex].view,
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = m_albedoTextures[frameIndex]->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = {.color = {0.0f, 0.0f, 0.0f, 1.0f}}
+            .clearValue = {.color = {0.f, 0.f, 0.f, 1.f}}
         },
         {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-            .imageView = m_normalTextures[frameIndex].view,
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = m_normalTextures[frameIndex]->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = {.color = {0.0f, 0.0f, 0.0f, 0.0f}}
+            .clearValue = {.color = {0.f, 0.f, 0.f, 0.f}}
         },
         {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-            .imageView = m_paramTextures[frameIndex].view,
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = m_paramTextures[frameIndex]->getDescriptorInfo().imageView,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = {.color = {0.0f, 0.0f, 0.0f, 0.0f}}
+            .clearValue = {.color = {0.f, 0.f, 0.f, 0.f}}
         }
     }};
 
-
     VkRenderingAttachmentInfo depthAttachment = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = m_dependencies->depthTextures[frameIndex]->view,
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = (*m_shared->frames)[frameIndex].depthTexture->getDescriptorInfo().imageView,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE
     };
 
-
     VkRenderingInfo renderInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea = {{0, 0}, m_shared->swapChain->extent()},
         .layerCount = 1,
         .colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size()),
         .pColorAttachments = colorAttachments.data(),
         .pDepthAttachment = &depthAttachment
     };
-    
+
     vkCmdBeginRendering(cmd, &renderInfo);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->handle());
-    
-    // Set dynamic viewport/scissor
+
+    // dynamic viewport/scissor
     VkViewport viewport = {
         0.0f, 0.0f,
         static_cast<float>(m_shared->swapChain->extent().width),
@@ -108,24 +143,24 @@ void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t ima
         0.0f, 1.0f
     };
     vkCmdSetViewport(cmd, 0, 1, &viewport);
-    
+
     VkRect2D scissor = {{0, 0}, m_shared->swapChain->extent()};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
-    
-    // Bind descriptor set
+
+    // bind descriptor set
     vkCmdBindDescriptorSets(
-        cmd, 
+        cmd,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_pipeline->layout(),
         0, 1,
         &m_descriptorManager->getDescriptorSets()[frameIndex],
         0, nullptr
     );
-    
-    // Bind index buffer
+
+    // bind index buffer
     vkCmdBindIndexBuffer(cmd, m_globalData->indexBuffer.handle(), 0, VK_INDEX_TYPE_UINT32);
-    
-    // Draw all primitives
+
+    // draw
     for (const auto& primitive : m_globalData->primitives) {
         PushConstants pc = {
             .vertexBufferAddress = m_globalData->vertexBufferAddress,
@@ -135,75 +170,100 @@ void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t ima
             .textureCount = static_cast<uint32_t>(m_globalData->modelTextures.size()),
             .modelScale = globalScale
         };
+
         vkCmdPushConstants(
-            cmd, m_pipeline->layout(), 
+            cmd, m_pipeline->layout(),
             VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc
         );
+
         vkCmdDrawIndexed(
-            cmd, primitive.indexCount, 1, 
-            primitive.indexOffset, 0, 0
+            cmd,
+            primitive.indexCount,
+            1,
+            primitive.indexOffset,
+            0,
+            0
         );
     }
-    
+
     vkCmdEndRendering(cmd);
-    
-    // Transition attachments to shader read
-    ImageTransitionManager::transitionToShaderRead(
-        cmd, m_albedoTextures[frameIndex].image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    );
-    ImageTransitionManager::transitionToShaderRead(
-        cmd, m_normalTextures[frameIndex].image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    );
-    ImageTransitionManager::transitionToShaderRead(
-        cmd, m_paramTextures[frameIndex].image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+
+    // transition gbuffer textures to shader read
+    m_albedoTextures[frameIndex]->getImage()->transitionLayoutEx(
+        cmd,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT
     );
 
+    m_normalTextures[frameIndex]->getImage()->transitionLayoutEx(
+        cmd,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT
+    );
+
+    m_paramTextures[frameIndex]->getImage()->transitionLayoutEx(
+        cmd,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT
+    );
 }
 
 void GBufferPass::createPipeline() {
-    static constexpr std::array<VkDynamicState, 2> dynamicStates = {
+     static constexpr std::array<VkDynamicState, 2> dynamicStates = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
     };
-    
-    // Attachment formats
+
+    // attachment formats
     std::array<VkFormat, 3> colorFormats = {
         VK_FORMAT_R8G8B8A8_SRGB,
         VK_FORMAT_R8G8B8A8_SRGB,
         VK_FORMAT_R8G8_UNORM
     };
-    
+
     VkPipelineRenderingCreateInfo renderingInfo{};
     renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     renderingInfo.colorAttachmentCount = colorFormats.size();
     renderingInfo.pColorAttachmentFormats = colorFormats.data();
     renderingInfo.depthAttachmentFormat = m_shared->depthFormat;
-    
-    // Blend states (no blending)
+
+    // blend states (no blending)
     std::array<VkPipelineColorBlendAttachmentState, 3> blendAttachments{};
     for (auto& attachment : blendAttachments) {
-        attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | 
-                                   VK_COLOR_COMPONENT_G_BIT | 
-                                   VK_COLOR_COMPONENT_B_BIT | 
+        attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                   VK_COLOR_COMPONENT_G_BIT |
+                                   VK_COLOR_COMPONENT_B_BIT |
                                    VK_COLOR_COMPONENT_A_BIT;
     }
-    
+
     PipelineConfig config{};
     config.vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/gbuffer_vert.spv";
     config.fragShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/gbuffer_frag.spv";
-    
+
     config.inputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         .primitiveRestartEnable = VK_FALSE
     };
-    
+
     config.viewportState = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,
         .scissorCount = 1
     };
-    
+
     config.rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable = VK_FALSE,
@@ -214,13 +274,13 @@ void GBufferPass::createPipeline() {
         .depthBiasEnable = VK_FALSE,
         .lineWidth = 1.0f
     };
-    
+
     config.multisampling = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
         .sampleShadingEnable = VK_FALSE
     };
-    
+
     config.depthStencil = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = VK_TRUE,
@@ -229,32 +289,33 @@ void GBufferPass::createPipeline() {
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE
     };
-    
+
     config.colorBlendAttachments = std::vector<VkPipelineColorBlendAttachmentState>(
         blendAttachments.begin(), blendAttachments.end()
     );
-    
+
     config.colorBlending = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable = VK_FALSE,
         .attachmentCount = static_cast<uint32_t>(blendAttachments.size()),
         .pAttachments = blendAttachments.data()
     };
-    
+
     config.dynamicState = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
         .pDynamicStates = dynamicStates.data()
     };
-    
+
     config.rendering = renderingInfo;
-    
+
     m_pipeline = std::make_unique<Pipeline>(
         m_shared->context,
         m_descriptorLayout->handle(),
         config
     );
 }
+
 
 void GBufferPass::createAttachments() {
     const auto& extent = m_shared->swapChain->extent();
@@ -263,60 +324,82 @@ void GBufferPass::createAttachments() {
                              VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        // Albedo (SRGB)
-        m_albedoTextures[i] = m_shared->textureManager->createTexture(
+        // albedo (SRGB)
+        m_albedoTextures[i] = &m_shared->textureManager->createTexture(
             extent.width, extent.height,
             VK_FORMAT_R8G8B8A8_SRGB,
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            true
+            false, true, "Albedo"
         );
 
-        // Normal (UNORM)
-        m_normalTextures[i] = m_shared->textureManager->createTexture(
+        // normal (UNORM)
+        m_normalTextures[i] = &m_shared->textureManager->createTexture(
             extent.width, extent.height,
             VK_FORMAT_R8G8B8A8_SRGB,
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            true
+            false, true, "Normal"
         );
 
-        // Parameters (RG8)
-        m_paramTextures[i] = m_shared->textureManager->createTexture(
+        // parameters (RG8)
+        m_paramTextures[i] = &m_shared->textureManager->createTexture(
             extent.width, extent.height,
             VK_FORMAT_R8G8_UNORM,
             usage,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            true
+            false, true, "Param"
         );
 
-        VkImageUsageFlags depthUsage =
-               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-               VK_IMAGE_USAGE_SAMPLED_BIT |
-               VK_IMAGE_USAGE_TRANSFER_DST_BIT;  // Allow for transitions
+        // update dependencies
+        m_dependencies->albedoTextures[i] = m_albedoTextures[i];
+        m_dependencies->normalTextures[i] = m_normalTextures[i];
+        m_dependencies->paramTextures[i] = m_paramTextures[i];
+    }
+}
 
-        m_depthTextures[i] = m_shared->textureManager->createTexture(
-            extent.width, extent.height,
-            VK_FORMAT_D32_SFLOAT,
-            depthUsage,
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            VK_IMAGE_ASPECT_DEPTH_BIT,
-            false
-        );
-
-        // Update dependencies
-        m_dependencies->albedoTextures[i] = &m_albedoTextures[i];
-        m_dependencies->normalTextures[i] = &m_normalTextures[i];
-        m_dependencies->paramTextures[i] = &m_paramTextures[i];
-        m_dependencies->depthTextures[i] = &m_depthTextures[i];
+void GBufferPass::updateDescriptors() const {
+    // update descriptor sets with current textures
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
+            {
+                .binding = 0,
+                .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .bufferInfo = &m_globalData->frameData[i].bufferInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            },
+            {
+                .binding = 1,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = m_globalData->frameData[i].textureImageInfos.data(),
+                .descriptorCount = static_cast<uint32_t>(m_globalData->modelTextures.size()),
+                .isImage = true
+            },
+            {
+                .binding = 2,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = m_globalData->frameData[i].normalImageInfos.data(),
+                .descriptorCount = static_cast<uint32_t>(m_globalData->normalTextures.size()),
+                .isImage = true
+            },
+            {
+                .binding = 5,
+                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = m_globalData->frameData[i].materialImageInfos.data(),
+                .descriptorCount = static_cast<uint32_t>(m_globalData->materialTextures.size()),
+                .isImage = true
+            }
+        };
+        m_descriptorManager->updateDescriptorSet(i, updates);
     }
 }
 
 void GBufferPass::createDescriptors() {
-    // Descriptor layout (matches original)
+    // descriptor layout (matches original)
     DescriptorSetLayoutBuilder layoutBuilder(m_shared->context->device());
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
@@ -328,7 +411,7 @@ void GBufferPass::createDescriptors() {
                    static_cast<uint32_t>(m_globalData->materialTextures.size()))
         .build();
     
-    // Descriptor pool
+    // descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
@@ -346,7 +429,7 @@ void GBufferPass::createDescriptors() {
         MAX_FRAMES_IN_FLIGHT
     );
 
-    // Update descriptor sets
+    // update descriptor sets
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
             {

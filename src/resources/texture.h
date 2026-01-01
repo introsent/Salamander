@@ -14,11 +14,20 @@ public:
 
     void create(std::unique_ptr<Image> img);
     void createImageView();
-    void createSampler();
+
+    void setSampler(VkSampler sampler) {
+        m_sampler = sampler;
+        m_ownsSampler = false;
+    }
+    void createSampler(); // Only creates if needed
 
     // for cube map
     void createCubeImageView();
     void createCubeSampler();
+
+    // for depth
+    void createDepthSampler(bool useComparison = false);
+
 
     [[nodiscard]] Image* getImage() const { return m_image.get(); };
     void setDebugName(const DebugMessenger* debug, const std::string& name);
@@ -29,12 +38,17 @@ private:
 
     std::unique_ptr<Image> m_image;
     VkImageView m_imageView = VK_NULL_HANDLE;
+
     VkSampler m_sampler = VK_NULL_HANDLE;
+    bool m_ownsSampler = false;
+
 
     uint32_t m_width  = 0;
     uint32_t m_height = 0;
     VkFormat m_format = VK_FORMAT_UNDEFINED;
     uint32_t m_mipLevels = 1;
+
+
 };
 
 

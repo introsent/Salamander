@@ -19,11 +19,11 @@ Renderer::Renderer(Context* context, Window* window, VmaAllocator allocator, Cam
     createCommandBuffers();
     createSyncObjects();
 
-    // Create targets
+    // create targets
     m_renderTargets.push_back(std::make_unique<MainSceneTarget>());
     m_renderTargets.push_back(std::make_unique<ImGuiTarget>());
 
-    // Initialize targets
+    // initialize targets
     for (auto& target : m_renderTargets) {
         target->initialize(m_sharedResources);
     }
@@ -79,7 +79,7 @@ void Renderer::createCommandBuffers() {
            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
            VMA_MEMORY_USAGE_GPU_ONLY,
            VK_IMAGE_ASPECT_DEPTH_BIT,
-           false
+           false, true, "Depth_Frame_" + std::to_string(&frame - &m_frames[0])  // Unique name per frame
        );
     }
 }
@@ -122,11 +122,11 @@ void Renderer::initializeSharedResources(Camera* camera) {
 void Renderer::drawFrame() {
     Frame& currentFrame = m_frames[m_currentFrame];
 
-    // Wait for fence before doing anything
+    // wait for fence before doing anything
     vkWaitForFences(m_context->device(), 1, &currentFrame.inFlightFence, VK_TRUE, UINT64_MAX);
     vkResetFences(m_context->device(), 1, &currentFrame.inFlightFence);
 
-    // Try to acquire next image
+    // try to acquire next image
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(
         m_context->device(),
@@ -140,16 +140,15 @@ void Renderer::drawFrame() {
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         return;
     }
-    m_sharedResources.currentFrame = &m_currentFrame;
 
     m_sharedResources.depthImageView = currentFrame.depthTexture->getDescriptorInfo().imageView;
-    m_sharedResources.depthImage = currentFrame.depthTexture->getImage()->handle();
+    m_sharedResources.currentFrame = &m_currentFrame;
 
     for (auto& target : m_renderTargets) {
-        target->updateUniformBuffers(); // Move update here
+        target->updateUniformBuffers();
     }
 
-    // Reset and record command buffer
+    // reset and record command buffer
     currentFrame.commandBuffer->reset();
     currentFrame.commandBuffer->begin();
 
@@ -159,7 +158,7 @@ void Renderer::drawFrame() {
 
     currentFrame.commandBuffer->end();
 
-    // Set up Vulkan Synchronization 2 structures
+    // set up Vulkan Synchronization 2 structures
     VkSemaphoreSubmitInfo waitSemaphoreInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = currentFrame.imageAvailableSemaphore,
@@ -216,15 +215,23 @@ void Renderer::drawFrame() {
 
 
 void Renderer::recreateSwapChain() {
-    // Wait for all operations to complete
     vkDeviceWaitIdle(m_context->device());
 
-    // Recreate swapchain
+    // store old textures for deletion AFTER recreation
+    std::vector<std::string> oldDepthKeys;
+    for (size_t i = 0; i < m_frames.size(); ++i) {
+        oldDepthKeys.push_back("Depth_Frame_" + std::to_string(i));
+    }
+
     m_swapChain->recreate();
 
+    // create new depth textures with unique names
     VkExtent2D extent = m_swapChain->extent();
-    for (auto& frame : m_frames) {
+    for (size_t i = 0; i < m_frames.size(); ++i) {
+        auto& frame = m_frames[i];
         frame.commandBuffer = m_commandManager->createCommandBuffer();
+
+        std::string newName = "Depth_Frame_" + std::to_string(i) + "_v" + std::to_string(m_swapchainVersion++);
         frame.depthTexture = &m_textureManager->createTexture(
            extent.width,
            extent.height,
@@ -232,11 +239,10 @@ void Renderer::recreateSwapChain() {
            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
            VMA_MEMORY_USAGE_GPU_ONLY,
            VK_IMAGE_ASPECT_DEPTH_BIT,
-           false
+           false, true, newName
        );
     }
 
-    // Recreate targets
     for (auto& target : m_renderTargets) {
         target->recreateSwapChain();
     }

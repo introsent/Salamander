@@ -47,6 +47,14 @@ public:
 
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<Texture>>& getTextures() const { return m_textures; }
 
+    VkSampler getDefaultSampler() const { return m_defaultSampler; }
+    VkSampler getCubeSampler() const { return m_cubeSampler; }
+    VkSampler getDepthSampler() const { return m_depthSampler; }
+
+
+    // public destroy methods, mainly for swapchain recreation
+    void destroyTexture(Texture& texture);
+    void destroyTexture(const std::string& key);
 
 private:
     VkDevice m_device;
@@ -56,4 +64,13 @@ private:
     DebugMessenger* m_debugMessenger;
 
     std::unordered_map<std::string, std::unique_ptr<Texture>> m_textures;
+
+    // samplers
+    VkSampler m_defaultSampler = VK_NULL_HANDLE;
+    VkSampler m_cubeSampler = VK_NULL_HANDLE;
+    VkSampler m_depthSampler = VK_NULL_HANDLE;
+
+    void createCommonSamplers();
+    void destroyCommonSamplers();
+
 };

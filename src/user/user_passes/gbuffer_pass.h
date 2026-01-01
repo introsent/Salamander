@@ -7,7 +7,7 @@
 
 class GBufferPass : public IRenderPass {
 public:
-    void initialize(const RenderTarget::SharedResources& shared,
+    void initialize(const SharedResources& shared,
                    MainSceneGlobalData& globalData,
                    PassDependencies& dependencies) override;
     void cleanup() override;
@@ -18,9 +18,10 @@ private:
     void createPipeline();
     void createAttachments();
     void createDescriptors();
+    void updateDescriptors() const;
 
     // Resources
-    const RenderTarget::SharedResources* m_shared = nullptr;
+    const SharedResources* m_shared = nullptr;
     MainSceneGlobalData* m_globalData = nullptr;
     PassDependencies* m_dependencies = nullptr;
     
@@ -29,8 +30,7 @@ private:
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
     
     // Attachments
-    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_depthTextures;
-    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_albedoTextures;
-    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_normalTextures;
-    std::array<ManagedTexture, MAX_FRAMES_IN_FLIGHT> m_paramTextures;
+    std::array<Texture*, MAX_FRAMES_IN_FLIGHT> m_albedoTextures;
+    std::array<Texture*, MAX_FRAMES_IN_FLIGHT> m_normalTextures;
+    std::array<Texture*, MAX_FRAMES_IN_FLIGHT> m_paramTextures;
 };

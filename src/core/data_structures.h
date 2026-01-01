@@ -6,11 +6,9 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <memory>
 #include <glm/gtx/hash.hpp>
-
 #include "command_buffer.h"
-#include "texture_manager.h"
-#include "texture.h"
 
+class Texture;
 struct Vertex {
     glm::vec3 pos;
     glm::vec2 texCoord;

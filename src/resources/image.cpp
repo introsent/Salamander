@@ -105,7 +105,7 @@ void Image::transitionLayoutEx(
     uint32_t mipCount,
     uint32_t baseLayer,
     uint32_t layerCount
-) const
+)
 {
     VkImageMemoryBarrier2 barrier{
         VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
@@ -135,6 +135,8 @@ void Image::transitionLayoutEx(
     depInfo.pImageMemoryBarriers = &barrier;
 
     vkCmdPipelineBarrier2(cmd, &depInfo);
+
+    m_currentLayout = newLayout;
 }
 
 void Image::copyFromBuffer(VkCommandBuffer cmd, VkBuffer buffer) const

@@ -184,8 +184,8 @@ VkDevice device = m_context->device();
 }
 
 CubeMapRenderer::CubeMap CubeMapRenderer::createCubeMap(uint32_t size, VkFormat format) const {
-    CubeMap cubeMap;
-    cubeMap.texture = m_textureManager->createCubeTexture(
+    CubeMap cubeMap{};
+    cubeMap.texture = &m_textureManager->createCubeTexture(
        size, format,
        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
        VMA_MEMORY_USAGE_GPU_ONLY
@@ -200,13 +200,13 @@ static int cubeMapViews = 0;
 void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) const {
     VkDevice device = m_context->device();
 
-    // Create individual face views
+    // create individual face views
     for (uint32_t face = 0; face < 6; ++face) {
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = cubeMap.texture.image;
+        viewInfo.image = cubeMap.texture->getImage()->handle();
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = cubeMap.texture.format;
+        viewInfo.format = cubeMap.texture->getImage()->format();
         viewInfo.subresourceRange = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel = 0,
@@ -225,12 +225,12 @@ void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) const {
             });
     }
 
-    // Create a cube map view (for sampling)
+    // create a cube map view (for sampling)
     VkImageViewCreateInfo cubeViewInfo{};
     cubeViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    cubeViewInfo.image = cubeMap.texture.image;
+    cubeViewInfo.image = cubeMap.texture->getImage()->handle();
     cubeViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-    cubeViewInfo.format = cubeMap.texture.format;
+    cubeViewInfo.format = cubeMap.texture->getImage()->format();
     cubeViewInfo.subresourceRange = {
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
         .baseMipLevel = 0,
@@ -249,20 +249,20 @@ void CubeMapRenderer::createCubeFaceViews(CubeMap& cubeMap) const {
 }
 
 void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
-                                         const ManagedTexture& equirectTexture,
+                                         const Texture* equirectTexture,
                                          const CubeMap& cubeMap) const {
 
-    // Add equirect texture transition
+    // add equirect texture transition
     ImageTransitionManager::transitionImageLayout(
-        cmd, equirectTexture.image,
+        cmd, equirectTexture->getImage()->handle(),
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         1, 1
     );
 
-    // Update descriptor set with actual texture data
+    // update descriptor set with actual texture data
     VkDescriptorImageInfo imageInfo{};
     imageInfo.sampler = m_equirectSampler;
-    imageInfo.imageView = equirectTexture.view;
+    imageInfo.imageView = equirectTexture->getDescriptorInfo().imageView;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 
@@ -277,14 +277,14 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
     };
     m_descriptorManager->updateDescriptorSet(0, updates);
 
-    // Transition cubemap to render target layout
+    // transition cubemap to render target layout
     ImageTransitionManager::transitionImageLayout(
-        cmd, cubeMap.texture.image,
+        cmd, cubeMap.texture->getImage()->handle(),
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         6, 1  // 6 faces, 1 mip
     );
 
-    // Precomputed view matrices for each face
+    // precomputed view matrices for each face
     const std::array<glm::mat4, 6> viewMatrices = {
         // +X, -X, +Y, -Y, +Z, -Z
         glm::lookAt(glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
@@ -307,9 +307,13 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.clearValue = {{0.0f, 0.0f, 0.0f, 1.0f}};
 
+        glm::ivec2 extent = cubeMap.texture->getImage()->size();
         VkRenderingInfo renderInfo{};
         renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderInfo.renderArea = {{0, 0}, {cubeMap.texture.width, cubeMap.texture.height}};
+        renderInfo.renderArea = {{0, 0}, {
+            static_cast<uint32_t>(extent.x),
+            static_cast<uint32_t>(extent.y)
+        }};
         renderInfo.layerCount = 1;
         renderInfo.colorAttachmentCount = 1;
         renderInfo.pColorAttachments = &colorAttachment;
@@ -319,12 +323,15 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->handle());
 
         VkViewport viewport{0.0f, 0.0f,
-                           static_cast<float>(cubeMap.texture.width),
-                           static_cast<float>(cubeMap.texture.height),
+                           static_cast<float>(extent.x),
+                           static_cast<float>(extent.y),
                            0.0f, 1.0f};
         vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-        VkRect2D scissor{{0, 0}, {cubeMap.texture.width, cubeMap.texture.height}};
+        VkRect2D scissor{{0, 0}, {
+            static_cast<uint32_t>(extent.x),
+            static_cast<uint32_t>(extent.y)
+        }};
         vkCmdSetScissor(cmd, 0, 1, &scissor);
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -332,7 +339,7 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
                                &m_descriptorManager->getDescriptorSets()[0],
                                0, nullptr);
 
-        // Push constants with buffer address, viewProj matrix and face index
+        // push constants with buffer address, viewProj matrix and face index
         CubeMapPushConstants pushConstants{};
         pushConstants.vertexBufferAddress = m_vertexBufferAddress;
         pushConstants.viewProj = proj * viewMatrices[face];
@@ -347,9 +354,9 @@ void CubeMapRenderer::renderEquirectToCube(VkCommandBuffer cmd,
         vkCmdEndRendering(cmd);
     }
 
-    // Final transition to shader read
+    // final transition to shader read
     ImageTransitionManager::transitionImageLayout(
-        cmd, cubeMap.texture.image,
+        cmd, cubeMap.texture->getImage()->handle(),
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         6, 1
@@ -363,9 +370,9 @@ CubeMapRenderer::CubeMap CubeMapRenderer::createDiffuseIrradianceMap(VkCommandBu
         createDiffuseIrradiancePipeline();
     }
 
-    // Update descriptor set with environment map
+    // update descriptor set with environment map
     VkDescriptorImageInfo imageInfo{};
-    imageInfo.sampler = m_equirectSampler; // Or create a new sampler if needed
+    imageInfo.sampler = m_equirectSampler;
     imageInfo.imageView = environmentMap.cubemapView;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -383,7 +390,7 @@ CubeMapRenderer::CubeMap CubeMapRenderer::createDiffuseIrradianceMap(VkCommandBu
 
     // Transition irradiance map to render a target
     ImageTransitionManager::transitionImageLayout(
-        cmd, irradianceMap.texture.image,
+        cmd, irradianceMap.texture->getImage()->handle(),
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         6, 1
@@ -450,7 +457,7 @@ CubeMapRenderer::CubeMap CubeMapRenderer::createDiffuseIrradianceMap(VkCommandBu
 
     // Transition to shader read
     ImageTransitionManager::transitionImageLayout(
-        cmd, irradianceMap.texture.image,
+        cmd, irradianceMap.texture->getImage()->handle(),
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         6, 1

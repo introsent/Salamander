@@ -1,10 +1,21 @@
 #pragma once
 #include "context.h"
 #include "window.h"
-#include "target/render_target.h"
 #include <memory>
 #include <vector>
+#include <vk_mem_alloc.h>
+
 #include "depth_format.h"
+#include "shared/shared_resources.h"
+
+// Forward declarations instead of includes
+class RenderTarget;
+class SwapChain;
+class CommandManager;
+class BufferManager;
+class TextureManager;
+class Camera;
+struct Frame;
 
 class Renderer {
 public:
@@ -18,7 +29,6 @@ public:
 
 private:
 
-
     void createSyncObjects();
     void createCommandBuffers();
     void cleanup();
@@ -29,8 +39,9 @@ private:
     VmaAllocator m_allocator;
     bool m_framebufferResized = false;
 
-    // Shared Resources
-    RenderTarget::SharedResources m_sharedResources;
+    SharedResources m_sharedResources;
+
+    uint32_t m_swapchainVersion = 0;
 
     // Managers
     std::unique_ptr<SwapChain> m_swapChain;

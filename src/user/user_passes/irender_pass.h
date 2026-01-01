@@ -6,7 +6,7 @@ class IRenderPass {
 public:
     virtual ~IRenderPass() = default;
 
-    virtual void initialize(const RenderTarget::SharedResources& shared,
+    virtual void initialize(const SharedResources& shared,
                            MainSceneGlobalData& globalData,
                            PassDependencies& dependencies) = 0;
     virtual void cleanup() = 0;

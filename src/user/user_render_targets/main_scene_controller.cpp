@@ -15,15 +15,20 @@
     #include "loaders/assimp_loader.h"
 #endif
 
-void MainSceneController::initialize(const RenderTarget::SharedResources& shared) {
+void MainSceneController::initialize(const SharedResources& shared) {
     m_shared = &shared;
     loadModel(MODEL_PATH);
     createBuffers();
 
-    // Initialize dependencies
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_dependencies.perFrameDepthTextures[i] = &(*shared.frames)[i].depthTexture;
-    }
+    constexpr uint32_t SHADOW_MAP_SIZE = 4096;
+    m_dependencies.shadowMap = &m_shared->textureManager->createTexture(
+        SHADOW_MAP_SIZE, SHADOW_MAP_SIZE,
+        VK_FORMAT_D32_SFLOAT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        VK_IMAGE_ASPECT_DEPTH_BIT,
+        false, true, "ShadowMapTexture"
+    );
 
     m_cubeMapRenderer.initialize(m_shared->context,
                           m_shared->bufferManager,
@@ -37,6 +42,8 @@ void MainSceneController::initialize(const RenderTarget::SharedResources& shared
     m_gBufferPass.initialize(shared, m_globalData, m_dependencies);
     m_lightingPass.initialize(shared, m_globalData, m_dependencies);
     m_toneMappingPass.initialize(shared, m_globalData, m_dependencies);
+
+
 }
 
 void MainSceneController::cleanup() {
@@ -115,42 +122,41 @@ void MainSceneController::loadModel(const std::string& modelPath) {
 
 #endif
 
-    // Clear previous data
+    // clear previous data
     m_globalData.modelTextures.clear();
     m_globalData.materialTextures.clear();
     m_globalData.normalTextures.clear();
 
     if (gltfModel.vertices.empty()) {
-        // Empty model: set AABB to zero
+        // empty model: set AABB to zero
         m_globalData.sceneAABB = { .min = glm::vec3(0.0f), .max = glm::vec3(0.0f) };
     } else {
-        // Initialize with extreme values
+        // initialize with extreme values
         auto minAABB = glm::vec3(std::numeric_limits<float>::max());
         auto maxAABB = glm::vec3(std::numeric_limits<float>::lowest());
 
-        // Find min/max across all vertices
+        // find min/max across all vertices
         for (const auto& vertex : gltfModel.vertices) {
             minAABB = glm::min(minAABB, vertex.pos);
             maxAABB = glm::max(maxAABB, vertex.pos);
         }
 
-        // Store final AABB
+        // store final AABB
         m_globalData.sceneAABB = { .min = minAABB, .max = maxAABB };
     }
 
-    // Create a default white texture for base color (index 0)
+    // create a default white texture for base color (index 0)
     unsigned char white[] = {255, 255, 255, 255};
-    m_globalData.modelTextures.push_back(
-        m_shared->textureManager->createTexture(white, 1, 1, 4)
-    );
+    Texture& whiteTex = m_shared->textureManager->createTexture(white, 1, 1, 4, false, "default_white");
+    m_globalData.modelTextures.push_back(&whiteTex);
 
-    // Separate texture maps for each type
+    // separate texture maps for each type
     std::unordered_map<std::string, uint32_t> baseColorMap;
     std::unordered_map<std::string, uint32_t> normalMap;
     std::unordered_map<std::string, uint32_t> materialMap;
-    std::vector<std::string> defaultMaterialKeys; // Local deduplication
+    std::vector<std::string> defaultMaterialKeys; // local deduplication
 
-    // Create SSBO for vertices
+    // create SSBO for vertices
     m_globalData.vertexBuffer = SSBOBuffer(
         m_shared->bufferManager,
         m_shared->commandManager,
@@ -160,7 +166,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
     );
     m_globalData.vertexBufferAddress = m_globalData.vertexBuffer.getDeviceAddress(m_shared->context->device());
 
-    // Create an index buffer
+    // create an index buffer
     m_globalData.indexBuffer = IndexBuffer(
         m_shared->bufferManager,
         m_shared->commandManager,
@@ -168,60 +174,57 @@ void MainSceneController::loadModel(const std::string& modelPath) {
         gltfModel.indices
     );
 
-    // Process primitives
+    // process primitives
     m_globalData.primitives.clear();
     m_globalData.primitives.reserve(gltfModel.primitives.size());
 
     for (const auto& srcPrim : gltfModel.primitives) {
-        uint32_t baseColorIndex = 0; // Default to white texture
+        uint32_t baseColorIndex = 0; // default to white texture
         uint32_t materialIndex = 0;
-        uint32_t normalIndex = UINT32_MAX; // Indicates no normal map
+        uint32_t normalIndex = UINT32_MAX; // indicates no normal map
 
         if (srcPrim.materialIndex >= 0) {
             const auto& mat = gltfModel.materials[srcPrim.materialIndex];
 
-            // Load base color texture
+            // load base color texture
             if (mat.baseColorTexture >= 0 && mat.baseColorTexture < gltfModel.textures.size()) {
                 const auto& texInfo = gltfModel.textures[mat.baseColorTexture];
                 std::string path = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
 
                 if (!baseColorMap.contains(path)) {
                     baseColorMap[path] = m_globalData.modelTextures.size();
-                    m_globalData.modelTextures.push_back(
-                        m_shared->textureManager->loadTexture(path)
-                    );
+                    Texture& baseTex = m_shared->textureManager->loadTexture(path, false, VK_FORMAT_R8G8B8A8_SRGB);
+                    m_globalData.modelTextures.push_back(&baseTex);
                 }
                 baseColorIndex = baseColorMap[path];
             }
 
-            // Load normal texture
+            // load normal texture
             if (mat.normalTexture >= 0 && mat.normalTexture < gltfModel.textures.size()) {
                 const auto& texInfo = gltfModel.textures[mat.normalTexture];
                 std::string path = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
 
                 if (!normalMap.contains(path)) {
                     normalMap[path] = m_globalData.normalTextures.size();
-                    m_globalData.normalTextures.push_back(
-                        m_shared->textureManager->loadTexture(path, VK_FORMAT_R8G8B8A8_UNORM)
-                    );
+                    Texture& normalTex = m_shared->textureManager->loadTexture(path, false, VK_FORMAT_R8G8B8A8_UNORM);
+                    m_globalData.normalTextures.push_back(&normalTex);
                 }
                 normalIndex = normalMap[path];
             }
 
-            // Load metallic-roughness texture
+            // load metallic-roughness texture
             if (mat.metallicRoughnessTexture >= 0 && mat.metallicRoughnessTexture < gltfModel.textures.size()) {
                 const auto& texInfo = gltfModel.textures[mat.metallicRoughnessTexture];
                 std::string path = std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/" + texInfo.uri;
 
                 if (!materialMap.contains(path)) {
                     materialMap[path] = m_globalData.materialTextures.size();
-                    m_globalData.materialTextures.push_back(
-                        m_shared->textureManager->loadTexture(path, VK_FORMAT_R8G8B8A8_SRGB)
-                    );
+                    Texture& matTex = m_shared->textureManager->loadTexture(path, false, VK_FORMAT_R8G8B8A8_SRGB);
+                    m_globalData.materialTextures.push_back(&matTex);
                 }
                 materialIndex = materialMap[path];
             } else {
-                // Create deduplicated default texture
+                // create deduplicated default texture
                 std::string key = "default_" +
                     std::to_string(mat.metallicFactor) + "_" +
                     std::to_string(mat.roughnessFactor);
@@ -236,9 +239,9 @@ void MainSceneController::loadModel(const std::string& modelPath) {
                         static_cast<unsigned char>(mat.metallicFactor * 255),
                         255
                     };
-                    m_globalData.materialTextures.push_back(
-                        m_shared->textureManager->createTexture(data, 1, 1, 4)
-                    );
+                    std::string debugName = "default_material_" + std::to_string(mat.metallicFactor) + "_" + std::to_string(mat.roughnessFactor);
+                    Texture& defaultMat = m_shared->textureManager->createTexture(data, 1, 1, 4, false, debugName);
+                    m_globalData.materialTextures.push_back(&defaultMat);
                     materialIndex = m_globalData.materialTextures.size() - 1;
                     defaultMaterialKeys.push_back(key);
                 }
@@ -257,7 +260,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
 }
 
 void MainSceneController::createBuffers() {
-    // Create uniform buffers for each frame
+    // create uniform buffers for each frame
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDeviceSize uboSize = sizeof(UniformBufferObject);
         m_uniformBuffers[i] = UniformBuffer(
@@ -271,7 +274,7 @@ void MainSceneController::createBuffers() {
             .range = uboSize
         };
 
-        // Create an omni light buffer
+        // create an omni light buffer
         VkDeviceSize lightSize = sizeof(PointLightData);
         m_omniLightBuffer[i] = UniformBuffer(
             m_shared->bufferManager,
@@ -290,7 +293,7 @@ void MainSceneController::createBuffers() {
             .range = lightSize
         };
 
-        // Create a camera exposure buffer
+        // create a camera exposure buffer
         constexpr VkDeviceSize exposureSize = sizeof(CameraExposure);
         m_cameraExposureBuffer[i] = UniformBuffer(
             m_shared->bufferManager,
@@ -306,36 +309,28 @@ void MainSceneController::createBuffers() {
         };
     }
 
-    // Fill texture descriptor info for each frame
+    // fill texture descriptor info for each frame
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        // Model textures (base color)
+        // model textures (base color)
         m_globalData.frameData[i].textureImageInfos.clear();
-        for (const auto& tex : m_globalData.modelTextures) {
-            m_globalData.frameData[i].textureImageInfos.push_back({
-                .sampler = tex.sampler,
-                .imageView = tex.view,
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-            });
+        for (const auto& texPtr : m_globalData.modelTextures) {
+            if (!texPtr) continue;
+            VkDescriptorImageInfo desc = texPtr->getDescriptorInfo();
+            m_globalData.frameData[i].textureImageInfos.push_back(desc);
         }
 
-        // Material textures (metallic-roughness)
+        // material textures (metallic-roughness)
         m_globalData.frameData[i].materialImageInfos.clear();
-        for (auto& tex : m_globalData.materialTextures) {
-            m_globalData.frameData[i].materialImageInfos.push_back({
-                .sampler = tex.sampler,
-                .imageView = tex.view,
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-            });
+        for (const auto& texPtr : m_globalData.materialTextures) {
+            if (!texPtr) continue;
+            m_globalData.frameData[i].materialImageInfos.push_back(texPtr->getDescriptorInfo());
         }
 
-        // Normal textures
+        // normal textures
         m_globalData.frameData[i].normalImageInfos.clear();
-        for (auto& tex : m_globalData.normalTextures) {
-            m_globalData.frameData[i].normalImageInfos.push_back({
-                .sampler = tex.sampler,
-                .imageView = tex.view,
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-            });
+        for (const auto& texPtr : m_globalData.normalTextures) {
+            if (!texPtr) continue;
+            m_globalData.frameData[i].normalImageInfos.push_back(texPtr->getDescriptorInfo());
         }
     }
 }
@@ -347,32 +342,28 @@ uint32_t MainSceneController::createDefaultMaterialTexture(float metallicFactor,
         static_cast<unsigned char>(metallicFactor * 255),
         255
     };
-    Texture tex = m_shared->textureManager->createTexture(data, 1, 1, 4);
-    m_globalData.materialTextures.push_back(tex);
+    std::string debugName = "default_material_tex_" + std::to_string(m_globalData.materialTextures.size());
+    Texture& texRef = m_shared->textureManager->createTexture(data, 1, 1, 4, false, debugName);
+    m_globalData.materialTextures.push_back(&texRef);
     return static_cast<uint32_t>(m_globalData.materialTextures.size() - 1);
 }
 
 void MainSceneController::createIBLResources() {
-    // Load HDR
-    m_hdrEquirect = m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/circus_arena.hdr");
+    // load HDR
+    m_hdrEquirect = &m_shared->textureManager->loadHDRTexture( std::string(SOURCE_RESOURCE_DIR) + "/textures/circus_arena.hdr");
 
-    // Create environment cube map
+    // create environment cube map
     m_envCubeMap = m_cubeMapRenderer.createCubeMap(1024, VK_FORMAT_R16G16B16A16_SFLOAT);
 
-
-    // Convert equirect to cube
+    // convert equirect to cube
     VkCommandBuffer cmd = m_shared->commandManager->beginSingleTimeCommands();
     m_cubeMapRenderer.renderEquirectToCube(cmd, m_hdrEquirect, m_envCubeMap);
     m_irradianceMap = m_cubeMapRenderer.createDiffuseIrradianceMap(cmd, m_envCubeMap, 128);
     m_shadowPass.execute(cmd, 0, 0);
     m_shared->commandManager->endSingleTimeCommands(cmd);
 
-    // Set in dependencies
-    m_dependencies.equirectTexture = &m_hdrEquirect;
-    m_dependencies.cubeMap = &m_envCubeMap.texture;
-    m_dependencies.cubeMap->view = m_envCubeMap.cubemapView;
-
-    m_dependencies.irradianceMap = &m_irradianceMap.texture;
-    m_dependencies.irradianceMap->view = m_irradianceMap.cubemapView;
-
+    // set in dependencies
+    m_dependencies.equirectTexture = m_hdrEquirect;
+    m_dependencies.cubeMap = m_envCubeMap.texture;
+    m_dependencies.irradianceMap = m_irradianceMap.texture;
 }

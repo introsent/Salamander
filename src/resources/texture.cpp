@@ -56,6 +56,7 @@ void Texture::createSampler()
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.maxLod = static_cast<float>(m_mipLevels);
+    m_ownsSampler = true;
 
     vkCreateSampler(m_device, &samplerInfo, nullptr, &m_sampler);
 
@@ -84,10 +85,12 @@ void Texture::createCubeImageView()
         throw std::runtime_error("Failed to create cube image view!");
     }
 
+
     VkDevice deviceCopy = m_device;
     VkImageView imageViewCopy = m_imageView;
     DeletionQueue::get().pushFunction("ImageViewTexture_" + std::to_string(imageViewInx++),
         [deviceCopy, imageViewCopy]() {
+
         vkDestroyImageView(deviceCopy, imageViewCopy, nullptr);
         });
 }
@@ -118,6 +121,49 @@ void Texture::createCubeSampler()
     DeletionQueue::get().pushFunction("Sampler_" + std::to_string(samplerInx++),
         [deviceCopy, samplerCopy]() {
         vkDestroySampler(deviceCopy, samplerCopy, nullptr);
+        });
+}
+
+void Texture::createDepthSampler(bool useComparison) {
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+    // Mipmap settings
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = static_cast<float>(m_mipLevels);
+    samplerInfo.mipLodBias = 0.0f;
+
+    // Anisotropy typically not needed for depth
+    samplerInfo.anisotropyEnable = VK_FALSE;
+    samplerInfo.maxAnisotropy = 1.0f;
+
+    // If using for shadow mapping with PCF
+    if (useComparison) {
+        samplerInfo.compareEnable = VK_TRUE;
+        samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    } else {
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    }
+
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+    if (vkCreateSampler(m_device, &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create depth sampler!");
+    }
+
+    VkDevice deviceCopy = m_device;
+    VkSampler samplerCopy = m_sampler;
+    DeletionQueue::get().pushFunction("DepthSampler_" + std::to_string(samplerInx++),
+        [deviceCopy, samplerCopy]() {
+            vkDestroySampler(deviceCopy, samplerCopy, nullptr);
         });
 }
 
@@ -153,7 +199,7 @@ void Texture::setDebugName(const DebugMessenger* debug, const std::string& name)
 VkDescriptorImageInfo Texture::getDescriptorInfo() const
 {
     VkDescriptorImageInfo info{};
-    info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    info.imageLayout = m_image->currentLayout();
     info.imageView = m_imageView;
     info.sampler   = m_sampler;
     return info;

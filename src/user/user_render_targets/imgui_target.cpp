@@ -23,7 +23,7 @@ void ImGuiTarget::recreateSwapChain() {
 
     std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        depthViews[i] = (*m_shared->frames)[i].depthTexture.view;
+        depthViews[i] = (*m_shared->frames)[i].depthTexture->getDescriptorInfo().imageView;
     }
 
     ImGuiPassExecutor::Resources resources{
@@ -53,7 +53,7 @@ void ImGuiTarget::createRenderingResources()
 
     std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthViews;
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        depthViews[i] = (*m_shared->frames)[i].depthTexture.view;
+        depthViews[i] = (*m_shared->frames)[i].depthTexture->getDescriptorInfo().imageView;
     }
 
     // ImGui pass executor

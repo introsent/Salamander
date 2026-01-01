@@ -185,6 +185,7 @@ set(${PROJECT_NAME}_SOURCES
         src/resources/texture.h
         src/resources/image.cpp
         src/resources/image.h
+        src/shared/shared_resources.h
 )
 
 

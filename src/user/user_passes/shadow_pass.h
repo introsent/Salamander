@@ -8,7 +8,7 @@
 class ShadowPass final : public IRenderPass {
 
 public:
-    void initialize(const RenderTarget::SharedResources& shared,
+    void initialize(const SharedResources& shared,
                            MainSceneGlobalData& globalData,
                            PassDependencies& dependencies) override;
     void cleanup() override;
@@ -19,20 +19,17 @@ private:
     void createDescriptors();
     void createLightMatrices() const;
     void createUniformBuffers();
-    void createShadowMapTexture();
 
-    const RenderTarget::SharedResources* m_shared = nullptr;
+    const SharedResources* m_shared = nullptr;
     MainSceneGlobalData* m_globalData = nullptr;
     PassDependencies* m_dependencies = nullptr;
 
-    ManagedTexture m_shadowMapTexture = {};
+    Texture* m_shadowMapTexture = {};
 
     std::unique_ptr<Pipeline> m_pipeline;
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
     std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
 
     UniformBuffer m_directionalLightingBuffer;
-
-    static constexpr uint32_t SHADOW_MAP_SIZE = 4096;
 };
 

@@ -38,7 +38,7 @@ public:
         uint32_t mipCount = VK_REMAINING_MIP_LEVELS,
         uint32_t baseLayer = 0,
         uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS
-    ) const;
+    ) ;
 
     void copyFromBuffer(VkCommandBuffer cmd, VkBuffer buffer) const;
 
@@ -53,6 +53,8 @@ public:
     [[nodiscard]] VkImageCreateFlags flags() const { return m_flags; }
     [[nodiscard]] VkImageAspectFlags aspect() const { return m_aspect; }
     [[nodiscard]] uint32_t layers() const { return m_layers; }
+
+    [[nodiscard]] VkImageLayout currentLayout() const { return m_currentLayout; }
 
 private:
     VmaAllocator m_allocator;

@@ -6,7 +6,7 @@
 
 class DepthPrepass : public IRenderPass {
 public:
-    void initialize(const RenderTarget::SharedResources& shared,
+    void initialize(const SharedResources& shared,
                    MainSceneGlobalData& globalData,
                    PassDependencies& dependencies) override;
     void cleanup() override;
@@ -18,7 +18,7 @@ private:
     void createDescriptors();
 
     // Resources
-    const RenderTarget::SharedResources* m_shared = nullptr;
+    const SharedResources* m_shared = nullptr;
     MainSceneGlobalData* m_globalData = nullptr;
     PassDependencies* m_dependencies = nullptr;
     
