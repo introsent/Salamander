@@ -99,7 +99,7 @@ void Renderer::initializeSharedResources(Camera* camera) {
     );
 
     m_textureManager = std::make_unique<TextureManager>(
-        m_context->device(), m_allocator, m_commandManager.get(), m_bufferManager.get(), m_context->debugMessenger()
+        m_context->device(), m_context->physicalDevice(), m_allocator, m_commandManager.get(), m_bufferManager.get(), m_context->debugMessenger()
     );
 
 

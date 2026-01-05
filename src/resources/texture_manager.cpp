@@ -6,9 +6,9 @@
 #include <stdexcept>
 #include "deletion_queue.h"
 
-TextureManager::TextureManager(VkDevice device, VmaAllocator allocator, CommandManager* cmdManager,
+TextureManager::TextureManager(VkDevice device, VkPhysicalDevice physicalDevice, VmaAllocator allocator, CommandManager* cmdManager,
     BufferManager* bufferManager, DebugMessenger* debugMessenger) :
-    m_device(device), m_allocator(allocator), m_commandManager(cmdManager), m_bufferManager(bufferManager),
+    m_device(device), m_physicalDevice(physicalDevice),m_allocator(allocator), m_commandManager(cmdManager), m_bufferManager(bufferManager),
     m_debugMessenger(debugMessenger)
 {
     createCommonSamplers();
@@ -39,11 +39,9 @@ Texture& TextureManager::loadTexture(const std::string& filepath, bool generateM
     vmaUnmapMemory(m_allocator, staging.allocation);
     stbi_image_free(pixels);
 
-    uint32_t mipsLevels = 1;
-    if (generateMips)
-    {
-        mipsLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
-    }
+    const uint32_t mipLevels = generateMips
+       ? static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1
+       : 1;
 
 
     // Create the GPU image with the supplied format
@@ -51,15 +49,32 @@ Texture& TextureManager::loadTexture(const std::string& filepath, bool generateM
     image->create(texWidth, texHeight,
         format,
         VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY, 1, 0, mipsLevels);
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY, 1, 0, mipLevels);
 
     // Transition, copy, and transition again
     VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
     image->transitionLayout(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     image->copyFromBuffer(cmd, staging.buffer);
-    image->transitionLayout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    if (!generateMips) {
+        image->transitionLayout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    } // else it happens in image->generateMipmaps(cmdMips);
     m_commandManager->endSingleTimeCommands(cmd);
+
+    if (generateMips) {
+        // generate mip maps
+        VkFormatProperties formatProperties;
+        vkGetPhysicalDeviceFormatProperties(m_physicalDevice, image->format(), &formatProperties);
+        if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
+            throw std::runtime_error("texture image format does not support linear blitting!");
+        }
+
+        VkCommandBuffer cmdMips = m_commandManager->beginSingleTimeCommands();
+        image->generateMipmaps(cmdMips);
+        m_commandManager->endSingleTimeCommands(cmdMips);
+    }
+
+
 
     // Create texture based on image
     auto texture = std::make_unique<Texture>(m_device);
@@ -127,11 +142,15 @@ Texture& TextureManager::createTexture(
     bool createSampler,
     const std::string& debugName)
 {
+
+    const uint32_t mipLevels = generateMipMap
+        ? static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1
+        : 1;
     auto image = std::make_unique<Image>(m_allocator);
     image->create(width, height, format,
                   VK_IMAGE_TILING_OPTIMAL,
                   usage, memoryUsage,
-                  1, 0, 1);
+                  1, 0,  mipLevels);
 
     auto texture = std::make_unique<Texture>(m_device);
     texture->create(std::move(image));
@@ -208,9 +227,12 @@ Texture& TextureManager::createTexture(const unsigned char* data, uint32_t width
 }
 
 Texture& TextureManager::createCubeTexture(uint32_t size, VkFormat format,
-                                                VkImageUsageFlags usage, VmaMemoryUsage memoryUsage)
+                                                VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, bool generateMipMaps)
 {
     auto image = std::make_unique<Image>(m_allocator);
+    const uint32_t mipLevels = generateMipMaps
+        ? static_cast<uint32_t>(std::floor(std::log2(std::max(size, size)))) + 1
+        : 1;
     image->create(size, size,
                   format,
                   VK_IMAGE_TILING_OPTIMAL,
@@ -259,6 +281,7 @@ void TextureManager::createCommonSamplers() {
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
     vkCreateSampler(m_device, &samplerInfo, nullptr, &m_defaultSampler);
 

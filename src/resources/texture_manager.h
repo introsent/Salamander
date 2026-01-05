@@ -18,6 +18,7 @@ class TextureManager {
 public:
     TextureManager(
         VkDevice device,
+        VkPhysicalDevice physicalDevice,
         VmaAllocator allocator,
         CommandManager* cmdManager,
         BufferManager* bufferManager,
@@ -42,7 +43,7 @@ public:
                                     uint32_t channels, bool generateMipMaps = false, const std::string& debugName = "");
 
     Texture& createCubeTexture(uint32_t size, VkFormat format,
-                                     VkImageUsageFlags usage, VmaMemoryUsage memoryUsage);
+                                     VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, bool generateMipMaps = false);
 
 
     [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<Texture>>& getTextures() const { return m_textures; }
@@ -58,6 +59,7 @@ public:
 
 private:
     VkDevice m_device;
+    VkPhysicalDevice m_physicalDevice;
     VmaAllocator m_allocator;
     CommandManager* m_commandManager;
     BufferManager* m_bufferManager;

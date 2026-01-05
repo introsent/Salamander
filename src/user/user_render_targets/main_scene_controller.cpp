@@ -193,7 +193,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
 
                 if (!baseColorMap.contains(path)) {
                     baseColorMap[path] = m_globalData.modelTextures.size();
-                    Texture& baseTex = m_shared->textureManager->loadTexture(path, false, VK_FORMAT_R8G8B8A8_SRGB);
+                    Texture& baseTex = m_shared->textureManager->loadTexture(path, true, VK_FORMAT_R8G8B8A8_SRGB);
                     m_globalData.modelTextures.push_back(&baseTex);
                 }
                 baseColorIndex = baseColorMap[path];
@@ -206,7 +206,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
 
                 if (!normalMap.contains(path)) {
                     normalMap[path] = m_globalData.normalTextures.size();
-                    Texture& normalTex = m_shared->textureManager->loadTexture(path, false, VK_FORMAT_R8G8B8A8_UNORM);
+                    Texture& normalTex = m_shared->textureManager->loadTexture(path, true, VK_FORMAT_R8G8B8A8_UNORM);
                     m_globalData.normalTextures.push_back(&normalTex);
                 }
                 normalIndex = normalMap[path];
@@ -219,7 +219,7 @@ void MainSceneController::loadModel(const std::string& modelPath) {
 
                 if (!materialMap.contains(path)) {
                     materialMap[path] = m_globalData.materialTextures.size();
-                    Texture& matTex = m_shared->textureManager->loadTexture(path, false, VK_FORMAT_R8G8B8A8_SRGB);
+                    Texture& matTex = m_shared->textureManager->loadTexture(path, true, VK_FORMAT_R8G8B8A8_SRGB);
                     m_globalData.materialTextures.push_back(&matTex);
                 }
                 materialIndex = materialMap[path];
