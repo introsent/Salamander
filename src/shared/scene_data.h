@@ -40,6 +40,7 @@ struct PassDependencies {
     std::array<Texture*, MAX_FRAMES_IN_FLIGHT> normalTextures{};
     std::array<Texture*, MAX_FRAMES_IN_FLIGHT> paramTextures{};
     std::array<Texture*, MAX_FRAMES_IN_FLIGHT> hdrTextures{};
+    std::array<ManagedBuffer, MAX_FRAMES_IN_FLIGHT> histogramBuffers{};
 
     // Static Textures
     Texture* equirectTexture{};

@@ -7,6 +7,7 @@
 #include "user_passes/tone_mapping_pass.h"
 #include "data_structures.h"
 #include "uniform_buffer.h"
+#include "user_passes/luminance_histogram_pass.h"
 #include "user_passes/shadow_pass.h"
 
 class MainSceneController {
@@ -27,6 +28,7 @@ private:
     DepthPrepass m_depthPrepass;
     GBufferPass m_gBufferPass;
     LightingPass m_lightingPass;
+    LuminanceHistogramPass m_luminanceHistogramPass;
     ToneMappingPass m_toneMappingPass;
     ShadowPass m_shadowPass;
 

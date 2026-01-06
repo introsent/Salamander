@@ -420,8 +420,11 @@ QueueFamilyIndices Context::findQueueFamilies(VkPhysicalDevice device) const {
     for (const auto& queueFamily : queueFamilies) {
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_surface, &presentSupport);
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT && queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
             indices.graphicsFamily = i;
+            indices.computeFamily = i;
+        }
+
         if (presentSupport)
             indices.presentFamily = i;
         if (indices.isComplete())

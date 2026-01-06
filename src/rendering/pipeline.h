@@ -1,7 +1,33 @@
 #pragma once
-#include "pipeline_config.h"
+#include <array>
+#include <string>
+
 #include "context.h"
 #include "shared/shared_structs.h"
+
+struct PipelineConfig {
+    std::string vertShaderPath;
+    std::string fragShaderPath;
+
+    VkVertexInputBindingDescription bindingDescription;
+    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions;
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+
+    VkPipelineViewportStateCreateInfo viewportState{};
+
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+
+    std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;  // Vector instead of single attachment
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    VkPipelineRenderingCreateInfo rendering{};
+};
 
 
 class Pipeline {

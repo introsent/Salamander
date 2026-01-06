@@ -41,6 +41,7 @@ void MainSceneController::initialize(const SharedResources& shared) {
     m_depthPrepass.initialize(shared, m_globalData, m_dependencies);
     m_gBufferPass.initialize(shared, m_globalData, m_dependencies);
     m_lightingPass.initialize(shared, m_globalData, m_dependencies);
+    m_luminanceHistogramPass.initialize(shared, m_globalData, m_dependencies);
     m_toneMappingPass.initialize(shared, m_globalData, m_dependencies);
 
 
@@ -49,6 +50,7 @@ void MainSceneController::initialize(const SharedResources& shared) {
 void MainSceneController::cleanup() {
     vkDeviceWaitIdle(m_shared->context->device());
     m_toneMappingPass.cleanup();
+    m_luminanceHistogramPass.cleanup();
     m_lightingPass.cleanup();
     m_gBufferPass.cleanup();
     m_depthPrepass.cleanup();
@@ -62,6 +64,7 @@ void MainSceneController::recreateSwapChain() {
     m_depthPrepass.recreateSwapChain();
     m_gBufferPass.recreateSwapChain();
     m_lightingPass.recreateSwapChain();
+    m_luminanceHistogramPass.recreateSwapChain();
     m_toneMappingPass.recreateSwapChain();
 }
 
@@ -81,6 +84,7 @@ void MainSceneController::render(VkCommandBuffer cmd, uint32_t imageIndex) {
     m_depthPrepass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_gBufferPass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_lightingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
+    m_luminanceHistogramPass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_toneMappingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
 
 

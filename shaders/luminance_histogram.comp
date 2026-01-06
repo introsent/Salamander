@@ -1,0 +1,47 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, rgba32f) uniform readonly image2D hdrImage;
+layout(set = 0, binding = 1) buffer Histogram {
+    uint bins[256];
+};
+
+layout(push_constant) uniform Params {
+    float minLogLum;
+    float inverseLogLumRange;  // 1.0 / logLumRange
+} params;
+
+#define EPSILON 0.005
+#define RGB_TO_LUM vec3(0.2125, 0.7154, 0.0721)
+
+shared uint histogramShared[256];
+
+uint colorToBin(vec3 hdrColor) {
+    float lum = dot(hdrColor, RGB_TO_LUM);
+
+    if (lum < EPSILON) {
+        return 0;
+    }
+
+    float logLum = clamp((log2(lum) - params.minLogLum) * params.inverseLogLumRange, 0.0, 1.0);
+
+    // Map [0, 1] to [1, 255]. Bin 0 is for dark pixels.
+    return uint(logLum * 254.0 + 1.0);
+}
+
+void main() {
+    histogramShared[gl_LocalInvocationIndex] = 0;
+    barrier();
+
+    ivec2 dim = imageSize(hdrImage);
+    if (gl_GlobalInvocationID.x < dim.x && gl_GlobalInvocationID.y < dim.y) {
+        vec3 hdrColor = imageLoad(hdrImage, ivec2(gl_GlobalInvocationID.xy)).rgb;
+        uint binIndex = colorToBin(hdrColor);
+        atomicAdd(histogramShared[binIndex], 1);
+    }
+
+    barrier();
+
+    atomicAdd(bins[gl_LocalInvocationIndex], histogramShared[gl_LocalInvocationIndex]);
+}

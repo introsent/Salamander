@@ -111,10 +111,8 @@ set(${PROJECT_NAME}_SOURCES
     "src/core/framebuffer_manager.h" 
     "src/core/framebuffer_manager.cpp" 
     "src/rendering/pipeline.h" 
-    "src/rendering/pipeline.cpp" 
-    "src/rendering/pipeline_config.h" 
-    "src/rendering/pipeline_config.cpp" 
-    "src/core/data_structures.h"  
+    "src/rendering/pipeline.cpp"
+        "src/core/data_structures.h"
     "src/resources/command_manager.h" 
     "src/resources/command_manager.cpp" 
     "src/resources/buffer_manager.h" 
@@ -186,6 +184,10 @@ set(${PROJECT_NAME}_SOURCES
         src/resources/image.cpp
         src/resources/image.h
         src/shared/shared_resources.h
+        src/user/user_passes/luminance_histogram_pass.cpp
+        src/user/user_passes/luminance_histogram_pass.h
+        src/rendering/compute_pipeline.cpp
+        src/rendering/compute_pipeline.h
 )
 
 
@@ -277,7 +279,7 @@ set(SHADERS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
 set(SPIRV_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 file(MAKE_DIRECTORY ${SPIRV_DIR})
 
-file(GLOB SHADER_FILES "${SHADERS_SOURCE_DIR}/*.vert" "${SHADERS_SOURCE_DIR}/*.frag")
+file(GLOB SHADER_FILES "${SHADERS_SOURCE_DIR}/*.vert" "${SHADERS_SOURCE_DIR}/*.frag" "${SHADERS_SOURCE_DIR}/*.comp")
 set(COMPILED_SHADERS)
 
 foreach(SHADER ${SHADER_FILES})
@@ -312,17 +314,13 @@ configure_file(
         @ONLY
 )
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/viking_room.png 
-               ${CMAKE_CURRENT_BINARY_DIR}/textures/viking_room.png
-               ${CMAKE_CURRENT_SOURCE_DIR}/textures/circus_arena.hdr
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/textures/circus_arena.hdr
                ${CMAKE_CURRENT_BINARY_DIR}/textures/circus_arena.hdr
                 ${CMAKE_CURRENT_SOURCE_DIR}/textures/bambanani_sunset.hdr
                 ${CMAKE_CURRENT_BINARY_DIR}/textures/bambanani_sunset.hdr
                 COPYONLY)
                
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/viking_room.obj
-               ${CMAKE_CURRENT_BINARY_DIR}/models/viking_room.obj
-               ${CMAKE_CURRENT_BINARY_DIR}/models/sponza/Sponza.gltf
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/models/sponza/Sponza.gltf
                COPYONLY)
 
 file(GLOB JPG_FILES "${CMAKE_CURRENT_SOURCE_DIR}/models/sponza/*.jpg")

@@ -27,7 +27,6 @@ bool AssimpLoader::LoadFromFile(const std::string& path, GLTFModel& outModel)
     aiVector3D position, scale;
     aiQuaternion rotation;
     scene->mRootNode->mTransformation.Decompose(scale, rotation, position);
-    globalScale = glm::vec3(scale.x, scale.y, scale.z);
     outModel = GLTFModel{};
     size_t vertexOffset = 0;
     size_t indexOffset  = 0;
