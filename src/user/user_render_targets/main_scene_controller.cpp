@@ -42,6 +42,7 @@ void MainSceneController::initialize(const SharedResources& shared) {
     m_gBufferPass.initialize(shared, m_globalData, m_dependencies);
     m_lightingPass.initialize(shared, m_globalData, m_dependencies);
     m_luminanceHistogramPass.initialize(shared, m_globalData, m_dependencies);
+    m_luminanceAveragePass.initialize(shared, m_globalData, m_dependencies);
     m_toneMappingPass.initialize(shared, m_globalData, m_dependencies);
 
 
@@ -50,6 +51,7 @@ void MainSceneController::initialize(const SharedResources& shared) {
 void MainSceneController::cleanup() {
     vkDeviceWaitIdle(m_shared->context->device());
     m_toneMappingPass.cleanup();
+    m_luminanceAveragePass.cleanup();
     m_luminanceHistogramPass.cleanup();
     m_lightingPass.cleanup();
     m_gBufferPass.cleanup();
@@ -65,11 +67,12 @@ void MainSceneController::recreateSwapChain() {
     m_gBufferPass.recreateSwapChain();
     m_lightingPass.recreateSwapChain();
     m_luminanceHistogramPass.recreateSwapChain();
+    m_luminanceAveragePass.recreateSwapChain();
     m_toneMappingPass.recreateSwapChain();
 }
 
-void MainSceneController::render(VkCommandBuffer cmd, uint32_t imageIndex) {
-
+void MainSceneController::render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) {
+    m_globalData.deltaTime = deltaTime;
     updateUniformBuffers();
 
     // Transition swapchain images to initial layout
@@ -85,10 +88,11 @@ void MainSceneController::render(VkCommandBuffer cmd, uint32_t imageIndex) {
     m_gBufferPass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_lightingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_luminanceHistogramPass.execute(cmd, *m_shared->currentFrame, imageIndex);
+    m_luminanceAveragePass.execute(cmd, *m_shared->currentFrame, imageIndex);
     m_toneMappingPass.execute(cmd, *m_shared->currentFrame, imageIndex);
 
 
-    // ─── transition INTO PRESENT_SRC_KHR ───
+    //  transition INTO PRESENT_SRC_KHR
     ImageTransitionManager::transitionToPresent(
         cmd,
         m_shared->swapChain->getCurrentImage(imageIndex),

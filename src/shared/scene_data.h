@@ -4,6 +4,7 @@
 #include "ssbo_buffer.h"
 
 struct MainSceneGlobalData {
+
     // Resources
     std::vector<Texture*> modelTextures;
     std::vector<Texture*> materialTextures;
@@ -12,6 +13,8 @@ struct MainSceneGlobalData {
     SSBOBuffer vertexBuffer;
     uint64_t vertexBufferAddress;
     IndexBuffer indexBuffer;
+
+    float deltaTime = 0.0f;
 
     struct AABB {
         glm::vec3 min;
@@ -41,6 +44,7 @@ struct PassDependencies {
     std::array<Texture*, MAX_FRAMES_IN_FLIGHT> paramTextures{};
     std::array<Texture*, MAX_FRAMES_IN_FLIGHT> hdrTextures{};
     std::array<ManagedBuffer, MAX_FRAMES_IN_FLIGHT> histogramBuffers{};
+    std::array<Texture*, MAX_FRAMES_IN_FLIGHT> averageLuminanceTextures{};
 
     // Static Textures
     Texture* equirectTexture{};

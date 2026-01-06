@@ -15,6 +15,7 @@ void LuminanceHistogramPass::initialize(const SharedResources &shared, MainScene
     m_globalData = &globalData;
     m_dependencies = &dependencies;
 
+    createAttachments();
     createDescriptors();
     createPipeline();
 }
@@ -99,15 +100,6 @@ void LuminanceHistogramPass::createPipeline() {
 }
 
 void LuminanceHistogramPass::createDescriptors() {
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        m_histogramBuffers[i] = m_shared->bufferManager->createBuffer(
-            HISTOGRAM_BINS * sizeof(uint32_t),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY
-        );
-        m_dependencies->histogramBuffers[i] = m_histogramBuffers[i];
-    }
     // descriptor layout
     DescriptorSetLayoutBuilder layoutBuilder(m_shared->context->device());
     m_descriptorLayout = layoutBuilder
@@ -158,5 +150,16 @@ void LuminanceHistogramPass::createDescriptors() {
             }
         };
         m_descriptorManager->updateDescriptorSet(i, updates);
+    }
+}
+
+void LuminanceHistogramPass::createAttachments() {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_histogramBuffers[i] = m_shared->bufferManager->createBuffer(
+            HISTOGRAM_BINS * sizeof(uint32_t),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY
+        );
+        m_dependencies->histogramBuffers[i] = m_histogramBuffers[i];
     }
 }

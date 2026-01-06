@@ -23,7 +23,7 @@ public:
     Renderer(Context* context, Window* window, VmaAllocator allocator, Camera* camera);
     ~Renderer();
 
-    void drawFrame();
+    void drawFrame(float deltaTime);
     void recreateSwapChain();
     void markFramebufferResized();
 

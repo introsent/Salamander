@@ -188,6 +188,8 @@ set(${PROJECT_NAME}_SOURCES
         src/user/user_passes/luminance_histogram_pass.h
         src/rendering/compute_pipeline.cpp
         src/rendering/compute_pipeline.h
+        src/user/user_passes/luminance_average_pass.cpp
+        src/user/user_passes/luminance_average_pass.h
 )
 
 

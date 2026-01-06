@@ -2,22 +2,22 @@
 // Created by ivans on 06/01/2026.
 //
 
-#ifndef SALAMANDER_AVERAGE_LUMINANCE_CALCULATION_PASS_H
-#define SALAMANDER_AVERAGE_LUMINANCE_CALCULATION_PASS_H
+#ifndef SALAMANDER_LUMINANCE_AVERAGE_PASS_H
+#define SALAMANDER_LUMINANCE_AVERAGE_PASS_H
 #include "compute_pipeline.h"
 #include "irender_pass.h"
-#include "pipeline.h"
 #include "descriptors/descriptor_set_layout.h"
 #include "user_descriptor_managers/main_descriptor_manager.h"
 
-
-
-struct LuminanceHistogramPushConstants {
+struct LuminanceAveragePushConstants {
     float minLogLum;
-    float inverseLogLumRange;
+    float logLumRange;
+    float deltaTime;
+    float tau;
+    uint32_t pixelCount;
 };
 
-class LuminanceHistogramPass : public IRenderPass {
+class LuminanceAveragePass : public IRenderPass {
 public:
     void initialize(const SharedResources& shared,
                    MainSceneGlobalData& globalData,
@@ -25,6 +25,7 @@ public:
     void cleanup() override;
     void recreateSwapChain() override;
     void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) override;
+
 private:
     void createPipeline();
     void createDescriptors();
@@ -39,8 +40,9 @@ private:
     std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
     std::unique_ptr<MainDescriptorManager> m_descriptorManager;
 
-    std::array<ManagedBuffer, MAX_FRAMES_IN_FLIGHT> m_histogramBuffers;
+    std::array<Texture*, MAX_FRAMES_IN_FLIGHT> m_averageLuminanceTextures;
 };
 
 
-#endif //SALAMANDER_AVERAGE_LUMINANCE_CALCULATION_PASS_H
+
+#endif //SALAMANDER_LUMINANCE_AVERAGE_PASS_H

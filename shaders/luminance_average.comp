@@ -1,0 +1,77 @@
+#version 450
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) readonly buffer Histogram {
+    uint bins[256];
+};
+
+layout(set = 0, binding = 1, r32f) uniform image2D luminanceImage;
+
+layout(push_constant) uniform Params {
+    float minLogLum;
+    float logLumRange;
+    float deltaTime;
+    float tau;
+    uint pixelCount;
+} params;
+
+shared uint histogramShared[256];
+shared float sharedSum[256];  // moved to global scope
+
+void main() {
+    uint localIndex = gl_LocalInvocationIndex;
+
+    // load histogram into shared memory
+    histogramShared[localIndex] = bins[localIndex];
+    barrier();
+
+    // parallel reduction to sum weighted luminance
+    // each thread handles one bin
+    float binLuminance = 0.0;
+    if (histogramShared[localIndex] > 0 && localIndex > 0) {
+        float normalized = (float(localIndex) - 1.0) / 254.0;
+        float logLum = params.minLogLum + normalized * params.logLumRange;
+        binLuminance = float(histogramShared[localIndex]) * logLum;
+    }
+
+    // store in shared memory for reduction
+    sharedSum[localIndex] = binLuminance;
+    barrier();
+
+    // parallel reduction
+    for (uint stride = 128; stride > 0; stride >>= 1) {
+        if (localIndex < stride) {
+            sharedSum[localIndex] += sharedSum[localIndex + stride];
+        }
+        barrier();
+    }
+
+    // thread 0 computes final result
+    if (localIndex == 0) {
+        // count valid pixels (exclude bin 0)
+        uint validPixels = params.pixelCount - histogramShared[0];
+        validPixels = max(validPixels, 1u);
+
+        // average log luminance
+        float avgLogLum = sharedSum[0] / float(validPixels);
+
+        // convert back from log space
+        float avgLum = exp2(avgLogLum);
+
+        // read previous frame's luminance for temporal smoothing
+        float prevLum = imageLoad(luminanceImage, ivec2(0, 0)).r;
+
+        float adaptedLum;
+        if (prevLum < 0.001) {
+            // cold start
+            adaptedLum = avgLum;
+        } else {
+            // smooth adaptation
+            float adaptSpeed = 1.0 - exp(-params.deltaTime * params.tau);
+            adaptedLum = prevLum + (avgLum - prevLum) * adaptSpeed;
+        }
+
+        imageStore(luminanceImage, ivec2(0, 0), vec4(adaptedLum, 0.0, 0.0, 0.0));
+    }
+}

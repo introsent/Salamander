@@ -7,6 +7,7 @@
 #include "user_passes/tone_mapping_pass.h"
 #include "data_structures.h"
 #include "uniform_buffer.h"
+#include "user_passes/luminance_average_pass.h"
 #include "user_passes/luminance_histogram_pass.h"
 #include "user_passes/shadow_pass.h"
 
@@ -15,7 +16,7 @@ public:
     void initialize(const SharedResources& shared);
     void cleanup();
     void recreateSwapChain();
-    void render(VkCommandBuffer cmd, uint32_t imageIndex);
+    void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex);
     void updateUniformBuffers() const;
 
 private:
@@ -29,6 +30,7 @@ private:
     GBufferPass m_gBufferPass;
     LightingPass m_lightingPass;
     LuminanceHistogramPass m_luminanceHistogramPass;
+    LuminanceAveragePass m_luminanceAveragePass;
     ToneMappingPass m_toneMappingPass;
     ShadowPass m_shadowPass;
 

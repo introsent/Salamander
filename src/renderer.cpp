@@ -119,7 +119,7 @@ void Renderer::initializeSharedResources(Camera* camera) {
 }
 
 
-void Renderer::drawFrame() {
+void Renderer::drawFrame(float deltaTime) {
     Frame& currentFrame = m_frames[m_currentFrame];
 
     // wait for fence before doing anything

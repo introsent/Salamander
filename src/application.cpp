@@ -61,7 +61,7 @@ void VulkanApplication::mainLoop() {
         m_window->pollEvents();
         try {
             m_camera.ProcessKeyboard(m_window->handle(), m_deltaTime);
-            m_renderer->drawFrame();
+            m_renderer->drawFrame(m_deltaTime);
         }
         catch (const std::runtime_error& e) {
             std::cerr << "Render error: " << e.what() << std::endl;

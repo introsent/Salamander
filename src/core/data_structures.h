@@ -52,6 +52,7 @@ struct GLTFPrimitiveData {
 };
 
 static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+static constexpr uint32_t HISTOGRAM_BINS = 256;
 
 struct Frame {
     std::unique_ptr<CommandBuffer> commandBuffer;

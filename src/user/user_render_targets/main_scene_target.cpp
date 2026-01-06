@@ -5,7 +5,7 @@ void MainSceneTarget::initialize(const SharedResources& shared) {
 }
 
 void MainSceneTarget::render(VkCommandBuffer cmd, uint32_t imageIndex) {
-    m_controller.render(cmd, imageIndex);
+    m_controller.render(0.f, cmd, imageIndex);
 }
 
 void MainSceneTarget::recreateSwapChain() {
