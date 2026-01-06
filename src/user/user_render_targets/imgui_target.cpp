@@ -12,7 +12,7 @@ void ImGuiTarget::initialize(const SharedResources &shared) {
     createRenderingResources();
 }
 
-void ImGuiTarget::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void ImGuiTarget::render(float deltaTime, VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
     m_executor->begin(commandBuffer, imageIndex);
     m_executor->execute(commandBuffer);

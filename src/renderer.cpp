@@ -153,7 +153,7 @@ void Renderer::drawFrame(float deltaTime) {
     currentFrame.commandBuffer->begin();
 
     for (auto& target : m_renderTargets) {
-        target->render(currentFrame.commandBuffer->handle(), imageIndex);
+        target->render(deltaTime, currentFrame.commandBuffer->handle(), imageIndex);
     }
 
     currentFrame.commandBuffer->end();

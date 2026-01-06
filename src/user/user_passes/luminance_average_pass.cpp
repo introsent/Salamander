@@ -76,6 +76,26 @@ void LuminanceAveragePass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uin
 
     // Single workgroup of 256 threads (one per histogram bin)
     vkCmdDispatch(cmd, 1, 1, 1);
+
+    VkImageMemoryBarrier2 imageBarrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .newLayout = VK_IMAGE_LAYOUT_GENERAL,  // keep as GENERAL since we read/write each frame
+        .image = m_averageLuminanceTextures[frameIndex]->getImage()->handle(),
+        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
+    };
+
+    VkDependencyInfo depInfo2 = {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &imageBarrier
+    };
+    vkCmdPipelineBarrier2(cmd, &depInfo2);
+
 }
 
 void LuminanceAveragePass::createPipeline() {
@@ -161,7 +181,7 @@ void LuminanceAveragePass::createAttachments() {
             VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_IMAGE_ASPECT_COLOR_BIT,
-            false, false, "AverageLuminance"
+            false, true, "AverageLuminance"
         );
         m_dependencies->averageLuminanceTextures[i] = m_averageLuminanceTextures[i];
     }

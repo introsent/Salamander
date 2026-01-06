@@ -191,12 +191,14 @@ void ToneMappingPass::createDescriptors() {
     m_descriptorLayout = layoutBuilder
         .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .addBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)  // average luminance
         .build();
     
     // descriptor pool
     std::vector<VkDescriptorPoolSize> poolSizes = {
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT}
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
+{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT}
     };
     
     m_descriptorManager = std::make_unique<MainDescriptorManager>(
@@ -218,6 +220,13 @@ void ToneMappingPass::updateDescriptors() const {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
 
+
+        VkDescriptorImageInfo luminanceInfo = {
+            .sampler = m_dependencies->averageLuminanceTextures[i]->getDescriptorInfo().sampler,
+            .imageView = m_dependencies->averageLuminanceTextures[i]->getDescriptorInfo().imageView,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL
+        };
+
         std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
             {
                 .binding = 0,
@@ -232,6 +241,13 @@ void ToneMappingPass::updateDescriptors() const {
                 .bufferInfo = &m_globalData->frameData[i].cameraExposureBufferInfo,
                 .descriptorCount = 1,
                 .isImage = false
+            },
+            {
+                .binding = 2,
+                .type =  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .imageInfo = &luminanceInfo,
+                .descriptorCount = 1,
+                .isImage = true
             }
         };
         m_descriptorManager->updateDescriptorSet(i, updates);

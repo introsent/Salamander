@@ -25,6 +25,8 @@ private:
     uint32_t createDefaultMaterialTexture(float metallicFactor, float roughnessFactor);
     void createIBLResources();
 
+    void setPointLightEnabled(bool enabled);
+
     // Passes
     DepthPrepass m_depthPrepass;
     GBufferPass m_gBufferPass;
@@ -38,6 +40,9 @@ private:
     MainSceneGlobalData m_globalData;
     PassDependencies m_dependencies;
     const SharedResources* m_shared = nullptr;
+
+    PointLightData m_pointLightData{};
+    bool m_pointLightEnabled = true;
 
     CubeMapRenderer m_cubeMapRenderer;
     CubeMapRenderer::CubeMap m_envCubeMap;

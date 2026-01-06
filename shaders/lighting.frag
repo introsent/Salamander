@@ -13,6 +13,7 @@ layout(binding = 5, scalar) uniform PointLightData {
     float pointLightIntensity;  // In lumens
     vec3 pointLightColor;
     float pointLightRadius;
+    int enabled;
 } pointLight;
 
 layout(binding = 8, scalar) uniform DirectionalLightData {
@@ -144,7 +145,7 @@ mat4 invView, ivec2 resolution) {
 }
 
 void main() {
-    const float envIntensity = 5000.0; // Adjustable ( based on HDR environment )
+    const float envIntensity = 1; // Adjustable ( based on HDR environment )
 
     ivec2 resolution = textureSize(gDepth, 0);
     mat4 invView = inverse(ubo.view);
@@ -198,7 +199,7 @@ void main() {
     vec3 radiance_point = pointLight.pointLightColor * attenuation *
     (pointLight.pointLightIntensity / (4.0 * PI));
     Lo += calculateDirectLighting(N, V, L_point, albedo,
-    metallic, roughness, radiance_point);
+    metallic, roughness, radiance_point) * pointLight.enabled;
 
 
     // INDIRECT LIGHTING (IBL)
@@ -214,8 +215,8 @@ void main() {
     vec3 irradiance = texture(gIrradianceMap, vec3(N.x, -N.y, N.z)).rgb;
     vec3 diffuseIBL = kD * irradiance * albedo;
 
-    vec3 ambient = diffuseIBL * envIntensity;
-
+    vec3 ambient =  diffuseIBL * envIntensity;
+    ambient = vec3(0.f);
 
     // FINAL COLOR
     vec3 color = Lo + ambient;

@@ -72,6 +72,18 @@ void MainSceneController::recreateSwapChain() {
 }
 
 void MainSceneController::render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) {
+    static bool wasPressed = true;
+    if (glfwGetKey(m_shared->window->handle(), GLFW_KEY_L) == GLFW_PRESS) {
+
+        if (!wasPressed) {
+            m_pointLightEnabled = !m_pointLightEnabled;
+            setPointLightEnabled(m_pointLightEnabled);
+        }
+        wasPressed = true;
+    } else {
+        wasPressed = false;
+    }
+
     m_globalData.deltaTime = deltaTime;
     updateUniformBuffers();
 
@@ -291,15 +303,17 @@ void MainSceneController::createBuffers() {
         );
         PointLightData lightData{};
         lightData.pointLightPosition = glm::vec3(9.0f, 2.0f, -1.0f);
-        lightData.pointLightIntensity = 100000.f;
+        lightData.pointLightIntensity = 50.f;
         lightData.pointLightColor = glm::vec3(1.f, 0.f, 0.f);
-        lightData.pointLightRadius = 10.f;
+        lightData.pointLightRadius = 5.f;
+        lightData.enabled = 1;
         m_omniLightBuffer[i].update(lightData);
         m_globalData.frameData[i].omniLightBufferInfo = {
             .buffer = m_omniLightBuffer[i].handle(),
             .offset = 0,
             .range = lightSize
         };
+        m_pointLightData = lightData;
 
         // create a camera exposure buffer
         constexpr VkDeviceSize exposureSize = sizeof(CameraExposure);
@@ -374,4 +388,11 @@ void MainSceneController::createIBLResources() {
     m_dependencies.equirectTexture = m_hdrEquirect;
     m_dependencies.cubeMap = m_envCubeMap.texture;
     m_dependencies.irradianceMap = m_irradianceMap.texture;
+}
+
+void MainSceneController::setPointLightEnabled(bool enabled) {
+    m_pointLightData.enabled = enabled ? 1 : 0;
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_omniLightBuffer[i].update(m_pointLightData);
+    }
 }

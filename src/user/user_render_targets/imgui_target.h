@@ -7,7 +7,7 @@
 class ImGuiTarget : public RenderTarget {
 public:
     void initialize(const SharedResources& shared) override;
-    void render(VkCommandBuffer commandBuffer, uint32_t imageIndex) override;
+    void render(float deltaTime, VkCommandBuffer commandBuffer, uint32_t imageIndex) override;
     void recreateSwapChain() override;
     void cleanup() override;
     void updateUniformBuffers() const override {};
