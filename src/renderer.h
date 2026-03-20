@@ -6,7 +6,6 @@
 #include <vk_mem_alloc.h>
 
 #include "depth_format.h"
-#include "shared/shared_resources.h"
 
 // Forward declarations instead of includes
 class RenderTarget;

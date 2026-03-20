@@ -1,15 +1,12 @@
-﻿// gltf_loader.cpp
-#include "tinygltf_loader.h"
+﻿#include "tinygltf_loader.h"
 #include <glm/gtc/type_ptr.hpp>
 
-#define STB
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <iostream>
 #include <tiny_gltf.h>
-#include "shared/scene_data.h"
 
-namespace {
+namespace Salamander::Resources::Loaders {
     void ProcessPrimitive(
         const tinygltf::Model& model,
         const tinygltf::Primitive& primitive,

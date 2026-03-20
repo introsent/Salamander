@@ -1,9 +1,9 @@
-﻿// tinygltf_loader.h
-#pragma once
+﻿#pragma once
 #include "loaders/gltf_loader.h"
 
-class TinyGLTFLoader : public GLTFLoader
-{
-public:
-    static bool LoadFromFile(const std::string& path, GLTFModel& outModel);
-};
+namespace Salamander::Resources::Loaders {
+    class TinyGLTFLoader final : public GLTFLoader {
+    public:
+        static bool LoadFromFile(const std::string &path, GLTFModel &outModel);
+    };
+}

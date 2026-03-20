@@ -1,4 +1,4 @@
-#include "renderer.h"
+#include "../renderer.h"
 #include "image_views.h"
 #include "depth_format.h"
 #include "descriptors/descriptor_set_layout.h"
@@ -8,8 +8,8 @@
 #include <fstream>
 #include <stdexcept>
 
-#include "user/user_render_targets/main_scene_target.h"
-#include "user_render_targets/imgui_target.h"
+#include "renderer/targets/main_scene_target.h"
+#include "renderer/targets/imgui_target.h"
 
 
 Renderer::Renderer(Context* context, Window* window, VmaAllocator allocator, Camera* camera)
