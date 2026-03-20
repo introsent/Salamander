@@ -39,7 +39,7 @@ namespace Salamander::Core {
         Context *m_context;
         Window *m_window;
         VkSwapchainKHR m_swapChain = VK_NULL_HANDLE;
-        VkFormat m_imageFormat;
+        VkFormat m_imageFormat = VK_FORMAT_UNDEFINED;
         VkExtent2D m_extent{};
         std::vector<VkImage> m_images;
         std::unique_ptr<ImageViews> m_imageViews;

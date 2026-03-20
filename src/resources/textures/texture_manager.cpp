@@ -10,7 +10,7 @@ namespace Salamander::Resources::Textures
 {
     TextureManager::TextureManager(VkDevice device, VkPhysicalDevice physicalDevice, VmaAllocator allocator,
                                 Buffers::CommandManager* cmdManager,
-                                Buffers::BufferManager* bufferManager, DebugMessenger* debugMessenger) :
+                                Buffers::BufferManager* bufferManager, Core::DebugMessenger* debugMessenger) :
         m_device(device), m_physicalDevice(physicalDevice),m_allocator(allocator), m_commandManager(cmdManager), m_bufferManager(bufferManager),
         m_debugMessenger(debugMessenger)
     {

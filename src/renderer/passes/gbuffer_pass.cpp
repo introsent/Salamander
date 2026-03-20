@@ -16,8 +16,8 @@
 #endif
 
 namespace Salamander::Renderer::Passes {
-    void GBufferPass::initialize(const RenderContext &ctx,
-                                      Salamander::Scene::MainSceneData &globalData,
+    void GBufferPass::initialize(const Frame::RenderContext &ctx,
+                                      Scene::MainSceneData &globalData,
                                       PassDependencies &dependencies) {
         m_ctx = &ctx;
         m_globalData = &globalData;

@@ -1,24 +1,25 @@
 ﻿#pragma once
-#include "context.h"
-#include "swap_chain.h"
-#include "command_manager.h"
-#include "texture_manager.h"
-#include "render_pass_executor.h"
+#include <memory>
+#include <vulkan/vulkan.h>
+#include "renderer/frame/render_context.h"
 
-class RenderPassExecutor;
+namespace Salamander::Executors {
+    class RenderPassExecutor;
+}
 
 namespace Salamander::Renderer::Targets {
     class RenderTarget {
     public:
         virtual ~RenderTarget() = default;
-        virtual void initialize(const SharedResources &shared) = 0;
-        virtual void render(float deltaTime, VkCommandBuffer commandBuffer, uint32_t imageIndex) = 0;
+
+        virtual void initialize(const Frame::RenderContext &ctx) = 0;
+        virtual void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) = 0;
         virtual void recreateSwapChain() = 0;
         virtual void cleanup() = 0;
         virtual void updateUniformBuffers() const = 0;
 
     protected:
-        const SharedResources *m_shared = nullptr;
-        std::unique_ptr<RenderPassExecutor> m_executor;
+        const Frame::RenderContext       *m_ctx = nullptr;
+        std::unique_ptr<Executors::RenderPassExecutor> m_executor;
     };
 }

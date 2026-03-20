@@ -1,24 +1,22 @@
 ﻿#pragma once
-#include "target/render_target.h"
-#include "pipeline.h"
-#include "descriptors/descriptor_set_layout.h"
-#include "user_descriptor_managers/imgui_descriptor_manager.h"
+#include "frame/frame_data.h"
+#include "renderer/targets/target/render_target.h"
+#include "graphics/descriptors/managers/imgui_descriptor_manager.h"
 
 namespace Salamander::Renderer::Targets {
-    class ImGuiTarget : public RenderTarget {
+    class ImGuiTarget final : public RenderTarget {
     public:
-        void initialize(const SharedResources &shared) override;
-        void render(float deltaTime, VkCommandBuffer commandBuffer, uint32_t imageIndex) override;
+        void initialize(const Frame::RenderContext &ctx) override;
+        void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) override;
         void recreateSwapChain() override;
         void cleanup() override;
-        void updateUniformBuffers() const override {};
+        void updateUniformBuffers() const override {}
 
     private:
         void createRenderingResources();
         void createDescriptors();
         void initializeImGui() const;
 
-        std::unique_ptr<Pipeline> m_pipeline;
-        std::unique_ptr<ImGuiDescriptorManager> m_descriptorManager;
+        std::unique_ptr<Graphics::Descriptors::ImGuiDescriptorManager> m_descriptorManager;
     };
 }

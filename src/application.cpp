@@ -11,12 +11,12 @@ void VulkanApplication::run() {
     m_window->setupInputCallbacks();
 
     // Initialize camera with starting position
-    m_camera = Camera(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.f, 1.f, 0.f), 0.f, 0.f, 0.f);
+    m_camera = Salamander::Scene::Camera(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.f, 1.f, 0.f), 0.f, 0.f, 0.f);
 
     createAllocator();
 
     // Create renderer and register its cleanup
-    m_renderer = std::make_unique<Renderer>(m_context.get(), m_window.get(), m_allocator, &m_camera);
+    m_renderer = std::make_unique<Salamander::Render>(m_context.get(), m_window.get(), m_allocator, &m_camera);
 
     // On window resize callback, notify renderer
     m_window->setResizeCallback([this]() {
@@ -32,9 +32,9 @@ void VulkanApplication::run() {
 }
 
 void VulkanApplication::createWindowAndContext() {
-    m_window = std::make_unique<Window>(WIDTH, HEIGHT, "Salamander");
+    m_window = std::make_unique<Salamander::Core::Window>(WIDTH, HEIGHT, "Salamander");
 
-    m_context = std::make_unique<Context>(m_window.get(), enableValidationLayers());
+    m_context = std::make_unique<Salamander::Core::Context>(m_window.get(), enableValidationLayers());
 }
 
 void VulkanApplication::createAllocator() {
@@ -58,7 +58,7 @@ void VulkanApplication::mainLoop() {
         m_deltaTime = std::min(std::max(currentFrame - m_lastFrameTime, 0.001f), 0.1f);
         m_lastFrameTime = currentFrame;
 
-        m_window->pollEvents();
+        Salamander::Core::Window::pollEvents();
         try {
             m_camera.ProcessKeyboard(m_window->handle(), m_deltaTime);
             m_renderer->drawFrame(m_deltaTime);

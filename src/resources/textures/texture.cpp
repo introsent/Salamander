@@ -169,7 +169,7 @@ namespace Salamander::Resources::Textures
             });
     }
 
-    void Texture::setDebugName(const DebugMessenger* debug, const std::string& name)
+    void Texture::setDebugName(const Core::DebugMessenger* debug, const std::string& name)
     {
         if (!debug) return;
 

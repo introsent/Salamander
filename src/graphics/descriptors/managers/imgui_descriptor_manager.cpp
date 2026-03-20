@@ -1,7 +1,6 @@
-﻿// imgui_descriptor_manager.cpp
-#include "imgui_descriptor_manager.h"
+﻿#include "imgui_descriptor_manager.h"
 #include "deletion_queue.h"
-#include "imgui.h"
+#include <imgui.h>
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 #include <array>
@@ -14,7 +13,7 @@ namespace Salamander::Graphics::Descriptors {
     }
 
     void ImGuiDescriptorManager::createDescriptorPool() {
-        std::array<VkDescriptorPoolSize, 11> pool_sizes = {
+        const std::array<VkDescriptorPoolSize, 11> pool_sizes = {
             {
                 {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
                 {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},

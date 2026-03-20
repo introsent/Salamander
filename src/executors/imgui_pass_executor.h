@@ -1,9 +1,11 @@
 ﻿#pragma once
+#include <array>
+
 #include "render_pass_executor.h"
-#include "data_structures.h"
 #include "render_pass.h"
 #include <imgui.h>
 #include <vector>
+#include "frame/frame_data.h"
 
 namespace Salamander::Executors {
     class ImGuiPassExecutor : public RenderPassExecutor {
@@ -11,7 +13,7 @@ namespace Salamander::Executors {
         struct Resources {
             VkExtent2D extent;
             std::vector<VkImageView> swapchainImageViews;
-            std::array<VkImageView, MAX_FRAMES_IN_FLIGHT> depthImageViews;
+            std::array<VkImageView, Renderer::Frame::MAX_FRAMES_IN_FLIGHT> depthImageViews;
             uint32_t *currentFrame;
         };
 

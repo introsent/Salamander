@@ -93,11 +93,11 @@ set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path 
 # Set the project source files
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
-    "src/includes/vma_impl.cpp"
-    "src/includes/stb_image.h"
-    "src/includes/tiny_obj_loader.h"
-    "src/includes/stb_image_write.h"
-    "src/includes/json.hpp"
+    "external/vma_impl.cpp"
+    "external/stb_image.h"
+    "external/tiny_obj_loader.h"
+    "external/stb_image_write.h"
+    "external/json.hpp"
     "src/core/window.h"
     "src/core/window.cpp" 
     "src/core/context.h" 
@@ -159,8 +159,8 @@ set(${PROJECT_NAME}_SOURCES
     "src/resources/textures/texture.cpp"
     "src/resources/textures/image.h"
     "src/resources/textures/image.cpp" 
-    "src/renderer.h"
-    "src/renderer.cpp"
+    "src/render.h"
+    "src/render.cpp"
     "src/application.h" 
     "src/application.cpp"
 
@@ -231,19 +231,19 @@ endif()
 
 # Add ImGui source files with proper includes and links
 add_library(ImGui STATIC
-    "src/imgui/imgui.cpp"
-    "src/imgui/imgui_draw.cpp"
-    "src/imgui/imgui_tables.cpp"
-    "src/imgui/imgui_widgets.cpp"
-    "src/imgui/imgui_demo.cpp"
-    "src/imgui/backends/imgui_impl_vulkan.cpp"
-    "src/imgui/backends/imgui_impl_glfw.cpp"
+    "external/imgui/imgui.cpp"
+    "external/imgui/imgui_draw.cpp"
+    "external/imgui/imgui_tables.cpp"
+    "external/imgui/imgui_widgets.cpp"
+    "external/imgui/imgui_demo.cpp"
+    "external/imgui/backends/imgui_impl_vulkan.cpp"
+    "external/imgui/backends/imgui_impl_glfw.cpp"
 )
 
 # ImGui include directories with GLFW and Vulkan includes
 target_include_directories(ImGui PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
     ${glfw_SOURCE_DIR}/include
     ${Vulkan_INCLUDE_DIRS}
 )
@@ -283,15 +283,15 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${assimp_SOURCE_DIR}/include
     ${Vulkan_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/external
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scene
     ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer
     ${CMAKE_CURRENT_SOURCE_DIR}/src/executors
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/includes
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shared
     ${CMAKE_CURRENT_BINARY_DIR}/include
 )

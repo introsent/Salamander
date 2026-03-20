@@ -1,7 +1,8 @@
 #pragma once
 #include "window.h"
 #include "context.h"
-#include "renderer.h"
+#include "render.h"
+#include "passes/depth_prepass.h"
 
 
 constexpr uint32_t WIDTH = 1100;
@@ -24,13 +25,13 @@ private:
     }
 
     // Resources
-    std::unique_ptr<Window> m_window;
-    std::unique_ptr<Context> m_context;
+    std::unique_ptr<Salamander::Core::Window> m_window;
+    std::unique_ptr<Salamander::Core::Context> m_context;
     VmaAllocator m_allocator{ VK_NULL_HANDLE };
-    std::unique_ptr<Renderer> m_renderer;
+    std::unique_ptr<Salamander::Render> m_renderer;
 
     // Camera
-    Camera m_camera;
+    Salamander::Scene::Camera m_camera;
 
     float m_deltaTime = 0.0f;
     float m_lastFrameTime = 0.0f;

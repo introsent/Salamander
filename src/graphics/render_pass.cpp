@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 namespace Salamander::Graphics {
-    RenderPass::RenderPass(const Context *context, const Config &config)
+    RenderPass::RenderPass(const Core::Context *context, const Config &config)
         : m_context(context), m_config(config) {
         initialize();
     }
@@ -14,7 +14,7 @@ namespace Salamander::Graphics {
         }
     }
 
-    std::unique_ptr<RenderPass> RenderPass::create(const Context *context, const Config &config) {
+    std::unique_ptr<RenderPass> RenderPass::create(const Core::Context *context, const Config &config) {
         return std::unique_ptr<RenderPass>(new RenderPass(context, config));
     }
 

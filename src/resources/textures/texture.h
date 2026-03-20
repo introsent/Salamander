@@ -32,7 +32,7 @@ namespace Salamander::Resources::Textures
 
 
         [[nodiscard]] Image* getImage() const { return m_image.get(); };
-        void setDebugName(const DebugMessenger* debug, const std::string& name);
+        void setDebugName(const Core::DebugMessenger* debug, const std::string& name);
 
         [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const;
     private:

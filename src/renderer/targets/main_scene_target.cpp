@@ -1,8 +1,9 @@
 ﻿#include "main_scene_target.h"
 
 namespace Salamander::Renderer::Targets {
-    void MainSceneTarget::initialize(const SharedResources &shared) {
-        m_controller.initialize(shared);
+
+    void MainSceneTarget::initialize(const Frame::RenderContext &ctx) {
+        m_controller.initialize(ctx);
     }
 
     void MainSceneTarget::render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) {

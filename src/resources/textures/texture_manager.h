@@ -24,7 +24,7 @@ namespace Salamander::Resources::Textures
             VmaAllocator allocator,
             Buffers::CommandManager* cmdManager,
             Buffers::BufferManager* bufferManager,
-            DebugMessenger* debugMessenger
+            Core::DebugMessenger* debugMessenger
         );
         TextureManager(const TextureManager&) = delete;
         TextureManager& operator=(const TextureManager&) = delete;
@@ -65,7 +65,7 @@ namespace Salamander::Resources::Textures
         VmaAllocator m_allocator;
         Buffers::CommandManager* m_commandManager;
         Buffers::BufferManager* m_bufferManager;
-        DebugMessenger* m_debugMessenger;
+        Core::DebugMessenger* m_debugMessenger;
 
         std::unordered_map<std::string, std::unique_ptr<Texture>> m_textures;
 

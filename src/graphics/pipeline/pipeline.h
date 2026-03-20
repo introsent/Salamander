@@ -1,9 +1,8 @@
 #pragma once
 #include <array>
 #include <string>
-
 #include "context.h"
-#include "shared/shared_structs.h"
+#include "push_constants.h"
 
 namespace Salamander::Graphics::Pipeline {
     struct PipelineConfig {
@@ -34,7 +33,7 @@ namespace Salamander::Graphics::Pipeline {
     class Pipeline {
     public:
         Pipeline(
-            Context *context,
+            Core::Context *context,
             VkDescriptorSetLayout descriptorSetLayout,
             const PipelineConfig &config,
             VkPushConstantRange pushConstantRange = {
@@ -52,16 +51,16 @@ namespace Salamander::Graphics::Pipeline {
 
         Pipeline &operator=(Pipeline &&) = delete;
 
-        VkPipeline handle() const { return m_pipeline; }
-        VkPipelineLayout layout() const { return m_pipelineLayout; }
+        [[nodiscard]] VkPipeline handle() const { return m_pipeline; }
+        [[nodiscard]] VkPipelineLayout layout() const { return m_pipelineLayout; }
 
     private:
         void createShaderModule(const std::vector<char> &code, VkShaderModule *shaderModule) const;
 
         void createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout, VkPushConstantRange pushConstantRange);
 
-        Context *m_context;
-        VkPipeline m_pipeline;
+        VkPipeline m_pipeline{};
+        Core::Context *m_context;
         VkPipelineLayout m_pipelineLayout;
     };
 }

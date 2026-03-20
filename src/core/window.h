@@ -8,7 +8,9 @@
 
 #include "camera/camera.h"
 
-class Camera;
+namespace Salamander::Scene {
+    class Camera;
+}
 
 namespace Salamander::Core {
     class Window {
@@ -28,7 +30,7 @@ namespace Salamander::Core {
         }
 
         void setupInputCallbacks() const;
-        void setCamera(Camera *camera)
+        void setCamera(Scene::Camera *camera)
         {
             m_camera = camera;
         }
@@ -46,7 +48,7 @@ namespace Salamander::Core {
         bool m_resized = false;
         std::function<void()> m_resizeCallback;
 
-        Camera *m_camera = nullptr;
+        Scene::Camera *m_camera = nullptr;
 
         // Mouse state
         bool m_leftMousePressed = false;

@@ -17,7 +17,7 @@ namespace Salamander::Renderer::Frame {
         VkSemaphore imageAvailableSemaphore;
         VkSemaphore renderFinishedSemaphore;
         VkFence inFlightFence;
-        Texture* depthTexture;
+        Resources::Textures::Texture* depthTexture;
     };
 
 }

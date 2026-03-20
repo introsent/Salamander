@@ -14,7 +14,7 @@ namespace Salamander::Graphics::Pipeline {
 
     class ComputePipeline {
     public:
-        ComputePipeline(Context *context,
+        ComputePipeline(Core::Context *context,
                         VkDescriptorSetLayout computePipelineLayout,
                         const ComputePipelineConfig &config,
                         VkPushConstantRange pushConstantRange);
@@ -27,16 +27,16 @@ namespace Salamander::Graphics::Pipeline {
 
         ComputePipeline &operator=(ComputePipeline &&) = delete;
 
-        VkPipeline handle() const { return m_pipeline; }
-        VkPipelineLayout layout() const { return m_pipelineLayout; }
+        [[nodiscard]] VkPipeline handle() const { return m_pipeline; }
+        [[nodiscard]] VkPipelineLayout layout() const { return m_pipelineLayout; }
 
     private:
         void createPipelineLayout(VkDescriptorSetLayout descriptorSetLayout, VkPushConstantRange pushConstantRange);
 
         void createShaderModule(const std::vector<char> &code, VkShaderModule *shaderModule) const;
 
-        Context *m_context;
-        VkPipeline m_pipeline;
+        VkPipeline m_pipeline{};
+        Core::Context *m_context;
         VkPipelineLayout m_pipelineLayout;
     };
 }

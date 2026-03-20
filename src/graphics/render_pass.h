@@ -21,7 +21,7 @@ namespace Salamander::Graphics {
             VkImageLayout depthFinalLayout;
         };
 
-        static std::unique_ptr<RenderPass> create(const Context *context, const Config &config);
+        static std::unique_ptr<RenderPass> create(const Core::Context *context, const Config &config);
 
         ~RenderPass();
 
@@ -37,11 +37,11 @@ namespace Salamander::Graphics {
         VkRenderPass handle() const { return m_renderPass; }
 
     private:
-        RenderPass(const Context *context, const Config &config);
+        RenderPass(const Core::Context *context, const Config &config);
 
         void initialize();
 
-        const Context *m_context;
+        const Core::Context *m_context;
         Config m_config;
         VkRenderPass m_renderPass = VK_NULL_HANDLE;
     };

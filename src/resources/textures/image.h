@@ -9,8 +9,7 @@
 
 namespace Salamander::Resources::Textures
 {
-    class Image
-    {
+    class Image {
     public:
         explicit Image(VmaAllocator allocator);
 

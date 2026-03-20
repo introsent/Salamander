@@ -11,7 +11,7 @@
 #endif
 
 namespace Salamander::Renderer::Passes {
-    void DepthPrepass::initialize(const RenderContext &ctx,
+    void DepthPrepass::initialize(const Frame::RenderContext &ctx,
                                        Salamander::Scene::MainSceneData &globalData,
                                        PassDependencies &dependencies) {
         m_ctx = &ctx;
@@ -88,7 +88,7 @@ namespace Salamander::Renderer::Passes {
         vkCmdBindIndexBuffer(cmd, m_globalData->indexBuffer.handle(), 0, VK_INDEX_TYPE_UINT32);
 
         for (const auto &primitive: m_globalData->primitives) {
-            Salamander::Graphics::PushConstants pc{
+            Graphics::Pipeline::PushConstants pc{
                 .vertexBufferAddress = m_globalData->vertexBufferAddress,
                 .baseColorTextureIndex = primitive.materialIndex,
                 .metalRoughTextureIndex = primitive.metalRoughTextureIndex,
@@ -97,7 +97,7 @@ namespace Salamander::Renderer::Passes {
                 .modelScale = m_globalData->modelScale
             };
             vkCmdPushConstants(cmd, m_pipeline->layout(),
-                               VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Salamander::Graphics::PushConstants), &pc);
+                               VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Graphics::Pipeline::PushConstants), &pc);
             vkCmdDrawIndexed(cmd, primitive.indexCount, 1, primitive.indexOffset, 0, 0);
         }
 
@@ -125,7 +125,7 @@ namespace Salamander::Renderer::Passes {
             .depthAttachmentFormat = m_ctx->depthFormat()
         };
 
-        PipelineConfig config{};
+        Graphics::Pipeline::PipelineConfig config{};
         config.vertShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/depth_vert.spv";
         config.fragShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/depth_frag.spv";
 
@@ -167,7 +167,7 @@ namespace Salamander::Renderer::Passes {
         };
         config.rendering = renderingInfo;
 
-        m_pipeline = std::make_unique<Pipeline>(
+        m_pipeline = std::make_unique<Graphics::Pipeline::Pipeline>(
             &m_ctx->context(),
             m_descriptorLayout->handle(),
             config
@@ -177,26 +177,26 @@ namespace Salamander::Renderer::Passes {
     void DepthPrepass::createDescriptors() {
         const uint32_t textureCount = static_cast<uint32_t>(m_globalData->modelTextures.size());
 
-        DescriptorSetLayoutBuilder layoutBuilder(m_ctx->context().device());
+        Graphics::Descriptors::DescriptorSetLayoutBuilder layoutBuilder(m_ctx->context().device());
         m_descriptorLayout = layoutBuilder
                 .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
                 .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, textureCount)
                 .build();
 
         std::vector<VkDescriptorPoolSize> poolSizes = {
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textureCount * MAX_FRAMES_IN_FLIGHT}
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, Frame::MAX_FRAMES_IN_FLIGHT},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textureCount * Frame::MAX_FRAMES_IN_FLIGHT}
         };
 
-        m_descriptorManager = std::make_unique<MainDescriptorManager>(
+        m_descriptorManager = std::make_unique<Graphics::Descriptors::MainDescriptorManager>(
             m_ctx->context().device(),
             m_descriptorLayout->handle(),
             poolSizes,
-            MAX_FRAMES_IN_FLIGHT
+            Frame::MAX_FRAMES_IN_FLIGHT
         );
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            std::vector<MainDescriptorManager::DescriptorUpdateInfo> updates = {
+        for (size_t i = 0; i < Frame::MAX_FRAMES_IN_FLIGHT; ++i) {
+            std::vector<Graphics::Descriptors::MainDescriptorManager::DescriptorUpdateInfo> updates = {
                 {
                     .binding = 0,
                     .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,

@@ -8,41 +8,40 @@
 #include <vector>
 #include <array>
 
-namespace Salamander {
-    class Texture;
-    namespace Scene {
-        /// MainSceneData contains all the scene-wide data: geometry, materials, textures
-        struct MainSceneData {
-            // Geometry resources
-            std::vector<GLTFPrimitiveData> primitives;
-            SSBOBuffer vertexBuffer;
-            uint64_t vertexBufferAddress;
-            IndexBuffer indexBuffer;
 
-            // Material resources
-            std::vector<Texture*> modelTextures;    // albedo textures
-            std::vector<Texture*> materialTextures; // metal/roughness textures
-            std::vector<Texture*> normalTextures;   // normal maps
+namespace Salamander::Scene {
+    /// MainSceneData contains all the scene-wide data: geometry, materials, textures
+    struct MainSceneData {
+        // Geometry resources
+        std::vector<GLTFPrimitiveData> primitives;
+        Resources::Buffers::SSBOBuffer vertexBuffer;
+        uint64_t vertexBufferAddress;
+        Resources::Buffers::IndexBuffer indexBuffer;
 
-            // Scene bounds
-            AABB sceneAABB;
+        // Material resources
+        std::vector<Resources::Textures::Texture*> modelTextures;    // albedo textures
+        std::vector<Resources::Textures::Texture*> materialTextures; // metal/roughness textures
+        std::vector<Resources::Textures::Texture*> normalTextures;   // normal maps
 
-            // Scene transformation
-            glm::vec3 modelScale{1.0f, 1.0f, 1.0f};
+        // Scene bounds
+        AABB sceneAABB;
 
-            // Per-frame descriptor data
-            struct FrameData {
-                VkDescriptorBufferInfo bufferInfo;
-                std::vector<VkDescriptorImageInfo> textureImageInfos;
-                std::vector<VkDescriptorImageInfo> materialImageInfos;
-                std::vector<VkDescriptorImageInfo> normalImageInfos;
-                VkDescriptorBufferInfo omniLightBufferInfo;
-                VkDescriptorBufferInfo cameraExposureBufferInfo;
-                VkDescriptorBufferInfo directionalLightBufferInfo;
-            };
-            std::array<FrameData, Renderer::MAX_FRAMES_IN_FLIGHT> frameData;
+        // Scene transformation
+        glm::vec3 modelScale{1.0f, 1.0f, 1.0f};
 
-            float deltaTime = 0.0f;
+        // Per-frame descriptor data
+        struct FrameData {
+            VkDescriptorBufferInfo bufferInfo;
+            std::vector<VkDescriptorImageInfo> textureImageInfos;
+            std::vector<VkDescriptorImageInfo> materialImageInfos;
+            std::vector<VkDescriptorImageInfo> normalImageInfos;
+            VkDescriptorBufferInfo omniLightBufferInfo;
+            VkDescriptorBufferInfo cameraExposureBufferInfo;
+            VkDescriptorBufferInfo directionalLightBufferInfo;
         };
-    }
+        std::array<FrameData, Salamander::Renderer::Frame::MAX_FRAMES_IN_FLIGHT> frameData;
+
+        float deltaTime = 0.0f;
+    };
 }
+

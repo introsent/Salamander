@@ -1,13 +1,15 @@
 #include "render_context.h"
 
+#include "textures/texture_manager.h"
+
 namespace Salamander::Renderer::Frame {
     RenderContext::RenderContext(
-        Context& context,
-        Window& window,
-        SwapChain& swapChain,
-        CommandManager& commandManager,
-        BufferManager& bufferManager,
-        TextureManager& textureManager,
+        Core::Context& context,
+        Core::Window& window,
+        Core::SwapChain& swapChain,
+        Resources::Buffers::CommandManager& commandManager,
+        Resources::Buffers::BufferManager& bufferManager,
+        Resources::Textures::TextureManager& textureManager,
         VmaAllocator allocator,
         VkImageView depthImageView,
         VkFormat depthFormat,

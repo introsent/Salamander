@@ -11,14 +11,12 @@
 
 #include "scene_data.h"
 
-class Texture;
-
 namespace Salamander::Renderer::Passes {
     class GBufferPass : public IRenderPass {
     public:
-        void initialize(const Salamander::Renderer::RenderContext &ctx,
-                        Salamander::Scene::MainSceneData &globalData,
-                        Salamander::Renderer::PassDependencies &dependencies) override;
+        void initialize(const Frame::RenderContext &ctx,
+                        Scene::MainSceneData &globalData,
+                        PassDependencies &dependencies) override;
         void cleanup() override;
         void recreateSwapChain() override;
         void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) override;
@@ -29,16 +27,16 @@ namespace Salamander::Renderer::Passes {
         void createDescriptors();
         void updateDescriptors() const;
 
-        const Salamander::Renderer::RenderContext *m_ctx = nullptr;
-        Salamander::Scene::MainSceneData *m_globalData = nullptr;
-        Salamander::Renderer::PassDependencies *m_dependencies = nullptr;
+        const Frame::RenderContext *m_ctx = nullptr;
+        Scene::MainSceneData *m_globalData = nullptr;
+        PassDependencies *m_dependencies = nullptr;
 
-        std::unique_ptr<Pipeline> m_pipeline;
-        std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
-        std::unique_ptr<MainDescriptorManager> m_descriptorManager;
+        std::unique_ptr<Graphics::Pipeline::Pipeline> m_pipeline;
+        std::unique_ptr<Graphics::Descriptors::DescriptorSetLayout> m_descriptorLayout;
+        std::unique_ptr<Graphics::Descriptors::MainDescriptorManager> m_descriptorManager;
 
-        std::array<Salamander::Texture *, Salamander::Renderer::MAX_FRAMES_IN_FLIGHT> m_albedoTextures{};
-        std::array<Salamander::Texture *, Salamander::Renderer::MAX_FRAMES_IN_FLIGHT> m_normalTextures{};
-        std::array<Salamander::Texture *, Salamander::Renderer::MAX_FRAMES_IN_FLIGHT> m_paramTextures{};
+        std::array<Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_albedoTextures{};
+        std::array<Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_normalTextures{};
+        std::array<Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_paramTextures{};
     };
 }

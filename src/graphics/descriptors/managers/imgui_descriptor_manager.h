@@ -1,5 +1,4 @@
-﻿// imgui_descriptor_manager.h
-#pragma once
+﻿#pragma once
 #include "descriptors/descriptor_manager_base.h"
 
 namespace Salamander::Graphics::Descriptors{

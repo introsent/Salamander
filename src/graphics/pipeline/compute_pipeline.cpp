@@ -24,11 +24,11 @@ static std::vector<char> readFile(const std::string& filename) {
 
 
 namespace Salamander::Graphics::Pipeline {
-    ComputePipeline::ComputePipeline(Context *context,
-                                          VkDescriptorSetLayout computePipelineLayout,
-                                          const ComputePipelineConfig &config,
-                                          VkPushConstantRange pushConstantRange) : m_context(context),
-        m_pipelineLayout(nullptr) {
+    ComputePipeline::ComputePipeline(Core::Context *context,
+                                     VkDescriptorSetLayout computePipelineLayout,
+                                     const ComputePipelineConfig &config,
+                                     VkPushConstantRange pushConstantRange) : m_context(context),
+                                                                              m_pipelineLayout(nullptr) {
         createPipelineLayout(computePipelineLayout, pushConstantRange);
 
         auto computeShaderCode = readFile(config.computeShaderPath);
