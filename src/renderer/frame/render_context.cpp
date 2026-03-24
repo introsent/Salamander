@@ -13,7 +13,7 @@ namespace Salamander::Renderer::Frame {
         VmaAllocator allocator,
         VkImageView depthImageView,
         VkFormat depthFormat,
-        Camera& camera,
+        Scene::Camera& camera,
         std::vector<Frame>& frames
     )
         : m_context(context)

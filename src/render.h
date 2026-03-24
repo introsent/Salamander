@@ -6,6 +6,9 @@
 #include <vk_mem_alloc.h>
 
 #include "depth_format.h"
+#include "renderer/frame/render_context.h"
+
+#include "passes/pass_dependencies.h"
 
 
 namespace Salamander {
@@ -44,14 +47,13 @@ namespace Salamander {
         void createSyncObjects();
         void createCommandBuffers();
         void cleanup();
-        void initializeSharedResources(Scene::Camera* camera);
+        void initializeResources(Scene::Camera* camera);
 
         Core::Context *m_context;
         Core::Window *m_window;
         VmaAllocator m_allocator;
+        Scene::Camera *m_camera;
         bool m_framebufferResized = false;
-
-        SharedResources m_sharedResources{};
 
         uint32_t m_swapchainVersion = 0;
 
@@ -64,11 +66,17 @@ namespace Salamander {
         // Images
         std::unique_ptr<Graphics::DepthFormat> m_depthFormat;
 
+        // Render context
+        std::unique_ptr<Renderer::Frame::RenderContext> m_renderContext;
+
         // Targets
         std::vector<std::unique_ptr<Renderer::Targets::RenderTarget> > m_renderTargets{};
 
         // Frame resources
         std::vector<Renderer::Frame::Frame> m_frames{};
         uint32_t m_currentFrame = 0;
+
+        // Pass dependencies
+        Renderer::Passes::PassDependencies m_dependencies;
     };
 }

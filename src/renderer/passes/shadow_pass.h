@@ -1,15 +1,27 @@
 ﻿#pragma once
+
 #include "irender_pass.h"
-#include "pipeline.h"
-#include "uniform_buffer.h"
-#include "descriptors/descriptor_set_layout.h"
-#include "user_descriptor_managers/main_descriptor_manager.h"
+#include "graphics/pipeline/pipeline.h"
+#include "graphics/descriptors/descriptor_set_layout.h"
+#include "graphics/descriptors/managers/main_descriptor_manager.h"
+#include "renderer/frame/render_context.h"
+#include "renderer/frame/frame_data.h"
+#include "resources/buffers/uniform_buffer.h"
+#include "lighting/lights.h"
+#include <memory>
 
 namespace Salamander::Renderer::Passes {
+
+    struct ShadowPushConstants {
+        uint64_t vertexBufferAddress;
+        glm::vec3 modelScale;
+        uint32_t baseColorTextureIndex;
+    };
+
     class ShadowPass final : public IRenderPass {
     public:
-        void initialize(const SharedResources &shared,
-                        MainSceneGlobalData &globalData,
+        void initialize(const Frame::RenderContext &ctx,
+                        Scene::MainSceneData &globalData,
                         PassDependencies &dependencies) override;
         void cleanup() override;
         void recreateSwapChain() override;
@@ -21,17 +33,18 @@ namespace Salamander::Renderer::Passes {
         void createLightMatrices() const;
         void createUniformBuffers();
 
-        const SharedResources *m_shared = nullptr;
-        MainSceneGlobalData *m_globalData = nullptr;
+        const Frame::RenderContext *m_ctx = nullptr;
+        Scene::MainSceneData *m_globalData = nullptr;
         PassDependencies *m_dependencies = nullptr;
 
-        Texture *m_shadowMapTexture = {};
+        std::unique_ptr<Graphics::Pipeline::Pipeline> m_pipeline;
+        std::unique_ptr<Graphics::Descriptors::DescriptorSetLayout> m_descriptorLayout;
+        std::unique_ptr<Graphics::Descriptors::MainDescriptorManager> m_descriptorManager;
 
-        std::unique_ptr<Pipeline> m_pipeline;
-        std::unique_ptr<MainDescriptorManager> m_descriptorManager;
-        std::unique_ptr<DescriptorSetLayout> m_descriptorLayout;
+        Resources::Buffers::UniformBuffer m_directionalLightingBuffer;
+        mutable Scene::DirectionalLightData directionalLight{};
 
-        UniformBuffer m_directionalLightingBuffer;
+        static constexpr glm::vec3 globalScale{1.0f};
+        static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
     };
 }
-

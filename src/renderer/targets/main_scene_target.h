@@ -5,6 +5,7 @@
 namespace Salamander::Renderer::Targets {
     class MainSceneTarget final : public RenderTarget {
     public:
+        MainSceneTarget(Passes::PassDependencies& dependencies);
         void initialize(const Frame::RenderContext &ctx) override;
         void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) override;
         void recreateSwapChain() override;

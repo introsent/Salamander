@@ -1,6 +1,8 @@
 ﻿#include "main_scene_target.h"
 
 namespace Salamander::Renderer::Targets {
+    MainSceneTarget::MainSceneTarget(Passes::PassDependencies &dependencies) : m_controller(dependencies) {
+    }
 
     void MainSceneTarget::initialize(const Frame::RenderContext &ctx) {
         m_controller.initialize(ctx);

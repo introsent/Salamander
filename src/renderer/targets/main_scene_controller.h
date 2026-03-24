@@ -15,6 +15,8 @@
 namespace Salamander::Renderer::Targets {
     class MainSceneController {
     public:
+        MainSceneController(Passes::PassDependencies& dependencies);
+
         void initialize(const Frame::RenderContext &ctx);
         void cleanup();
         void recreateSwapChain();
@@ -29,20 +31,19 @@ namespace Salamander::Renderer::Targets {
         void setPointLightEnabled(bool enabled);
 
         // Passes
-        Passes::DepthPrepass           m_depthPrepass;
-        Passes::GBufferPass            m_gBufferPass;
-        Passes::LightingPass           m_lightingPass;
+        Passes::DepthPrepass m_depthPrepass;
+        Passes::GBufferPass m_gBufferPass;
+        Passes::LightingPass m_lightingPass;
         Passes::LuminanceHistogramPass m_luminanceHistogramPass;
-        Passes::LuminanceAveragePass   m_luminanceAveragePass;
-        Passes::ToneMappingPass        m_toneMappingPass;
-        Passes::ShadowPass             m_shadowPass;
+        Passes::LuminanceAveragePass m_luminanceAveragePass;
+        Passes::ToneMappingPass m_toneMappingPass;
+        Passes::ShadowPass m_shadowPass;
 
         // Scene & dependency data
-        Scene::MainSceneData m_globalData;
-        Passes::PassDependencies &m_dependencies;
+        Scene::MainSceneData m_globalData = {};
+        Passes::PassDependencies& m_dependencies;
 
-        // Context (set during initialize)
-        const Frame::RenderContext *m_ctx = nullptr;
+        const Frame::RenderContext* m_ctx = nullptr;
 
         // IBL resources
         CubeMapRenderer m_cubeMapRenderer;

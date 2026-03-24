@@ -45,7 +45,7 @@ namespace Salamander::Renderer::Frame {
         [[nodiscard]] VmaAllocator allocator() const { return m_allocator; }
         [[nodiscard]] VkImageView depthImageView() const { return m_depthImageView; }
         [[nodiscard]] VkFormat depthFormat() const { return m_depthFormat; }
-        [[nodiscard]] Scene::Camera& camera() const { return m_camera; }
+        [[nodiscard]] Scene::Camera camera() const { return m_camera; }
         [[nodiscard]] std::vector<Frame>& frames() const { return m_frames; }
 
     private:
@@ -58,7 +58,7 @@ namespace Salamander::Renderer::Frame {
         VmaAllocator m_allocator;
         VkImageView m_depthImageView;
         VkFormat m_depthFormat;
-        Scene::Camera& m_camera;
+        Scene::Camera m_camera;
         std::vector<Frame>& m_frames;
     };
 

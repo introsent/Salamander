@@ -5,6 +5,7 @@
 #include "scene_data.h"
 #include "descriptors/descriptor_set_layout_builder.h"
 #include "pipeline/push_constants.h"
+#include "resources/textures/texture.h"
 
 #ifdef USE_TINYGLTF
     #include "loaders/tinygltf_loader.h"
@@ -12,7 +13,7 @@
 
 namespace Salamander::Renderer::Passes {
     void DepthPrepass::initialize(const Frame::RenderContext &ctx,
-                                       Salamander::Scene::MainSceneData &globalData,
+                                       Scene::MainSceneData &globalData,
                                        PassDependencies &dependencies) {
         m_ctx = &ctx;
         m_globalData = &globalData;

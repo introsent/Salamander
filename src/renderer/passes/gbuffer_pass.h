@@ -1,18 +1,17 @@
 ﻿#pragma once
 
 #include "irender_pass.h"
-#include "graphics/render_pass.h"
 #include "graphics/pipeline/pipeline.h"
 #include "graphics/descriptors/descriptor_set_layout.h"
 #include "graphics/descriptors/managers/main_descriptor_manager.h"
+#include "renderer/frame/render_context.h"
 #include "renderer/frame/frame_data.h"
+#include "resources/textures/texture.h"
 #include <memory>
 #include <array>
 
-#include "scene_data.h"
-
 namespace Salamander::Renderer::Passes {
-    class GBufferPass : public IRenderPass {
+    class GBufferPass final : public IRenderPass {
     public:
         void initialize(const Frame::RenderContext &ctx,
                         Scene::MainSceneData &globalData,
@@ -35,8 +34,10 @@ namespace Salamander::Renderer::Passes {
         std::unique_ptr<Graphics::Descriptors::DescriptorSetLayout> m_descriptorLayout;
         std::unique_ptr<Graphics::Descriptors::MainDescriptorManager> m_descriptorManager;
 
-        std::array<Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_albedoTextures{};
-        std::array<Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_normalTextures{};
-        std::array<Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_paramTextures{};
+        std::array<Resources::Textures::Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_albedoTextures{};
+        std::array<Resources::Textures::Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_normalTextures{};
+        std::array<Resources::Textures::Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_paramTextures{};
+
+        static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
     };
 }

@@ -3,6 +3,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 #include "buffers/command_manager.h"
+#include "textures/texture.h"
 
 namespace Salamander::Renderer::Targets {
 
@@ -13,6 +14,7 @@ namespace Salamander::Renderer::Targets {
     }
 
     void ImGuiTarget::render(float /*deltaTime*/, VkCommandBuffer cmd, uint32_t imageIndex) {
+        m_currentFrame = imageIndex % Frame::MAX_FRAMES_IN_FLIGHT;
         m_executor->begin(cmd, imageIndex);
         m_executor->execute(cmd);
         m_executor->end(cmd);
@@ -25,9 +27,10 @@ namespace Salamander::Renderer::Targets {
             depthViews[i] = frames[i].depthTexture->getDescriptorInfo().imageView;
 
         Executors::ImGuiPassExecutor::Resources resources{
-            .extent              = m_ctx->swapChain().extent(),
+            .extent = m_ctx->swapChain().extent(),
             .swapchainImageViews = m_ctx->swapChain().imagesViews(),
-            .depthImageViews     = depthViews,
+            .depthImageViews = depthViews,
+            .currentFrame = &m_currentFrame
         };
         m_executor = std::make_unique<Executors::ImGuiPassExecutor>(std::move(resources));
 
@@ -43,20 +46,19 @@ namespace Salamander::Renderer::Targets {
 
     void ImGuiTarget::cleanup() {}
 
-    // -------------------------------------------------------------------------
-
     void ImGuiTarget::createRenderingResources() {
         initializeImGui();
 
-        auto &frames = m_ctx->frames();
-        std::array<VkImageView, Frame::MAX_FRAMES_IN_FLIGHT> depthViews;
+        const auto &frames = m_ctx->frames();
+        std::array<VkImageView, Frame::MAX_FRAMES_IN_FLIGHT> depthViews{};
         for (size_t i = 0; i < Frame::MAX_FRAMES_IN_FLIGHT; ++i)
             depthViews[i] = frames[i].depthTexture->getDescriptorInfo().imageView;
 
         Executors::ImGuiPassExecutor::Resources resources{
-            .extent              = m_ctx->swapChain().extent(),
+            .extent = m_ctx->swapChain().extent(),
             .swapchainImageViews = m_ctx->swapChain().imagesViews(),
-            .depthImageViews     = depthViews,
+            .depthImageViews = depthViews,
+            .currentFrame = &m_currentFrame
         };
         m_executor = std::make_unique<Executors::ImGuiPassExecutor>(std::move(resources));
     }

@@ -18,5 +18,6 @@ namespace Salamander::Renderer::Targets {
         void initializeImGui() const;
 
         std::unique_ptr<Graphics::Descriptors::ImGuiDescriptorManager> m_descriptorManager;
+        uint32_t m_currentFrame = 0;
     };
 }

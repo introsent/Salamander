@@ -1,5 +1,4 @@
 #include "render.h"
-#include "image_views.h"
 #include "depth_format.h"
 #include "descriptors/descriptor_set_layout.h"
 #include "deletion_queue.h"
@@ -11,21 +10,22 @@
 #include "frame/frame_data.h"
 #include "renderer/targets/main_scene_target.h"
 #include "renderer/targets/imgui_target.h"
+#include "textures/texture_manager.h"
 
 namespace Salamander {
     Render::Render(Core::Context *context, Core::Window *window, VmaAllocator allocator, Scene::Camera *camera)
-        : m_context(context), m_window(window), m_allocator(allocator) {
-        initializeSharedResources(camera);
+        : m_context(context), m_window(window), m_allocator(allocator), m_camera(camera) {
+        initializeResources(camera);
         createCommandBuffers();
         createSyncObjects();
 
         // create targets
-        m_renderTargets.push_back(std::make_unique<Renderer::Targets::MainSceneTarget>());
+        m_renderTargets.push_back(std::make_unique<Renderer::Targets::MainSceneTarget>(m_dependencies));
         m_renderTargets.push_back(std::make_unique<Renderer::Targets::ImGuiTarget>());
 
         // initialize targets
         for (auto &target: m_renderTargets) {
-            target->initialize(m_sharedResources);
+            target->initialize(*m_renderContext);
         }
     }
 
@@ -86,44 +86,44 @@ namespace Salamander {
         }
     }
 
-    void Render::initializeSharedResources(Camera *camera) {
-        m_swapChain = std::make_unique<SwapChain>(m_context, m_window);
-        m_depthFormat = std::make_unique<DepthFormat>(m_context->physicalDevice());
+    void Render::initializeResources(Scene::Camera *camera) {
+        m_swapChain = std::make_unique<Core::SwapChain>(m_context, m_window);
+        m_depthFormat = std::make_unique<Graphics::DepthFormat>(m_context->physicalDevice());
 
-        m_commandManager = std::make_unique<CommandManager>(
+        m_commandManager = std::make_unique<Resources::Buffers::CommandManager>(
             m_context->device(),
             m_context->findQueueFamilies(m_context->physicalDevice()).graphicsFamily.value(),
             m_context->graphicsQueue()
         );
 
-        m_bufferManager = std::make_unique<BufferManager>(
+        m_bufferManager = std::make_unique<Resources::Buffers::BufferManager>(
             m_context->device(), m_allocator, m_commandManager.get()
         );
 
-        m_textureManager = std::make_unique<TextureManager>(
+        m_textureManager = std::make_unique<Resources::Textures::TextureManager>(
             m_context->device(), m_context->physicalDevice(), m_allocator, m_commandManager.get(),
             m_bufferManager.get(), m_context->debugMessenger()
         );
 
-
-        m_sharedResources = {
-            .context = m_context,
-            .window = m_window,
-            .swapChain = m_swapChain.get(),
-            .commandManager = m_commandManager.get(),
-            .bufferManager = m_bufferManager.get(),
-            .textureManager = m_textureManager.get(),
-            .currentFrame = &m_currentFrame,
-            .allocator = m_allocator,
-            .depthFormat = m_depthFormat->handle(),
-            .camera = camera,
-            .frames = &m_frames
-        };
+        // Create RenderContext
+        m_renderContext = std::make_unique<Renderer::Frame::RenderContext>(
+            *m_context,
+            *m_window,
+            *m_swapChain,
+            *m_commandManager,
+            *m_bufferManager,
+            *m_textureManager,
+            m_allocator,
+            VK_NULL_HANDLE,  // depthImageView will be set per-frame
+            m_depthFormat->handle(),
+            *camera,
+            m_frames
+        );
     }
 
 
     void Render::drawFrame(float deltaTime) {
-        Frame &currentFrame = m_frames[m_currentFrame];
+        Renderer::Frame::Frame &currentFrame = m_frames[m_currentFrame];
 
         // wait for fence before doing anything
         vkWaitForFences(m_context->device(), 1, &currentFrame.inFlightFence, VK_TRUE, UINT64_MAX);
@@ -143,9 +143,6 @@ namespace Salamander {
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             return;
         }
-
-        m_sharedResources.depthImageView = currentFrame.depthTexture->getDescriptorInfo().imageView;
-        m_sharedResources.currentFrame = &m_currentFrame;
 
         for (auto &target: m_renderTargets) {
             target->updateUniformBuffers();
@@ -213,7 +210,7 @@ namespace Salamander {
             recreateSwapChain();
         }
 
-        m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        m_currentFrame = (m_currentFrame + 1) % Renderer::Frame::MAX_FRAMES_IN_FLIGHT;
     }
 
 

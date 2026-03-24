@@ -1,7 +1,8 @@
-﻿// descriptor_manager.h
-#pragma once
+﻿#pragma once
 #include "descriptors/descriptor_manager_base.h"
 #include <vector>
+
+#include "scene_data.h"
 
 namespace Salamander::Graphics::Descriptors {
     class MainDescriptorManager : public DescriptorManagerBase {
@@ -11,8 +12,8 @@ namespace Salamander::Graphics::Descriptors {
             VkDescriptorType type;
 
             union {
-                VkDescriptorBufferInfo *bufferInfo;
-                VkDescriptorImageInfo *imageInfo;
+                const VkDescriptorBufferInfo *bufferInfo;
+                const VkDescriptorImageInfo *imageInfo;
             };
 
             uint32_t descriptorCount;

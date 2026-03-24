@@ -1,11 +1,9 @@
 ﻿#pragma once
 #include <memory>
 #include <vulkan/vulkan.h>
-#include "renderer/frame/render_context.h"
 
-namespace Salamander::Executors {
-    class RenderPassExecutor;
-}
+#include "render_pass_executor.h"
+#include "renderer/frame/render_context.h"
 
 namespace Salamander::Renderer::Targets {
     class RenderTarget {
@@ -19,7 +17,7 @@ namespace Salamander::Renderer::Targets {
         virtual void updateUniformBuffers() const = 0;
 
     protected:
-        const Frame::RenderContext       *m_ctx = nullptr;
+        const Frame::RenderContext *m_ctx = nullptr;
         std::unique_ptr<Executors::RenderPassExecutor> m_executor;
     };
 }

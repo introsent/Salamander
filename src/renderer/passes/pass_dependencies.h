@@ -22,10 +22,6 @@ namespace Salamander::Renderer::Passes {
         Resources::Textures::Texture* cubeMap{};
         Resources::Textures::Texture* irradianceMap{};
         Resources::Textures::Texture* shadowMap{};
-
-        // helper to transition depth attachment layouts
-        void transitionDepth(VkCommandBuffer cmd, uint32_t frameIndex,
-                             VkImageLayout newLayout);
     };
 }
 
