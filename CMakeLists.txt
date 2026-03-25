@@ -330,6 +330,13 @@ endforeach()
 add_custom_target(CompileShaders ALL DEPENDS ${COMPILED_SHADERS})
 add_dependencies(${PROJECT_NAME} CompileShaders)
 
+add_compile_definitions(
+        GLM_FORCE_DEPTH_ZERO_TO_ONE
+        GLM_FORCE_RADIANS
+        GLM_FORCE_ALIGNED_GENTYPES
+        GLM_ENABLE_EXPERIMENTAL
+)
+
 # Resource copying
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/textures)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/models)
