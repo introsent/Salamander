@@ -12,8 +12,6 @@ namespace Salamander::Renderer::Passes {
         m_ctx = &ctx;
         m_globalData = &globalData;
         m_dependencies = &dependencies;
-        createLightMatrices();
-        createUniformBuffers();
         createDescriptors();
         createPipeline();
     }
@@ -82,55 +80,6 @@ namespace Salamander::Renderer::Passes {
         );
     }
 
-    void ShadowPass::createLightMatrices() const {
-        const glm::vec3 sceneCenter = (m_globalData->sceneAABB.min + m_globalData->sceneAABB.max) / 2.0f;
-        const glm::vec3 lightDirection = directionalLight.directionalLightDirection;
-
-        const std::vector<glm::vec3> corners = {
-            {m_globalData->sceneAABB.min.x, m_globalData->sceneAABB.min.y, m_globalData->sceneAABB.min.z},
-            {m_globalData->sceneAABB.max.x, m_globalData->sceneAABB.min.y, m_globalData->sceneAABB.min.z},
-            {m_globalData->sceneAABB.min.x, m_globalData->sceneAABB.max.y, m_globalData->sceneAABB.min.z},
-            {m_globalData->sceneAABB.max.x, m_globalData->sceneAABB.max.y, m_globalData->sceneAABB.min.z},
-            {m_globalData->sceneAABB.min.x, m_globalData->sceneAABB.min.y, m_globalData->sceneAABB.max.z},
-            {m_globalData->sceneAABB.max.x, m_globalData->sceneAABB.min.y, m_globalData->sceneAABB.max.z},
-            {m_globalData->sceneAABB.min.x, m_globalData->sceneAABB.max.y, m_globalData->sceneAABB.max.z},
-            {m_globalData->sceneAABB.max.x, m_globalData->sceneAABB.max.y, m_globalData->sceneAABB.max.z},
-        };
-
-        float minProj = FLT_MAX, maxProj = -FLT_MAX;
-        for (const auto &corner : corners) {
-            const float proj = glm::dot(corner, lightDirection);
-            minProj = std::min(minProj, proj);
-            maxProj = std::max(maxProj, proj);
-        }
-
-        const float distance = maxProj - glm::dot(sceneCenter, lightDirection);
-        const glm::vec3 lightPosition = sceneCenter - lightDirection * distance;
-        directionalLight.directionalLightPosition = lightPosition;
-
-        const glm::vec3 up = glm::abs(glm::dot(lightDirection, glm::vec3(0.f, 1.f, 0.f))) > 0.99f
-            ? glm::vec3(0.f, 0.f, 1.f) : glm::vec3(0.f, 1.f, 0.f);
-
-        directionalLight.view = glm::lookAt(lightPosition, sceneCenter, up);
-
-        glm::vec3 minLS(FLT_MAX), maxLS(-FLT_MAX);
-        for (const auto &corner : corners) {
-            const glm::vec3 tc = glm::vec3(directionalLight.view * glm::vec4(corner, 1.0f));
-            minLS = glm::min(minLS, tc);
-            maxLS = glm::max(maxLS, tc);
-        }
-
-        directionalLight.projection = glm::ortho(minLS.x, maxLS.x, minLS.y, maxLS.y, 0.0f, maxLS.z - minLS.z);
-        directionalLight.projection[1][1] *= -1;
-    }
-
-    void ShadowPass::createUniformBuffers() {
-        m_directionalLightingBuffer = Resources::Buffers::UniformBuffer(
-            &m_ctx->bufferManager(), m_ctx->allocator(), sizeof(Scene::DirectionalLightData)
-        );
-        m_directionalLightingBuffer.update(directionalLight);
-    }
-
     void ShadowPass::createDescriptors() {
         const auto texCount = static_cast<uint32_t>(m_globalData->modelTextures.size());
 
@@ -150,15 +99,10 @@ namespace Salamander::Renderer::Passes {
 
         using UpdateInfo = Graphics::Descriptors::MainDescriptorManager::DescriptorUpdateInfo;
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            VkDescriptorBufferInfo bufferInfo{
-                .buffer = m_directionalLightingBuffer.handle(),
-                .offset = 0,
-                .range = sizeof(Scene::DirectionalLightData)
-            };
-            m_globalData->frameData[i].directionalLightBufferInfo = bufferInfo;
-
+            // Use the directional light buffer created by MainSceneController
             UpdateInfo ubo{}; ubo.binding = 0; ubo.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            ubo.bufferInfo = &bufferInfo; ubo.descriptorCount = 1; ubo.isImage = false;
+            ubo.bufferInfo = &m_globalData->frameData[i].directionalLightBufferInfo;
+            ubo.descriptorCount = 1; ubo.isImage = false;
 
             UpdateInfo textures{}; textures.binding = 1; textures.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             textures.imageInfo = m_globalData->frameData[i].textureImageInfos.data();

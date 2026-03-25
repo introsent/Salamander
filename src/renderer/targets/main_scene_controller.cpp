@@ -22,6 +22,12 @@ namespace Salamander::Renderer::Targets {
         loadModel(MODEL_PATH);
         createBuffers();
 
+        // Initialize directional light
+        m_globalData.directionalLight.directionalLightDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
+        m_globalData.directionalLight.directionalLightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+        m_globalData.directionalLight.directionalLightIntensity = 10.0f;
+        updateDirectionalLightMatrices();
+
         constexpr uint32_t SHADOW_MAP_SIZE = 4096;
         m_dependencies.shadowMap = &ctx.textureManager().createTexture(
             SHADOW_MAP_SIZE, SHADOW_MAP_SIZE,
@@ -113,17 +119,14 @@ namespace Salamander::Renderer::Targets {
 
     void MainSceneController::updateUniformBuffers() const {
         Scene::UniformBufferObject ubo{};
-        ubo.model    = glm::mat4(1.0f);
-        ubo.view     = m_ctx->camera().GetViewMatrix();
-        ubo.proj     = m_ctx->camera().GetProjectionMatrix(
+        ubo.model = glm::mat4(1.0f);
+        ubo.view = m_ctx->camera().GetViewMatrix();
+        ubo.proj = m_ctx->camera().GetProjectionMatrix(
             static_cast<float>(m_ctx->swapChain().extent().width) /
             static_cast<float>(m_ctx->swapChain().extent().height)
         );
         ubo.cameraPosition = m_ctx->camera().Position;
 
-        // currentFrame index needs to come from frame tracking —
-        // keep a mutable currentFrame member or pass it in; here we update all frames
-        // if you have a currentFrame pointer, use that index only.
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             m_uniformBuffers[i].update(ubo);
         }
@@ -306,6 +309,56 @@ namespace Salamander::Renderer::Targets {
         }
     }
 
+    void MainSceneController::updateDirectionalLightMatrices() {
+        const glm::vec3 sceneCenter = (m_globalData.sceneAABB.min + m_globalData.sceneAABB.max) / 2.0f;
+        const glm::vec3 lightDirection = m_globalData.directionalLight.directionalLightDirection;
+
+        const std::vector<glm::vec3> corners = {
+            {m_globalData.sceneAABB.min.x, m_globalData.sceneAABB.min.y, m_globalData.sceneAABB.min.z},
+            {m_globalData.sceneAABB.max.x, m_globalData.sceneAABB.min.y, m_globalData.sceneAABB.min.z},
+            {m_globalData.sceneAABB.min.x, m_globalData.sceneAABB.max.y, m_globalData.sceneAABB.min.z},
+            {m_globalData.sceneAABB.max.x, m_globalData.sceneAABB.max.y, m_globalData.sceneAABB.min.z},
+            {m_globalData.sceneAABB.min.x, m_globalData.sceneAABB.min.y, m_globalData.sceneAABB.max.z},
+            {m_globalData.sceneAABB.max.x, m_globalData.sceneAABB.min.y, m_globalData.sceneAABB.max.z},
+            {m_globalData.sceneAABB.min.x, m_globalData.sceneAABB.max.y, m_globalData.sceneAABB.max.z},
+            {m_globalData.sceneAABB.max.x, m_globalData.sceneAABB.max.y, m_globalData.sceneAABB.max.z},
+        };
+
+        float minProj = FLT_MAX, maxProj = -FLT_MAX;
+        for (const auto &corner : corners) {
+            const float proj = glm::dot(corner, lightDirection);
+            minProj = std::min(minProj, proj);
+            maxProj = std::max(maxProj, proj);
+        }
+
+        const float distance = maxProj - glm::dot(sceneCenter, lightDirection);
+        const glm::vec3 lightPosition = sceneCenter - lightDirection * distance;
+        m_globalData.directionalLight.directionalLightPosition = lightPosition;
+
+        const glm::vec3 up = glm::abs(glm::dot(lightDirection, glm::vec3(0.f, 1.f, 0.f))) > 0.99f
+            ? glm::vec3(0.f, 0.f, 1.f) : glm::vec3(0.f, 1.f, 0.f);
+
+        m_globalData.directionalLight.view = glm::lookAt(lightPosition, sceneCenter, up);
+
+        glm::vec3 minLightSpace(FLT_MAX);
+        glm::vec3 maxLightSpace(-FLT_MAX);
+        for (const auto &corner : corners) {
+            const glm::vec3 transformedCorner = glm::vec3(m_globalData.directionalLight.view * glm::vec4(corner, 1.0f));
+            minLightSpace = glm::min(minLightSpace, transformedCorner);
+            maxLightSpace = glm::max(maxLightSpace, transformedCorner);
+        }
+
+        m_globalData.directionalLight.projection = glm::ortho(minLightSpace.x,maxLightSpace.x,
+            minLightSpace.y, maxLightSpace.y,
+            0.0f, maxLightSpace.z - minLightSpace.z);
+
+        m_globalData.directionalLight.projection[1][1] *= -1;
+
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+            m_directionalLightBuffer[i].update(m_globalData.directionalLight);
+        }
+    }
+
     void MainSceneController::createBuffers() {
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             // UBO
@@ -337,6 +390,17 @@ namespace Salamander::Renderer::Targets {
                 .range  = lightSize
             };
             m_pointLightData = lightData;
+
+            // Directional light
+            VkDeviceSize dirLightSize = sizeof(Scene::DirectionalLightData);
+            m_directionalLightBuffer[i] = Resources::Buffers::UniformBuffer(
+                &m_ctx->bufferManager(), m_ctx->allocator(), dirLightSize
+            );
+            m_globalData.frameData[i].directionalLightBufferInfo = {
+                .buffer = m_directionalLightBuffer[i].handle(),
+                .offset = 0,
+                .range  = dirLightSize
+            };
 
             // Camera exposure
             constexpr VkDeviceSize exposureSize = sizeof(Scene::CameraExposure);

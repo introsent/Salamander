@@ -41,9 +41,6 @@ namespace Salamander::Renderer::Passes {
         std::unique_ptr<Graphics::Descriptors::DescriptorSetLayout> m_descriptorLayout;
         std::unique_ptr<Graphics::Descriptors::MainDescriptorManager> m_descriptorManager;
 
-        Resources::Buffers::UniformBuffer m_directionalLightingBuffer;
-        mutable Scene::DirectionalLightData directionalLight{};
-
         static constexpr glm::vec3 globalScale{1.0f};
         static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
     };

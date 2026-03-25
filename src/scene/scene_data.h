@@ -4,6 +4,7 @@
 #include "resources/buffers/index_buffer.h"
 #include "resources/buffers/ssbo_buffer.h"
 #include "renderer/frame/frame_data.h"
+#include "lighting/lights.h"
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <array>
@@ -28,6 +29,9 @@ namespace Salamander::Scene {
 
         // Scene transformation
         glm::vec3 modelScale{1.0f, 1.0f, 1.0f};
+
+        // Lighting
+        DirectionalLightData directionalLight{};
 
         // Per-frame descriptor data
         struct FrameData {

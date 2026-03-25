@@ -216,7 +216,6 @@ void main() {
     vec3 diffuseIBL = kD * irradiance * albedo;
 
     vec3 ambient =  diffuseIBL * envIntensity;
-    ambient = vec3(0.f);
 
     // FINAL COLOR
     vec3 color = Lo + ambient;

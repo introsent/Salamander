@@ -7,11 +7,10 @@ void VulkanApplication::run() {
     createWindowAndContext();
 
     // Setup camera
+    m_camera = Salamander::Scene::Camera(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.f, 1.f, 0.f), 0.f, 0.f, 0.f);
     m_window->setCamera(&m_camera); //reference camera
     m_window->setupInputCallbacks();
 
-    // Initialize camera with starting position
-    m_camera = Salamander::Scene::Camera(glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.f, 1.f, 0.f), 0.f, 0.f, 0.f);
 
     createAllocator();
 

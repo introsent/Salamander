@@ -7,10 +7,21 @@
     The software in question functions as a standalone graphics engine, with the purpose of demonstrating the capabilities of the Vulkan framework.
     The emphasis is placed on the maintenance of the system and the adherence to the established design practices.
   </p>
+  
+  <h2>2026 Overview</h2>
+  <ul>
+    <li><strong>Massive refactoring</strong></li>
+    <li><strong>Automatic camera exposure</strong></li>
+    <li><strong>Assimp loading option</strong></li>
+    <li><strong>Mip map generation</strong></li>
+  </ul>
+  
 
-  <h2>Overview</h2>
+  <h2>2025 Overview</h2>
   <ul>
     <li><strong>Deferred rendering</strong></li>
+    <li><strong>Dynamic rendering</strong></li>
+    <li><strong>Vertex pulling using GPU address</strong></li>
     <li><strong>HDR with later tone mapping</strong></li>
     <li><strong>Directional and omni lights</strong></li>
     <li><strong>IBL using environmental cube maps and diffuse irradiance</strong></li>

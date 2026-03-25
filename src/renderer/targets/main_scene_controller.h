@@ -30,6 +30,8 @@ namespace Salamander::Renderer::Targets {
         void createIBLResources();
         void setPointLightEnabled(bool enabled);
 
+        void updateDirectionalLightMatrices();
+
         // Passes
         Passes::DepthPrepass m_depthPrepass;
         Passes::GBufferPass m_gBufferPass;
@@ -56,8 +58,10 @@ namespace Salamander::Renderer::Targets {
         std::array<Resources::Buffers::UniformBuffer, MAX_FRAMES_IN_FLIGHT> m_uniformBuffers;
         std::array<Resources::Buffers::UniformBuffer, MAX_FRAMES_IN_FLIGHT> m_omniLightBuffer;
         std::array<Resources::Buffers::UniformBuffer, MAX_FRAMES_IN_FLIGHT> m_cameraExposureBuffer;
+        std::array<Resources::Buffers::UniformBuffer, MAX_FRAMES_IN_FLIGHT> m_directionalLightBuffer;
 
         Scene::PointLightData m_pointLightData{};
+        Scene::DirectionalLightData m_directionalLightData{};
         bool m_pointLightEnabled = true;
 
         const std::string MODEL_PATH =
