@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 30/05/2025.
+//
+
+#ifndef SALAMANDER_SCENE_DATA_H
+#define SALAMANDER_SCENE_DATA_H
+
+
 #include "components/material.h"
 #include "components/transform.h"
 #include "resources/buffers/index_buffer.h"
@@ -48,4 +55,7 @@ namespace Salamander::Scene {
         float deltaTime = 0.0f;
     };
 }
+
+
+#endif //SALAMANDER_SCENE_DATA_H
 

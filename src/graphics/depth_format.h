@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 14/04/2025.
+//
+
+#ifndef SALAMANDER_DEPTH_PIPELINE_H
+#define SALAMANDER_DEPTH_PIPELINE_H
+
+
 #include <vulkan/vulkan.h>
 #include <vector>
 
@@ -23,3 +30,6 @@ namespace Salamander::Graphics {
         VkFormat m_depthFormat;
     };
 }
+
+
+#endif //SALAMANDER_DEPTH_PIPELINE_H

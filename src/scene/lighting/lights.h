@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_LIGHTS_H
+#define SALAMANDER_LIGHTS_H
+
+
 #include <glm/glm.hpp>
 
 namespace Salamander::Scene {
@@ -19,3 +26,6 @@ namespace Salamander::Scene {
         glm::mat4 projection;
     };
 }
+
+
+#endif //SALAMANDER_LIGHTS_H

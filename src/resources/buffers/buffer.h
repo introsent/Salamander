@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 14/04/2025.
+//
+
+#ifndef SALAMANDER_BUFFER_H
+#define SALAMANDER_BUFFER_H
+
+
 #include "ibuffer.h"
 #include "buffer_manager.h"
 #include "vk_mem_alloc.h"
@@ -45,3 +52,6 @@ namespace Salamander::Resources::Buffers
         }
     };
 }
+
+
+#endif //SALAMANDER_BUFFER_H

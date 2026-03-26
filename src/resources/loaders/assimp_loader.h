@@ -1,5 +1,5 @@
 //
-// Created by ivans on 11/15/2025.
+// Created by ivans on 15/11/2025.
 //
 
 #ifndef SALAMANDER_ASSIMP_LOADER_H
@@ -11,7 +11,7 @@
 #include <glm/glm.hpp>
 
 namespace Salamander::Resources::Loaders {
-    class AssimpLoader : GLTFLoader {
+    class AssimpLoader final : GLTFLoader {
     public:
         static bool LoadFromFile(const std::string & path, GLTFModel & outModel);
     private:
@@ -33,4 +33,6 @@ namespace Salamander::Resources::Loaders {
         static aiNode * FindMeshNode(const aiScene * scene, unsigned meshIndex, aiNode * node);
     };
 }
+
+
 #endif //SALAMANDER_ASSIMP_LOADER_H

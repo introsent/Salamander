@@ -1,10 +1,15 @@
-// swap_chain.h
-#pragma once
-#include <memory>
+//
+// Created by ivans on 11/04/2025.
+//
 
-#include "context.h"
+#ifndef SALAMANDER_SWAP_CHAIN_H
+#define SALAMANDER_SWAP_CHAIN_H
+
+
+#include <memory>
 #include <vector>
 
+#include "context.h"
 #include "image_views.h"
 
 
@@ -45,3 +50,6 @@ namespace Salamander::Core {
         std::unique_ptr<ImageViews> m_imageViews;
     };
 }
+
+
+#endif //SALAMANDER_SWAP_CHAIN_H

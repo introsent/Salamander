@@ -1,7 +1,12 @@
-#pragma once
+//
+// Created by ivans on 14/04/2025.
+//
+
+#ifndef SALAMANDER_INDEX_BUFFER_H
+#define SALAMANDER_INDEX_BUFFER_H
+
+
 #include "buffer.h"
-#include "buffer_manager.h"
-#include "command_manager.h"
 #include "vk_mem_alloc.h"
 #include <vector>
 
@@ -21,3 +26,6 @@ namespace Salamander::Resources::Buffers {
         IndexBuffer & operator=(const IndexBuffer &) = delete;
     };
 }
+
+
+#endif //SALAMANDER_INDEX_BUFFER_H

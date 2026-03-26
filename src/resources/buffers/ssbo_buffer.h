@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 07/05/2025.
+//
+
+#ifndef SALAMANDER_SSBO_BUFFER_H
+#define SALAMANDER_SSBO_BUFFER_H
+
+
 #include "buffer.h"
 #include "buffer_manager.h"
 #include "command_manager.h"
@@ -20,3 +27,6 @@ namespace Salamander::Resources::Buffers
         VkBuffer m_ssboBuffer{};
     };
 }
+
+
+#endif //SALAMANDER_SSBO_BUFFER_H

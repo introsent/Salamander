@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_RENDER_CONTEXT_H
+#define SALAMANDER_RENDER_CONTEXT_H
+
 
 #include <vulkan/vulkan.h>
 #include "vk_mem_alloc.h"
@@ -61,5 +67,7 @@ namespace Salamander::Renderer::Frame {
         Scene::Camera& m_camera;
         std::vector<Frame>& m_frames;
     };
-
 }
+
+
+#endif //SALAMANDER_RENDER_CONTEXT_H

@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_VERTEX_H
+#define SALAMANDER_VERTEX_H
+
 
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
@@ -28,3 +34,6 @@ struct std::hash<Salamander::Scene::Vertex> {
                (hash<glm::vec4>()(vertex.tangent) >> 1);
     }
 };
+
+
+#endif //SALAMANDER_VERTEX_H

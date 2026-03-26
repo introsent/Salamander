@@ -1,4 +1,10 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 03/06/2025.
+//
+
+#ifndef SALAMANDER_SHADOW_PASS_H
+#define SALAMANDER_SHADOW_PASS_H
+
 
 #include "irender_pass.h"
 #include "graphics/pipeline/pipeline.h"
@@ -30,8 +36,6 @@ namespace Salamander::Renderer::Passes {
     private:
         void createPipeline();
         void createDescriptors();
-        void createLightMatrices() const;
-        void createUniformBuffers();
 
         const Frame::RenderContext *m_ctx = nullptr;
         Scene::MainSceneData *m_globalData = nullptr;
@@ -45,3 +49,6 @@ namespace Salamander::Renderer::Passes {
         static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
     };
 }
+
+
+#endif //SALAMANDER_SHADOW_PASS_H

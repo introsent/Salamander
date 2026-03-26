@@ -1,4 +1,13 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 06/05/2025.
+// DO NOT USE
+// This file remains for old references only. Use transitionLayoutEx(...) in Image
+//
+
+#ifndef SALAMANDER_IMAGE_TRANSITION_MANAGER_H
+#define SALAMANDER_IMAGE_TRANSITION_MANAGER_H
+
+
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
@@ -208,3 +217,6 @@ namespace Salamander::Graphics {
         }
     };
 }
+
+
+#endif //SALAMANDER_IMAGE_TRANSITION_MANAGER_H

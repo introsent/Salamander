@@ -4,6 +4,8 @@
 
 #ifndef SALAMANDER_COMPUTE_PIPELINE_H
 #define SALAMANDER_COMPUTE_PIPELINE_H
+
+
 #include <string>
 #include "context.h"
 

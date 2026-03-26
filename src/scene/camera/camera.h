@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 07/05/2025.
+//
+
+#ifndef SALAMANDER_CAMERA_H
+#define SALAMANDER_CAMERA_H
+
+
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -6,13 +13,13 @@
 namespace Salamander::Scene {
     class Camera {
     public:
-        // Сonstructor: look-at target
+        // look-at target
         Camera(glm::vec3 position,
            glm::vec3 target,
            glm::vec3 worldUp = glm::vec3(0.0f, 0.0f, 1.0f),
            float roll = 0.0f);
 
-        // Constructor: custom yaw/pitch
+        // custom yaw/pitch
         explicit Camera (glm::vec3 position = glm::vec3(2.0f, 2.0f, 2.0f),
                         glm::vec3 worldUp = glm::vec3(0.0f, 0.0f, 1.0f),
                         float yaw = -90.0f,
@@ -28,7 +35,7 @@ namespace Salamander::Scene {
         void ProcessHorizontalMovement(float yoffset);
         void ProcessMouseScroll(float yoffset);
 
-        // Camera parameters
+        // camera parameters
         glm::vec3 Position;
         glm::vec3 Front{glm::vec3(0.0f, 0.0f, 1.0f)};
         glm::vec3 Up{glm::vec3(0.0f, 0.0f, 1.0f)};
@@ -47,3 +54,6 @@ namespace Salamander::Scene {
         void updateCameraVectors();
     };
 }
+
+
+#endif //SALAMANDER_CAMERA_H

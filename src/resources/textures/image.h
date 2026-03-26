@@ -4,6 +4,8 @@
 
 #ifndef SALAMANDER_IMAGE_H
 #define SALAMANDER_IMAGE_H
+
+
 #include "application.h"
 #include "image_transition_manager.h"
 

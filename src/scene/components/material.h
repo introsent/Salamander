@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_MATERIAL_H
+#define SALAMANDER_MATERIAL_H
+
 
 namespace Salamander::Scene
 {
@@ -16,3 +22,6 @@ namespace Salamander::Scene
         int32_t textureID;
     };
 }
+
+
+#endif //SALAMANDER_MATERIAL_H

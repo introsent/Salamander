@@ -1,10 +1,15 @@
-﻿#pragma once
-#include <array>
+﻿//
+// Created by ivans on 04/05/2025.
+//
 
+#ifndef SALAMANDER_IMGUI_PASS_EXECUTOR_H
+#define SALAMANDER_IMGUI_PASS_EXECUTOR_H
+
+
+#include <array>
+#include <vector>
 #include "render_pass_executor.h"
 #include "render_pass.h"
-#include <imgui.h>
-#include <vector>
 #include "frame/frame_data.h"
 
 namespace Salamander::Executors {
@@ -33,3 +38,6 @@ namespace Salamander::Executors {
         Resources m_resources;
     };
 }
+
+
+#endif //SALAMANDER_IMGUI_PASS_EXECUTOR_H

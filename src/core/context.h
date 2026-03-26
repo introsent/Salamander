@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 10/04/2025.
+//
+
+#ifndef SALAMANDER_CONTEXT_H
+#define SALAMANDER_CONTEXT_H
+
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -115,3 +121,6 @@ namespace Salamander::Core {
         };
     };
 }
+
+
+#endif //SALAMANDER_CONTEXT_H

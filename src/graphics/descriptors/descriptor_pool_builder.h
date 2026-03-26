@@ -1,5 +1,10 @@
-﻿// descriptor_pool_builder.h
-#pragma once
+﻿//
+// Created by ivans on 04/05/2025.
+//
+
+#ifndef SALAMANDER_DESCRIPTOR_POOL_BUILDER_H
+#define SALAMANDER_DESCRIPTOR_POOL_BUILDER_H
+
 #include <vulkan/vulkan.h>
 #include <vector>
 
@@ -23,3 +28,6 @@ namespace Salamander::Graphics::Descriptors {
         VkDescriptorPoolCreateFlags m_flags = 0;
     };
 }
+
+
+#endif //SALAMANDER_DESCRIPTOR_POOL_BUILDER_H

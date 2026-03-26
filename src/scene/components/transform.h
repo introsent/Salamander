@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_TRANSFORM_H
+#define SALAMANDER_TRANSFORM_H
+
+
 #include <glm/glm.hpp>
 
 namespace Salamander::Scene {
@@ -14,3 +21,6 @@ namespace Salamander::Scene {
         glm::vec3 max;
     };
 }
+
+
+#endif //SALAMANDER_TRANSFORM_H

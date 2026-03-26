@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 04/05/2025.
+//
+
+#ifndef SALAMANDER_IMGUI_TARGET_H
+#define SALAMANDER_IMGUI_TARGET_H
+
+
 #include "frame/frame_data.h"
 #include "renderer/targets/target/render_target.h"
 #include "graphics/descriptors/managers/imgui_descriptor_manager.h"
@@ -21,3 +28,6 @@ namespace Salamander::Renderer::Targets {
         uint32_t m_currentFrame = 0;
     };
 }
+
+
+#endif //SALAMANDER_IMGUI_TARGET_H

@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 31/05/2025.
+//
+
+#ifndef SALAMANDER_MAIN_SCENE_CONTROLLER_H
+#define SALAMANDER_MAIN_SCENE_CONTROLLER_H
+
+
 #include "config.h"
 #include "lighting/lights.h"
 #include "passes/gbuffer_pass.h"
@@ -68,3 +75,5 @@ namespace Salamander::Renderer::Targets {
             std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";
     };
 }
+
+#endif //SALAMANDER_MAIN_SCENE_CONTROLLER_H

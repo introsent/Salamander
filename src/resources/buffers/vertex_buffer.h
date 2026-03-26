@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 14/04/2025.
+//
+
+#ifndef SALAMANDER_VERTEX_BUFFER_H
+#define SALAMANDER_VERTEX_BUFFER_H
+
+
 #include "buffer.h"
 #include "buffer_manager.h"
 #include "vk_mem_alloc.h"
@@ -18,3 +25,6 @@ namespace Salamander::Resources::Buffers
             VertexBuffer & operator=(const VertexBuffer &) = delete;
         };
 }
+
+
+#endif //SALAMANDER_VERTEX_BUFFER_H

@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 30/05/2025.
+//
+
+#ifndef SALAMANDER_RENDER_H
+#define SALAMANDER_RENDER_H
+
+
 #include "context.h"
 #include "window.h"
 #include <memory>
@@ -57,26 +64,29 @@ namespace Salamander {
 
         uint32_t m_swapchainVersion = 0;
 
-        // Managers
+        // managers
         std::unique_ptr<Core::SwapChain> m_swapChain;
         std::unique_ptr<Resources::Buffers::CommandManager> m_commandManager;
         std::unique_ptr<Resources::Buffers::BufferManager> m_bufferManager;
         std::unique_ptr<Resources::Textures::TextureManager> m_textureManager;
 
-        // Images
+        // images
         std::unique_ptr<Graphics::DepthFormat> m_depthFormat;
 
-        // Render context
+        // render context
         std::unique_ptr<Renderer::Frame::RenderContext> m_renderContext;
 
-        // Targets
+        // targets
         std::vector<std::unique_ptr<Renderer::Targets::RenderTarget> > m_renderTargets{};
 
-        // Frame resources
+        // frame resources
         std::vector<Renderer::Frame::Frame> m_frames{};
         uint32_t m_currentFrame = 0;
 
-        // Pass dependencies
+        // pass dependencies
         Renderer::Passes::PassDependencies m_dependencies;
     };
 }
+
+
+#endif //SALAMANDER_RENDER_H

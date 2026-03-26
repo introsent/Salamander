@@ -1,5 +1,11 @@
-// descriptor_set_layout.h
-#pragma once
+//
+// Created by ivans on 04/05/2025.
+//
+
+#ifndef SALAMANDER_DESCRIPTOR_SET_LAYOUT_H
+#define SALAMANDER_DESCRIPTOR_SET_LAYOUT_H
+
+
 #include <vulkan/vulkan.h>
 
 namespace Salamander::Graphics::Descriptors {
@@ -20,3 +26,6 @@ namespace Salamander::Graphics::Descriptors {
         VkDescriptorSetLayout m_layout;
     };
 }
+
+
+#endif //SALAMANDER_DESCRIPTOR_SET_LAYOUT_H

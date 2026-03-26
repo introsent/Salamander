@@ -1,5 +1,11 @@
-// framebuffer_manager.h
-#pragma once
+//
+// Created by ivans on 11/04/2025.
+//
+
+#ifndef SALAMANDER_FRAMEBUFFER_MANAGER_H
+#define SALAMANDER_FRAMEBUFFER_MANAGER_H
+
+
 #include "context.h"
 #include <vector>
 #include <unordered_map>
@@ -39,3 +45,6 @@ namespace Salamander::Core {
         std::unordered_map<VkRenderPass, FramebufferSet> m_framebufferSets;
     };
 }
+
+
+#endif //SALAMANDER_FRAMEBUFFER_MANAGER_H

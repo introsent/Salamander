@@ -1,4 +1,9 @@
-#pragma once
+//
+// Created by ivans on 09/04/2025.
+//
+
+#ifndef SALAMANDER_WINDOW_H
+#define SALAMANDER_WINDOW_H
 
 #define GLFW_INCLUDE_VULKAN
 #include <functional>
@@ -62,3 +67,6 @@ namespace Salamander::Core {
         void handleMouseMovement(double xpos, double ypos);
     };
 }
+
+
+#endif //SALAMANDER_WINDOW_H

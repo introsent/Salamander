@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 06/01/2026.
+//
+
+#ifndef SALAMANDER_LUMINANCE_AVERAGE_PASS_H
+#define SALAMANDER_LUMINANCE_AVERAGE_PASS_H
+
 
 #include "irender_pass.h"
 #include "graphics/pipeline/compute_pipeline.h"
@@ -46,3 +52,6 @@ namespace Salamander::Renderer::Passes {
         static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
     };
 }
+
+
+#endif //SALAMANDER_LUMINANCE_AVERAGE_PASS_H

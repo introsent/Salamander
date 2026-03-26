@@ -1,5 +1,11 @@
-﻿// descriptor_set_layout_builder.h
-#pragma once
+﻿//
+// Created by ivans on 04/05/2025.
+//
+
+#ifndef SALAMANDER_DESCRIPTOR_SET_LAYOUT_BUILDER_H
+#define SALAMANDER_DESCRIPTOR_SET_LAYOUT_BUILDER_H
+
+
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <memory>
@@ -20,3 +26,6 @@ namespace Salamander::Graphics::Descriptors {
         std::vector<VkDescriptorSetLayoutBinding> m_bindings;
     };
 }
+
+
+#endif //SALAMANDER_DESCRIPTOR_SET_LAYOUT_BUILDER_H

@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 04/05/2025.
+//
+
+#ifndef SALAMANDER_RENDER_TARGET_H
+#define SALAMANDER_RENDER_TARGET_H
+
+
 #include <memory>
 #include <vulkan/vulkan.h>
 
@@ -21,3 +28,6 @@ namespace Salamander::Renderer::Targets {
         std::unique_ptr<Executors::RenderPassExecutor> m_executor;
     };
 }
+
+
+#endif //SALAMANDER_RENDER_TARGET_H

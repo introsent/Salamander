@@ -1,4 +1,10 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 30/05/2025.
+//
+
+#ifndef SALAMANDER_GBUFFER_PASS_H
+#define SALAMANDER_GBUFFER_PASS_H
+
 
 #include "irender_pass.h"
 #include "graphics/pipeline/pipeline.h"
@@ -41,3 +47,6 @@ namespace Salamander::Renderer::Passes {
         static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
     };
 }
+
+
+#endif //SALAMANDER_GBUFFER_PASS_H

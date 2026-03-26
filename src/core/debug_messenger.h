@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 10/04/2025.
+//
+
+#ifndef SALAMANDER_DEBUG_MESSENGER_H
+#define SALAMANDER_DEBUG_MESSENGER_H
+
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -47,3 +53,6 @@ namespace Salamander::Core {
         PFN_vkCmdInsertDebugUtilsLabelEXT m_cmdInsertDebugUtilsLabel = nullptr;
     };
 }
+
+
+#endif //SALAMANDER_DEBUG_MESSENGER_H

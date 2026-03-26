@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 14/04/2025.
+//
+
+#ifndef SALAMANDER_COMMAND_POOL_MANAGER_H
+#define SALAMANDER_COMMAND_POOL_MANAGER_H
+
+
 #include <vulkan/vulkan.h>
 #include <memory>
 
@@ -26,3 +33,6 @@ namespace Salamander::Resources::Buffers {
         VkCommandPool m_commandPool{};
     };
 }
+
+
+#endif //SALAMANDER_COMMAND_POOL_MANAGER_H

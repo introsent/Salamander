@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 04/05/2025.
+//
+
+#ifndef SALAMANDER_MAIN_DESCRIPTOR_MANAGER_H
+#define SALAMANDER_MAIN_DESCRIPTOR_MANAGER_H
+
+
 #include "descriptors/descriptor_manager_base.h"
 #include <vector>
 
@@ -45,3 +52,6 @@ namespace Salamander::Graphics::Descriptors {
         std::vector<VkDescriptorSet> m_descriptorSets;
     };
 }
+
+
+#endif //SALAMANDER_MAIN_DESCRIPTOR_MANAGER_H

@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 11/04/2025.
+//
+
+#ifndef SALAMANDER_IMAGE_VIEWS_H
+#define SALAMANDER_IMAGE_VIEWS_H
+
+
 #include "context.h"
 #include <vector>
 
@@ -26,3 +33,6 @@ namespace Salamander::Core {
         VkFormat m_format;
     };
 }
+
+
+#endif //SALAMANDER_IMAGE_VIEWS_H

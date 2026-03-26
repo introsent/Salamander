@@ -1,7 +1,10 @@
-// DeletionQueue.h
-#pragma once
+//
+// Created by ivans on 27/04/2025.
+//
 
-#pragma once
+#ifndef SALAMANDER_DELETION_QUEUE_H
+#define SALAMANDER_DELETION_QUEUE_H
+
 
 #include <string>
 #include <vector>
@@ -52,4 +55,7 @@ private:
 
     std::vector<Entry> entries;
 };
+
+
+#endif //SALAMANDER_DELETION_QUEUE_H
 

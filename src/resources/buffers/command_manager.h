@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 13/04/2025.
+//
+
+#ifndef SALAMANDER_COMMAND_MANAGER_H
+#define SALAMANDER_COMMAND_MANAGER_H
+
 
 #include <vulkan/vulkan.h>
 #include <memory>
@@ -10,8 +16,7 @@
 namespace Salamander::Resources::Buffers
 {
     class CommandManager {
-        public
-        :
+    public:
         CommandManager(VkDevice device, uint32_t queueFamilyIndex, VkQueue graphicsQueue);
         ~CommandManager();
         CommandManager(const CommandManager &) = delete;
@@ -46,23 +51,16 @@ namespace Salamander::Resources::Buffers
 
 
         // Accessors
-        VkDevice device() const
-        {
-            return m_device;
-        }
-        VkQueue graphicsQueue() const
-        {
-            return m_graphicsQueue;
-        }
-        VkCommandPool commandPool() const
-        {
-            return m_commandPoolManager->handle();
-        }
+        [[nodiscard]] VkDevice device() const { return m_device; }
+        [[nodiscard]] VkQueue graphicsQueue() const { return m_graphicsQueue; }
+        [[nodiscard]] VkCommandPool commandPool() const { return m_commandPoolManager->handle(); }
 
-        private
-        :
+    private:
         VkDevice m_device;
         VkQueue m_graphicsQueue;
         std::shared_ptr<CommandPoolManager> m_commandPoolManager;
     };
 }
+
+
+#endif //SALAMANDER_COMMAND_MANAGER_H

@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 15/04/2025.
+//
+
+#ifndef SALAMANDER_APPLICATION_H
+#define SALAMANDER_APPLICATION_H
+
+
 #include "window.h"
 #include "context.h"
 #include "render.h"
@@ -35,6 +42,8 @@ private:
 
     float m_deltaTime = 0.0f;
     float m_lastFrameTime = 0.0f;
-
 };
+
+
+#endif //SALAMANDER_APPLICATION_H
 

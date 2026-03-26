@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_PUSH_CONSTANTS_H
+#define SALAMANDER_PUSH_CONSTANTS_H
+
 
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -25,5 +31,7 @@ namespace Salamander::Graphics::Pipeline {
         glm::vec3 modelScale;
         uint32_t baseColorTextureIndex;
     };
-
 }
+
+
+#endif //SALAMANDER_PUSH_CONSTANTS_H

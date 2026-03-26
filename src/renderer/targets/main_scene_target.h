@@ -1,11 +1,18 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 30/05/2025.
+//
+
+#ifndef SALAMANDER_MAIN_SCENE_TARGET_H
+#define SALAMANDER_MAIN_SCENE_TARGET_H
+
+
 #include "renderer/targets/target/render_target.h"
 #include "main_scene_controller.h"
 
 namespace Salamander::Renderer::Targets {
     class MainSceneTarget final : public RenderTarget {
     public:
-        MainSceneTarget(Passes::PassDependencies& dependencies);
+        explicit MainSceneTarget(Passes::PassDependencies& dependencies);
         void initialize(const Frame::RenderContext &ctx) override;
         void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) override;
         void recreateSwapChain() override;
@@ -16,3 +23,6 @@ namespace Salamander::Renderer::Targets {
         MainSceneController m_controller;
     };
 }
+
+
+#endif //SALAMANDER_MAIN_SCENE_TARGET_H

@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 30/05/2025.
+//
+
+#ifndef SALAMANDER_DEPTH_PREPASS_H
+#define SALAMANDER_DEPTH_PREPASS_H
+
+
 #include <memory>
 #include "irender_pass.h"
 #include "descriptors/descriptor_set_layout.h"
@@ -7,7 +14,7 @@
 #include "pipeline/pipeline.h"
 
 namespace Salamander::Renderer::Passes {
-    class DepthPrepass : public IRenderPass {
+    class DepthPrepass final : public IRenderPass {
     public:
         void initialize(const Frame::RenderContext &ctx,
                         Scene::MainSceneData &globalData,
@@ -29,3 +36,6 @@ namespace Salamander::Renderer::Passes {
         std::unique_ptr<Graphics::Descriptors::MainDescriptorManager> m_descriptorManager;
     };
 }
+
+
+#endif //SALAMANDER_DEPTH_PREPASS_H

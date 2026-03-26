@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 31/05/2025.
+//
+
+
+#ifndef SALAMANDER_CUBE_MAP_RENDERER_H
+#define SALAMANDER_CUBE_MAP_RENDERER_H
+
 
 #include <memory>
 #include <array>
@@ -60,3 +67,6 @@ namespace Salamander::Renderer::Targets {
         VkSampler m_equirectSampler = VK_NULL_HANDLE;
     };
 }
+
+
+#endif //SALAMANDER_CUBE_MAP_RENDERER_H

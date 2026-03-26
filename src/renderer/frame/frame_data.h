@@ -1,4 +1,9 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_FRAME_DATA_H
+#define SALAMANDER_FRAME_DATA_H
 
 #include <vulkan/vulkan.h>
 #include <memory>
@@ -25,5 +30,7 @@ namespace Salamander::Renderer::Frame {
         VkFence inFlightFence;
         Resources::Textures::Texture* depthTexture;
     };
-
 }
+
+
+#endif //SALAMANDER_FRAME_DATA_H

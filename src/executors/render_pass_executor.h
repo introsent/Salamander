@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 04/05/2025.
+//
+
+#ifndef SALAMANDER_RENDER_PASS_EXECUTOR_H
+#define SALAMANDER_RENDER_PASS_EXECUTOR_H
+
+
 #include <vulkan/vulkan.h>
 
 namespace Salamander::Executors {
@@ -10,3 +17,6 @@ namespace Salamander::Executors {
         virtual ~RenderPassExecutor() = default;
     };
 }
+
+
+#endif //SALAMANDER_RENDER_PASS_EXECUTOR_H

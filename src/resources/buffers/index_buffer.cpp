@@ -1,4 +1,5 @@
 #include "index_buffer.h"
+#include "command_manager.h"
 
 namespace Salamander::Resources::Buffers {
     IndexBuffer::IndexBuffer(BufferManager *bufferManager,

@@ -1,10 +1,19 @@
-#pragma once
+//
+// Created by ivans on 14/04/2025.
+// OBSOLETE API — USE ONLY IF ABSOLUTELY NECESSARY
+// This class is kept for compatibility with legacy RenderPass workflows.
+// Prefer dynamic rendering APIs when possible.
+//
+
+#ifndef SALAMANDER_RENDER_PASS_H
+#define SALAMANDER_RENDER_PASS_H
+
+
 #include "context.h"
 #include <vulkan/vulkan.h>
 #include <memory>
 
 namespace Salamander::Graphics {
-     /// REDUNDANT IF USING DYNAMIC RENDERING
     class RenderPass {
     public:
         // Configuration structure
@@ -46,3 +55,6 @@ namespace Salamander::Graphics {
         VkRenderPass m_renderPass = VK_NULL_HANDLE;
     };
 }
+
+
+#endif //SALAMANDER_RENDER_PASS_H

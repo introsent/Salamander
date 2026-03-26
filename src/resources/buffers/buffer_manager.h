@@ -1,4 +1,10 @@
-#pragma once
+//
+// Created by ivans on 13/04/2025.
+//
+
+#ifndef SALAMANDER_BUFFER_MANAGER_H
+#define SALAMANDER_BUFFER_MANAGER_H
+
 
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -36,3 +42,5 @@ namespace Salamander::Resources::Buffers
     };
 }
 
+
+#endif //SALAMANDER_BUFFER_MANAGER_H

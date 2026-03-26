@@ -1,4 +1,10 @@
-﻿#pragma once
+﻿//
+// Created by ivans on 30/05/2025.
+//
+
+#ifndef SALAMANDER_IRENDER_PASS_H
+#define SALAMANDER_IRENDER_PASS_H
+
 
 #include <vulkan/vulkan.h>
 #include <cstdint>
@@ -26,3 +32,6 @@ namespace Salamander::Renderer::Passes {
         virtual void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) = 0;
     };
 }
+
+
+#endif //SALAMANDER_IRENDER_PASS_H

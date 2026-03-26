@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 14/04/2025.
+//
+
+#ifndef SALAMANDER_UNIFORM_BUFFER_H
+#define SALAMANDER_UNIFORM_BUFFER_H
+
+
 #include "buffer.h"
 #include "buffer_manager.h"
 #include "vk_mem_alloc.h"
@@ -32,3 +39,6 @@ namespace Salamander::Resources::Buffers
             void unmapBuffer();
     };
 }
+
+
+#endif //SALAMANDER_UNIFORM_BUFFER_H

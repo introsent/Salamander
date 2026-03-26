@@ -1,4 +1,9 @@
-#pragma once
+//
+// Created by ivans on 13/04/2025.
+//
+
+#ifndef SALAMANDER_TEXTURE_MANAGER_H
+#define SALAMANDER_TEXTURE_MANAGER_H
 
 #include <memory>
 #include <vulkan/vulkan.h>
@@ -75,8 +80,10 @@ namespace Salamander::Resources::Textures
         VkSampler m_depthSampler = VK_NULL_HANDLE;
 
         void createCommonSamplers();
-        void destroyCommonSamplers();
 
     };
 }
+
+
+#endif //SALAMANDER_TEXTURE_MANAGER_H
 

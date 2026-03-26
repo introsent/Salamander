@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 11/04/2025.
+//
+
+#ifndef SALAMANDER_PIPELINE_H
+#define SALAMANDER_PIPELINE_H
+
+
 #include <array>
 #include <string>
 #include "context.h"
@@ -64,3 +71,6 @@ namespace Salamander::Graphics::Pipeline {
         VkPipelineLayout m_pipelineLayout;
     };
 }
+
+
+#endif //SALAMANDER_PIPELINE_H

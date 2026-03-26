@@ -1,4 +1,11 @@
-#pragma once
+//
+// Created by ivans on 20/03/2026.
+//
+
+#ifndef SALAMANDER_PASS_DEPENDENCIES_H
+#define SALAMANDER_PASS_DEPENDENCIES_H
+
+
 #include <vulkan/vulkan.h>
 #include <array>
 #include "buffers/buffer_manager.h"
@@ -24,4 +31,7 @@ namespace Salamander::Renderer::Passes {
         Resources::Textures::Texture* shadowMap{};
     };
 }
+
+
+#endif //SALAMANDER_PASS_DEPENDENCIES_H
 
