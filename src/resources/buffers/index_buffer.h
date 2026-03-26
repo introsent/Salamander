@@ -1,0 +1,31 @@
+//
+// Created by ivans on 14/04/2025.
+//
+
+#ifndef SALAMANDER_INDEX_BUFFER_H
+#define SALAMANDER_INDEX_BUFFER_H
+
+
+#include "buffer.h"
+#include "vk_mem_alloc.h"
+#include <vector>
+
+namespace Salamander::Resources::Buffers {
+    class IndexBuffer final : public Buffer {
+    public:
+        IndexBuffer() = default;
+        IndexBuffer(BufferManager * bufferManager, const CommandManager * commandManager, VmaAllocator allocator,
+        const std::vector<uint32_t> & indices);
+        ~IndexBuffer()
+        override = default;
+        IndexBuffer(IndexBuffer && other)
+        noexcept;
+        IndexBuffer & operator=(IndexBuffer && other)
+        noexcept;
+        IndexBuffer(const IndexBuffer &) = delete;
+        IndexBuffer & operator=(const IndexBuffer &) = delete;
+    };
+}
+
+
+#endif //SALAMANDER_INDEX_BUFFER_H

@@ -1,52 +1,72 @@
-#pragma once
+//
+// Created by ivans on 09/04/2025.
+//
+
+#ifndef SALAMANDER_WINDOW_H
+#define SALAMANDER_WINDOW_H
 
 #define GLFW_INCLUDE_VULKAN
 #include <functional>
+#include <utility>
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
 #include "camera/camera.h"
 
-class Camera;
+namespace Salamander::Scene {
+    class Camera;
+}
 
-class Window {
-public:
-    Window(int width, int height, const char* title);
-    ~Window() = default;
+namespace Salamander::Core {
+    class Window {
+    public:
+        Window(int width, int height, const char*title);
+        ~Window() = default;
 
-    bool shouldClose() const;
-    void pollEvents() const;
-    VkSurfaceKHR createSurface(VkInstance instance) const;
-    VkExtent2D extent() const;
-    VkExtent2D getValidExtent() const;
+        [[nodiscard]] bool shouldClose() const;
+        static void pollEvents();
+        VkSurfaceKHR createSurface(VkInstance instance) const;
+        [[nodiscard]] VkExtent2D extent() const;
+        [[nodiscard]] VkExtent2D getValidExtent() const;
 
-    void setResizeCallback(std::function<void()> callback) {
-        m_resizeCallback = callback;
-    }
+        void setResizeCallback(std::function<void()> callback)
+        {
+            m_resizeCallback = std::move(callback);
+        }
 
-    void setupInputCallbacks();
-    void setCamera(Camera* camera) {  m_camera = camera;}
-    GLFWwindow* handle() const { return m_window; }
+        void setupInputCallbacks() const;
+        void setCamera(Scene::Camera *camera)
+        {
+            m_camera = camera;
+        }
+        [[nodiscard]] GLFWwindow * handle() const
+        {
+            return m_window;
+        }
 
-private:
-    void handleResize(int width, int height);
+    private:
+        void handleResize(int width, int height);
 
-    GLFWwindow* m_window;
-    int m_width;
-    int m_height;
-    bool m_resized = false;
-    std::function<void()> m_resizeCallback;
+        GLFWwindow *m_window;
+        int m_width;
+        int m_height;
+        bool m_resized = false;
+        std::function<void()> m_resizeCallback;
 
-    Camera* m_camera = nullptr;
+        Scene::Camera *m_camera = nullptr;
 
-    // Mouse state
-    bool m_leftMousePressed = false;
-    bool m_rightMousePressed = false;
-    double m_lastX = 0.0;
-    double m_lastY = 0.0;
-    bool m_firstMouse = true;
+        // Mouse state
+        bool m_leftMousePressed = false;
+        bool m_rightMousePressed = false;
+        double m_lastX = 0.0;
+        double m_lastY = 0.0;
+        bool m_firstMouse = true;
 
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
-    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
-    void handleMouseMovement(double xpos, double ypos);
-};
+        static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
+        static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
+        void handleMouseMovement(double xpos, double ypos);
+    };
+}
+
+
+#endif //SALAMANDER_WINDOW_H

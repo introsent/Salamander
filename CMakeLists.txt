@@ -93,11 +93,11 @@ set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path 
 # Set the project source files
 set(${PROJECT_NAME}_SOURCES
     "src/main.cpp"
-    "src/includes/vma_impl.cpp"
-    "src/includes/stb_image.h"
-    "src/includes/tiny_obj_loader.h"
-    "src/includes/stb_image_write.h"
-    "src/includes/json.hpp"
+    "external/vma_impl.cpp"
+    "external/stb_image.h"
+    "external/tiny_obj_loader.h"
+    "external/stb_image_write.h"
+    "external/json.hpp"
     "src/core/window.h"
     "src/core/window.cpp" 
     "src/core/context.h" 
@@ -109,87 +109,110 @@ set(${PROJECT_NAME}_SOURCES
     "src/core/image_views.h" 
     "src/core/image_views.cpp" 
     "src/core/framebuffer_manager.h" 
-    "src/core/framebuffer_manager.cpp" 
-    "src/rendering/pipeline.h" 
-    "src/rendering/pipeline.cpp"
-        "src/core/data_structures.h"
-    "src/resources/command_manager.h" 
-    "src/resources/command_manager.cpp" 
-    "src/resources/buffer_manager.h" 
-    "src/resources/buffer_manager.cpp" 
-    "src/resources/texture_manager.h" 
-    "src/resources/texture_manager.cpp" 
-    "src/rendering/render_pass.h" 
-    "src/rendering/render_pass.cpp" 
-    "src/rendering/descriptors/descriptor_set_layout.h"
-    "src/rendering/descriptors/descriptor_set_layout.cpp"
-    "src/rendering/descriptors/descriptor_manager_base.h"
-    "src/rendering/depth_format.h" 
-    "src/rendering/depth_format.cpp" 
-    "src/resources/command_buffer.h" 
-    "src/resources/command_buffer.cpp" 
-    "src/resources/command_pool_manager.h"
-    "src/resources/command_pool_manager.cpp" 
-    "src/resources/ibuffer.h" 
-    "src/resources/buffer.h" 
-    "src/resources/vertex_buffer.h" 
-    "src/resources/vertex_buffer.cpp" 
-    "src/resources/index_buffer.h" 
-    "src/resources/index_buffer.cpp" 
-    "src/resources/uniform_buffer.h" 
-    "src/resources/uniform_buffer.cpp" 
-    "src/renderer.h" 
-    "src/renderer.cpp" 
+    "src/core/framebuffer_manager.cpp"
+
+    # graphics module (formerly rendering/)
+    "src/graphics/pipeline/pipeline.h"
+    "src/graphics/pipeline/pipeline.cpp"
+    "src/graphics/pipeline/compute_pipeline.h"
+    "src/graphics/pipeline/compute_pipeline.cpp"
+    "src/graphics/pipeline/push_constants.h"
+    "src/graphics/render_pass.h"
+    "src/graphics/render_pass.cpp"
+    "src/graphics/depth_format.h"
+    "src/graphics/depth_format.cpp"
+    "src/graphics/image_transition_manager.h"
+    "src/graphics/descriptors/descriptor_set_layout.h"
+    "src/graphics/descriptors/descriptor_set_layout.cpp"
+    "src/graphics/descriptors/descriptor_manager_base.h"
+    "src/graphics/descriptors/descriptor_set_layout_builder.h"
+    "src/graphics/descriptors/descriptor_set_layout_builder.cpp"
+    "src/graphics/descriptors/descriptor_pool_builder.h"
+    "src/graphics/descriptors/descriptor_pool_builder.cpp"
+    "src/graphics/descriptors/managers/main_descriptor_manager.h"
+    "src/graphics/descriptors/managers/main_descriptor_manager.cpp"
+    "src/graphics/descriptors/managers/imgui_descriptor_manager.h"
+    "src/graphics/descriptors/managers/imgui_descriptor_manager.cpp"
+
+    # resources module (now organized into subdirectories)
+    "src/resources/buffers/command_manager.h"
+    "src/resources/buffers/command_manager.cpp"
+    "src/resources/buffers/buffer_manager.h"
+    "src/resources/buffers/buffer_manager.cpp"
+    "src/resources/buffers/command_buffer.h"
+    "src/resources/buffers/command_buffer.cpp"
+    "src/resources/buffers/command_pool_manager.h"
+    "src/resources/buffers/command_pool_manager.cpp"
+    "src/resources/buffers/ibuffer.h"
+    "src/resources/buffers/buffer.h"
+    "src/resources/buffers/vertex_buffer.h"
+    "src/resources/buffers/vertex_buffer.cpp"
+    "src/resources/buffers/index_buffer.h"
+    "src/resources/buffers/index_buffer.cpp"
+    "src/resources/buffers/uniform_buffer.h"
+    "src/resources/buffers/uniform_buffer.cpp"
+    "src/resources/buffers/ssbo_buffer.h"
+    "src/resources/buffers/ssbo_buffer.cpp"
+    "src/resources/textures/texture_manager.h"
+    "src/resources/textures/texture_manager.cpp"
+    "src/resources/textures/texture.h"
+    "src/resources/textures/texture.cpp"
+    "src/resources/textures/image.h"
+    "src/resources/textures/image.cpp" 
+    "src/render.h"
+    "src/render.cpp"
     "src/application.h" 
-    "src/application.cpp" 
-    "src/deletion_queue.h"
+    "src/application.cpp"
+
+    # scene module (camera, components, lighting)
+    "src/scene/camera/camera.h"
+    "src/scene/camera/camera.cpp"
+    "src/scene/camera/camera_exposure.h"
+    "src/scene/components/vertex.h"
+    "src/scene/components/material.h"
+    "src/scene/components/transform.h"
+    "src/scene/lighting/lights.h"
+    "src/scene/scene_data.h"
+
+    # renderer module (passes, targets, frame management)
+    "src/renderer/frame/frame_data.h"
+    "src/renderer/frame/frame_context.h"
+    "src/renderer/frame/render_context.h"
+    "src/renderer/frame/render_context.cpp"
+    "src/renderer/passes/pass_dependencies.h"
+    "src/renderer/passes/depth_prepass.h"
+    "src/renderer/passes/depth_prepass.cpp"
+    "src/renderer/passes/gbuffer_pass.h"
+    "src/renderer/passes/gbuffer_pass.cpp"
+    "src/renderer/passes/lighting_pass.h"
+    "src/renderer/passes/lighting_pass.cpp"
+    "src/renderer/passes/tone_mapping_pass.h"
+    "src/renderer/passes/tone_mapping_pass.cpp"
+    "src/renderer/passes/shadow_pass.h"
+    "src/renderer/passes/shadow_pass.cpp"
+    "src/renderer/passes/luminance_histogram_pass.h"
+    "src/renderer/passes/luminance_histogram_pass.cpp"
+    "src/renderer/passes/luminance_average_pass.h"
+    "src/renderer/passes/luminance_average_pass.cpp"
+    "src/renderer/passes/irender_pass.h"
+    "src/renderer/targets/target/render_target.h"
+    "src/renderer/targets/main_scene_target.h"
+    "src/renderer/targets/main_scene_target.cpp"
+    "src/renderer/targets/imgui_target.h"
+    "src/renderer/targets/imgui_target.cpp"
+    "src/renderer/targets/main_scene_controller.h"
+    "src/renderer/targets/main_scene_controller.cpp"
+    "src/renderer/targets/cube_map_renderer.h"
+    "src/renderer/targets/cube_map_renderer.cpp"
+
+    # executors
     "src/executors/render_pass_executor.h"
-    "src/user/user_executors/imgui_pass_executor.cpp"
-    "src/user/user_executors/imgui_pass_executor.h"
-    "src/rendering/descriptors/descriptor_set_layout_builder.cpp"
-    "src/rendering/descriptors/descriptor_set_layout_builder.h"
-    "src/rendering/descriptors/descriptor_pool_builder.cpp"
-    "src/rendering/descriptors/descriptor_pool_builder.h"
-    "src/user/user_descriptor_managers/main_descriptor_manager.cpp"
-    "src/user/user_descriptor_managers/main_descriptor_manager.h"
-    "src/user/user_descriptor_managers/imgui_descriptor_manager.cpp"
-    "src/user/user_descriptor_managers/imgui_descriptor_manager.h"
-    "src/rendering/target/render_target.h"
-    "src/user/user_render_targets/main_scene_target.cpp"
-    "src/user/user_render_targets/main_scene_target.h"
-    "src/user/user_render_targets/imgui_target.cpp"
-    "src/user/user_render_targets/imgui_target.h"
-    "src/rendering/image_transition_manager.h"
-    "src/resources/ssbo_buffer.cpp"
-    "src/resources/ssbo_buffer.h"
-    "src/rendering/camera/camera.cpp"
-    "src/rendering/camera/camera.h"
-    "src/user/user_passes/depth_prepass.cpp"
-    "src/user/user_passes/depth_prepass.h"
-    "src/user/user_passes/gbuffer_pass.cpp"
-    "src/user/user_passes/gbuffer_pass.h"
-    "src/user/user_passes/lighting_pass.cpp"
-    "src/user/user_passes/lighting_pass.h"
-    "src/user/user_passes/tone_mapping_pass.cpp"
-    "src/user/user_passes/tone_mapping_pass.h"
-    "src/user/user_render_targets/main_scene_controller.cpp"
-    "src/user/user_render_targets/main_scene_controller.h"
-    "src/user/user_render_targets/cube_map_renderer.cpp"
-    "src/user/user_render_targets/cube_map_renderer.h"
-    "src/user/user_passes/shadow_pass.cpp"
-    "src/user/user_passes/shadow_pass.h"
-    "src/includes/tiny_gltf.h"
-        src/resources/texture.cpp
-        src/resources/texture.h
-        src/resources/image.cpp
-        src/resources/image.h
-        src/shared/shared_resources.h
-        src/user/user_passes/luminance_histogram_pass.cpp
-        src/user/user_passes/luminance_histogram_pass.h
-        src/rendering/compute_pipeline.cpp
-        src/rendering/compute_pipeline.h
-        src/user/user_passes/luminance_average_pass.cpp
-        src/user/user_passes/luminance_average_pass.h
+    "src/executors/imgui_pass_executor.h"
+    "src/executors/imgui_pass_executor.cpp"
+
+    # utilities
+    "src/deletion_queue.h"
+        src/renderer/passes/depth_prepass.cpp
 )
 
 
@@ -208,19 +231,19 @@ endif()
 
 # Add ImGui source files with proper includes and links
 add_library(ImGui STATIC
-    "src/imgui/imgui.cpp"
-    "src/imgui/imgui_draw.cpp"
-    "src/imgui/imgui_tables.cpp"
-    "src/imgui/imgui_widgets.cpp"
-    "src/imgui/imgui_demo.cpp"
-    "src/imgui/backends/imgui_impl_vulkan.cpp"
-    "src/imgui/backends/imgui_impl_glfw.cpp"
+    "external/imgui/imgui.cpp"
+    "external/imgui/imgui_draw.cpp"
+    "external/imgui/imgui_tables.cpp"
+    "external/imgui/imgui_widgets.cpp"
+    "external/imgui/imgui_demo.cpp"
+    "external/imgui/backends/imgui_impl_vulkan.cpp"
+    "external/imgui/backends/imgui_impl_glfw.cpp"
 )
 
 # ImGui include directories with GLFW and Vulkan includes
 target_include_directories(ImGui PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
     ${glfw_SOURCE_DIR}/include
     ${Vulkan_INCLUDE_DIRS}
 )
@@ -253,21 +276,23 @@ if (USE_ASSIMP)
     )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE 
+target_include_directories(${PROJECT_NAME} PRIVATE
     ${vma_SOURCE_DIR}/include
     ${STB_INCLUDE_DIR}
     ${glfw_SOURCE_DIR}/include
     ${assimp_SOURCE_DIR}/include
     ${Vulkan_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/external
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics
     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/user
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/scene
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer
     ${CMAKE_CURRENT_SOURCE_DIR}/src/executors
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/includes
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/shared
     ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
@@ -304,6 +329,13 @@ endforeach()
 
 add_custom_target(CompileShaders ALL DEPENDS ${COMPILED_SHADERS})
 add_dependencies(${PROJECT_NAME} CompileShaders)
+
+add_compile_definitions(
+        GLM_FORCE_DEPTH_ZERO_TO_ONE
+        GLM_FORCE_RADIANS
+        GLM_FORCE_ALIGNED_GENTYPES
+        GLM_ENABLE_EXPERIMENTAL
+)
 
 # Resource copying
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/textures)

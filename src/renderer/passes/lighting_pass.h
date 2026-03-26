@@ -1,0 +1,50 @@
+﻿//
+// Created by ivans on 30/05/2025.
+//
+
+#ifndef SALAMANDER_LIGHTING_PASS_H
+#define SALAMANDER_LIGHTING_PASS_H
+
+
+#include "irender_pass.h"
+#include "graphics/pipeline/pipeline.h"
+#include "graphics/descriptors/descriptor_set_layout.h"
+#include "graphics/descriptors/managers/main_descriptor_manager.h"
+#include "renderer/frame/render_context.h"
+#include "renderer/frame/frame_data.h"
+#include "resources/textures/texture.h"
+#include <memory>
+#include <array>
+
+namespace Salamander::Renderer::Passes {
+    class LightingPass final : public IRenderPass {
+    public:
+        void initialize(const Frame::RenderContext &ctx,
+                        Scene::MainSceneData &globalData,
+                        PassDependencies &dependencies) override;
+        void cleanup() override;
+        void recreateSwapChain() override;
+        void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex) override;
+
+    private:
+        void createPipeline();
+        void createAttachments();
+        void createDescriptors();
+        void updateDescriptors() const;
+
+        const Frame::RenderContext *m_ctx = nullptr;
+        Scene::MainSceneData *m_globalData = nullptr;
+        PassDependencies *m_dependencies = nullptr;
+
+        std::unique_ptr<Graphics::Pipeline::Pipeline> m_pipeline;
+        std::unique_ptr<Graphics::Descriptors::DescriptorSetLayout> m_descriptorLayout;
+        std::unique_ptr<Graphics::Descriptors::MainDescriptorManager> m_descriptorManager;
+
+        std::array<Resources::Textures::Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_hdrTextures{};
+
+        static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
+    };
+}
+
+
+#endif //SALAMANDER_LIGHTING_PASS_H
