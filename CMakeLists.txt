@@ -214,6 +214,7 @@ set(${PROJECT_NAME}_SOURCES
     "src/deletion_queue.h"
         src/renderer/passes/depth_prepass.cpp
         src/renderer/render_graph/resource_description_types.h
+        src/renderer/render_graph/render_resource_handles.h
 )
 
 
