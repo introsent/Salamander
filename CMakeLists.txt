@@ -213,6 +213,7 @@ set(${PROJECT_NAME}_SOURCES
     # utilities
     "src/deletion_queue.h"
         src/renderer/passes/depth_prepass.cpp
+        src/renderer/render_graph/resource_description_types.h
 )
 
 
