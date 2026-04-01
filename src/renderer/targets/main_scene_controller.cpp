@@ -22,6 +22,8 @@ namespace Salamander::Renderer::Targets {
         loadModel(MODEL_PATH);
         createBuffers();
 
+        testRenderGraph();
+
         // Initialize directional light
         m_globalData.directionalLight.directionalLightDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
         m_globalData.directionalLight.directionalLightColor = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -357,6 +359,91 @@ namespace Salamander::Renderer::Targets {
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             m_directionalLightBuffer[i].update(m_globalData.directionalLight);
         }
+    }
+
+    void MainSceneController::testRenderGraph() {
+#ifndef NDEBUG
+        RenderGraph::ImageAttachmentDescription depthDesc{
+            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
+            .width = 1.0f,
+            .height = 1.0f,
+            .format = VK_FORMAT_D32_SFLOAT,
+            .samples = 1,
+            .levels = 1,
+            .layers = 1,
+            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
+        };
+
+        RenderGraph::ImageAttachmentDescription albedoDesc{
+            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
+            .width = 1.0f,
+            .height = 1.0f,
+            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .samples = 1,
+            .levels = 1,
+            .layers = 1,
+            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
+        };
+
+        RenderGraph::ImageAttachmentDescription normalDesc{
+            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
+            .width = 1.0f,
+            .height = 1.0f,
+            .format = VK_FORMAT_A2B10G10R10_UNORM_PACK32, // same as your gbuffer pass
+            .samples = 1,
+            .levels = 1,
+            .layers = 1,
+            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
+        };
+
+        RenderGraph::ImageAttachmentDescription hdrDesc{
+            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
+            .width = 1.0f,
+            .height = 1.0f,
+            .format = VK_FORMAT_B10G11R11_UFLOAT_PACK32, // same as your emissive/hdr output
+            .samples = 1,
+            .levels = 1,
+            .layers = 1,
+            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
+        };
+
+        RenderGraph::BufferAttachmentDescription bufDesc{
+            .size = sizeof(Scene::PointLightData), // matches your existing light buffer
+            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .lifetimeInfo = RenderGraph::LifetimeInfo::Persistent // light data survives across frames
+        };
+
+        // resources
+        auto depth = m_renderGraph.addTexture("depth", depthDesc);
+        auto albedo = m_renderGraph.addTexture("gbuffer_albedo", albedoDesc);
+        auto normal = m_renderGraph.addTexture("gbuffer_normal", normalDesc);
+        auto hdr = m_renderGraph.addTexture("hdr", hdrDesc);
+        auto lights = m_renderGraph.addBuffer("light_buffer", bufDesc);
+
+        // passes
+        auto depthPrepass = m_renderGraph.addPass("depth_prepass", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        depthPrepass.add("depth", RenderGraph::ResourceAccess::DepthAttachmentWrite);
+
+        auto gbuffer = m_renderGraph.addPass("gbuffer", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        gbuffer.add("depth", RenderGraph::ResourceAccess::DepthAttachmentWrite);
+        gbuffer.add("gbuffer_albedo", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+        gbuffer.add("gbuffer_normal", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+
+        auto lighting = m_renderGraph.addPass("lighting", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        lighting.add("gbuffer_albedo", RenderGraph::ResourceAccess::TextureSampled);
+        lighting.add("gbuffer_normal", RenderGraph::ResourceAccess::TextureSampled);
+        lighting.add("light_buffer", RenderGraph::ResourceAccess::StorageRead);
+        lighting.add("hdr", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+
+        // verify counts
+        assert(m_renderGraph.resourceCount() == 5);
+        assert(m_renderGraph.passCount() == 3);
+
+        // verify pass references
+        assert(m_renderGraph.getPass(0).resourceReferences.size() == 1);
+        assert(m_renderGraph.getPass(1).resourceReferences.size() == 3);
+        assert(m_renderGraph.getPass(2).resourceReferences.size() == 4);
+#endif
     }
 
     void MainSceneController::createBuffers() {

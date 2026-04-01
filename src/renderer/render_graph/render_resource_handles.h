@@ -8,10 +8,12 @@
 namespace Salamander::Renderer::RenderGraph {
     // indices to graph resource table
     struct RenderTextureHandle {
-        int index;
+        uint32_t index = UINT32_MAX;
+        [[nodiscard]] bool isValid() const { return index != UINT32_MAX; }
     };
     struct RenderBufferHandle {
-        int index;
+        uint32_t index = UINT32_MAX;
+        [[nodiscard]] bool isValid() const { return index != UINT32_MAX; }
     };
 }
 #endif //SALAMANDER_RENDER_RESOURCE_HANDLES_H

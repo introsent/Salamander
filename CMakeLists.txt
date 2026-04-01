@@ -215,6 +215,13 @@ set(${PROJECT_NAME}_SOURCES
         src/renderer/passes/depth_prepass.cpp
         src/renderer/render_graph/resource_description_types.h
         src/renderer/render_graph/render_resource_handles.h
+        src/renderer/render_graph/graph.cpp
+        src/renderer/render_graph/graph.h
+        src/renderer/render_graph/resource_access.h
+        src/renderer/render_graph/pass_builder.cpp
+        src/renderer/render_graph/pass_builder.h
+        src/renderer/render_graph/internal/pass_node.h
+        src/renderer/render_graph/internal/resource_nodes.h
 )
 
 

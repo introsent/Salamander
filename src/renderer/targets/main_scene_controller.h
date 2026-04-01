@@ -18,11 +18,12 @@
 #include "renderer/passes/depth_prepass.h"
 #include "resources/buffers/uniform_buffer.h"
 #include "renderer/frame/render_context.h"
+#include "render_graph/graph.h"
 
 namespace Salamander::Renderer::Targets {
     class MainSceneController {
     public:
-        MainSceneController(Passes::PassDependencies& dependencies);
+        explicit MainSceneController(Passes::PassDependencies& dependencies);
 
         void initialize(const Frame::RenderContext &ctx);
         void cleanup();
@@ -38,6 +39,10 @@ namespace Salamander::Renderer::Targets {
         void setPointLightEnabled(bool enabled);
 
         void updateDirectionalLightMatrices();
+
+        void testRenderGraph();
+
+        RenderGraph::Graph m_renderGraph = {};
 
         // Passes
         Passes::DepthPrepass m_depthPrepass;
