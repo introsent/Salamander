@@ -26,9 +26,9 @@ namespace Salamander::Renderer::Passes {
     void LuminanceAveragePass::recreateSwapChain() {}
 
     void LuminanceAveragePass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t /*imageIndex*/) {
-        m_averageLuminanceTextures[frameIndex]->getImage()->transitionLayoutEx(
+        m_dependencies->averageLuminanceTextures[frameIndex]->getImage()->transitionLayoutEx(
             cmd,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+             m_dependencies->averageLuminanceTextures[frameIndex]->getImage()->currentLayout(), VK_IMAGE_LAYOUT_GENERAL,
             VK_PIPELINE_STAGE_2_NONE, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             VK_ACCESS_2_NONE, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT
         );
@@ -73,7 +73,7 @@ namespace Salamander::Renderer::Passes {
             .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
             .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
             .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .image = m_averageLuminanceTextures[frameIndex]->getImage()->handle(),
+            .image =m_dependencies->averageLuminanceTextures[frameIndex]->getImage()->handle(),
             .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
         };
         const VkDependencyInfo depInfo2{
@@ -86,14 +86,15 @@ namespace Salamander::Renderer::Passes {
 
     void LuminanceAveragePass::createAttachments() {
         auto &tm = m_ctx->textureManager();
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            m_averageLuminanceTextures[i] = &tm.createTexture(
+
+            m_sharedLuminanceTexture = &tm.createTexture(
                 1, 1, VK_FORMAT_R32_SFLOAT,
-                VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 VMA_MEMORY_USAGE_GPU_ONLY, VK_IMAGE_ASPECT_COLOR_BIT,
-                false, true, "AverageLuminance_" + std::to_string(i)
+                false, true, "AverageLuminance"
             );
-            m_dependencies->averageLuminanceTextures[i] = m_averageLuminanceTextures[i];
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+            m_dependencies->averageLuminanceTextures[i] = m_sharedLuminanceTexture;
         }
     }
 
@@ -119,17 +120,27 @@ namespace Salamander::Renderer::Passes {
                 .offset = 0,
                 .range = Frame::HISTOGRAM_BINS * sizeof(uint32_t)
             };
-            VkDescriptorImageInfo luminanceInfo{
+            VkDescriptorImageInfo luminanceInfo {
                 .sampler = VK_NULL_HANDLE,
-                .imageView = m_averageLuminanceTextures[i]->getDescriptorInfo().imageView,
+                .imageView =m_dependencies->averageLuminanceTextures[i]->getDescriptorInfo().imageView,
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL
             };
 
-            UpdateInfo histogram{}; histogram.binding = 0; histogram.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            histogram.bufferInfo = &histogramInfo; histogram.descriptorCount = 1; histogram.isImage = false;
+            UpdateInfo histogram {
+                .binding = 0,
+                .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .bufferInfo = &histogramInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            };
 
-            UpdateInfo luminance{}; luminance.binding = 1; luminance.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            luminance.imageInfo = &luminanceInfo; luminance.descriptorCount = 1; luminance.isImage = true;
+            UpdateInfo luminance{
+                .binding = 1,
+                .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                .imageInfo = &luminanceInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            };
 
             m_descriptorManager->updateDescriptorSet(i, {histogram, luminance});
         }

@@ -47,7 +47,7 @@ namespace Salamander::Renderer::Passes {
         std::unique_ptr<Graphics::Descriptors::DescriptorSetLayout> m_descriptorLayout;
         std::unique_ptr<Graphics::Descriptors::MainDescriptorManager> m_descriptorManager;
 
-        std::array<Resources::Textures::Texture*, Frame::MAX_FRAMES_IN_FLIGHT> m_averageLuminanceTextures{};
+        Resources::Textures::Texture* m_sharedLuminanceTexture{};
 
         static constexpr int MAX_FRAMES_IN_FLIGHT = Frame::MAX_FRAMES_IN_FLIGHT;
     };

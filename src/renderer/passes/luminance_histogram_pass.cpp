@@ -41,11 +41,21 @@ namespace Salamander::Renderer::Passes {
                 .range = Frame::HISTOGRAM_BINS * sizeof(uint32_t)
             };
 
-            UpdateInfo hdr{}; hdr.binding = 0; hdr.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            hdr.imageInfo = &hdrInfo; hdr.descriptorCount = 1; hdr.isImage = true;
+            UpdateInfo hdr{
+                .binding = 0,
+                .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                .imageInfo = &hdrInfo,
+                .descriptorCount = 1,
+                .isImage = true
+            };
 
-            UpdateInfo histogram{}; histogram.binding = 1; histogram.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            histogram.bufferInfo = &histogramInfo; histogram.descriptorCount = 1; histogram.isImage = false;
+            UpdateInfo histogram{
+                .binding = 1,
+                .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .bufferInfo = &histogramInfo,
+                .descriptorCount = 1,
+                .isImage = false
+            };
 
             m_descriptorManager->updateDescriptorSet(i, {hdr, histogram});
         }
@@ -136,4 +146,4 @@ namespace Salamander::Renderer::Passes {
             &m_ctx->context(), m_descriptorLayout->handle(), config, pushConstantRange
         );
     }
-}
+};
