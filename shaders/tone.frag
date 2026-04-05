@@ -47,17 +47,6 @@ void main() {
 
     // compute exposure
     float exposure;
-    //if (camExp.ev100Override >= 0.0) {
-    //    // manual override
-    //    exposure = ev100ToExposure(camExp.ev100Override);
-    //} else if (camExp.aperture > 0.0) {
-    //    // manual camera settings
-    //    exposure = computeManualExposure(camExp.aperture, camExp.shutterSpeed, camExp.ISO);
-    //} else {
-    //    // automatic exposure from average luminance
-    //    float ev100 = luminanceToEV100(avgLum);
-    //    exposure = ev100ToExposure(ev100);
-    //}
     float ev100 = luminanceToEV100(avgLum);
     exposure = ev100ToExposure(ev100);
 
