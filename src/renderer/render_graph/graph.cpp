@@ -4,6 +4,8 @@
 
 #include "graph.h"
 
+#include <iostream>
+
 namespace Salamander::Renderer::RenderGraph {
     Graph::Graph() {
         m_passes.reserve(16); // prevent reallocation
@@ -26,14 +28,16 @@ namespace Salamander::Renderer::RenderGraph {
 
         const auto index = static_cast<uint32_t>(m_resources.size());
         m_resources.emplace_back(Internal::ImageResourceNode{
-            .name = name,
-            .description = description,
-            .usageFlags = 0,
-            .currentLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .writtenByPasses = {},
-            .readByPasses = {},
-            .physicalIndex = UINT32_MAX,
-            .version = 0
+            {
+                name,
+                {},
+                {},
+                UINT32_MAX,
+                0
+            },
+            description,
+            0,
+            VK_IMAGE_LAYOUT_UNDEFINED,
         });
         m_resourceIndex[name] = index;
 
@@ -46,17 +50,44 @@ namespace Salamander::Renderer::RenderGraph {
 
         const auto index = static_cast<uint32_t>(m_resources.size());
         m_resources.emplace_back(Internal::BufferResourceNode{
-            .name = name,
-            .description = description,
-            .usageFlags = 0,
-            .writtenByPasses = {},
-            .readByPasses = {},
-            .physicalIndex = UINT32_MAX,
-            .version = 0
+            {
+                name,
+                {},
+                {},
+                UINT32_MAX,
+                0
+            },
+            description,
+            0,
         });
         m_resourceIndex[name] = index;
 
         return RenderBufferHandle{ index };
     }
-}
+
+    void Graph::buildEdges() {
+        for (const auto &pass : m_passes) {
+            for (const auto& [resourceIndex, access] : pass.resourceReferences) {
+                std::visit([&](auto& resource){
+                    if (isWrite(access)) {
+                        resource.writtenByPasses.push_back(m_passIndex[pass.name]);
+                    }
+                    else {
+                        resource.readByPasses.push_back(m_passIndex[pass.name]);
+                    }
+                }, m_resources[resourceIndex]);
+            }
+        }
+    }
+
+    bool Graph::isWrite(const ResourceAccess access) {
+        if (access == ResourceAccess::ColorAttachmentWrite ||
+            access == ResourceAccess::DepthAttachmentWrite ||
+            access == ResourceAccess::StorageWrite ||
+            access == ResourceAccess::TransferDst) {
+            return true;
+        }
+        return false;
+    }
+};
 

@@ -26,7 +26,11 @@ namespace Salamander::Renderer::RenderGraph {
         RenderTextureHandle addTexture(const std::string& name, const ImageAttachmentDescription& description);
         RenderBufferHandle addBuffer(const std::string& name, const BufferAttachmentDescription& description);
 
+        void buildEdges();
+
     private:
+        static bool isWrite(ResourceAccess access);
+
         std::vector<Internal::PassNode> m_passes;
         std::unordered_map<std::string, uint32_t> m_passIndex;
 

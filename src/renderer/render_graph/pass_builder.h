@@ -12,7 +12,7 @@
 #include "internal/resource_nodes.h"
 
 namespace Salamander::Renderer::RenderGraph {
-    // Used as a setup to let declare what pass does
+    // used as a setup to let declare what pass does
     class PassBuilder {
     public:
         explicit PassBuilder(Internal::PassNode& node,

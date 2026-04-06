@@ -435,6 +435,9 @@ namespace Salamander::Renderer::Targets {
         lighting.add("light_buffer", RenderGraph::ResourceAccess::StorageRead);
         lighting.add("hdr", RenderGraph::ResourceAccess::ColorAttachmentWrite);
 
+
+        m_renderGraph.buildEdges();
+
         // verify counts
         assert(m_renderGraph.resourceCount() == 5);
         assert(m_renderGraph.passCount() == 3);
