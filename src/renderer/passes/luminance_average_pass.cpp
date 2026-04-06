@@ -125,7 +125,6 @@ namespace Salamander::Renderer::Passes {
                 .imageView =m_dependencies->averageLuminanceTextures[i]->getDescriptorInfo().imageView,
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL
             };
-
             UpdateInfo histogram {
                 .binding = 0,
                 .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -150,7 +149,7 @@ namespace Salamander::Renderer::Passes {
         Graphics::Pipeline::ComputePipelineConfig config;
         config.computeShaderPath = std::string(BUILD_RESOURCE_DIR) + "/shaders/luminance_average_comp.spv";
 
-        const VkPushConstantRange pushConstantRange{
+        constexpr VkPushConstantRange pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
             .offset = 0,
             .size = sizeof(LuminanceAveragePushConstants)

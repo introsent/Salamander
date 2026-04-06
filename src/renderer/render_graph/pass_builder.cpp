@@ -19,5 +19,10 @@ namespace Salamander::Renderer::RenderGraph {
         const uint32_t index = m_resourceIndex.at(name);
         m_node.resourceReferences.push_back({ index, access });
     }
+
+    void PassBuilder::addExecuteCallback(const std::function<void(VkCommandBuffer)> &callback) const {
+        m_node.executeCallback = callback;
+
+    }
 }
 

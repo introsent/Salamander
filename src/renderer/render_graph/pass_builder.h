@@ -19,6 +19,7 @@ namespace Salamander::Renderer::RenderGraph {
                             std::vector<Internal::ResourceNode>& resources,
                             std::unordered_map<std::string, uint32_t>& resourceIndex);
         void add(const std::string& name, ResourceAccess access) const;
+        void addExecuteCallback(const std::function<void(VkCommandBuffer)>& callback) const;
 
     private:
         // builder holds a reference to pass node and resource nodes of the graph

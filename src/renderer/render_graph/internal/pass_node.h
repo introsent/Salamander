@@ -20,7 +20,7 @@ namespace Salamander::Renderer::RenderGraph::Internal {
         std::string name{};
         VkPipelineStageFlagBits stageFlags{};
         std::vector<ResourceReference> resourceReferences{};
-        std::function<void()> executeCallback{};
+        std::function<void(VkCommandBuffer)> executeCallback{};
         bool culled = false;
     };
 }
