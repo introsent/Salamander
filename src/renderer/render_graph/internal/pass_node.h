@@ -21,7 +21,7 @@ namespace Salamander::Renderer::RenderGraph::Internal {
         VkPipelineStageFlagBits stageFlags{};
         std::vector<ResourceReference> resourceReferences{};
         std::function<void(VkCommandBuffer)> executeCallback{};
-        bool culled = false;
+        bool culled = true;
     };
 }
 

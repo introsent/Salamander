@@ -425,7 +425,7 @@ namespace Salamander::Renderer::Targets {
         depthPrepass.add("depth", RenderGraph::ResourceAccess::DepthAttachmentWrite);
 
         auto gbuffer = m_renderGraph.addPass("gbuffer", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
-        gbuffer.add("depth", RenderGraph::ResourceAccess::DepthAttachmentWrite);
+        gbuffer.add("depth", RenderGraph::ResourceAccess::AttachmentInput);
         gbuffer.add("gbuffer_albedo", RenderGraph::ResourceAccess::ColorAttachmentWrite);
         gbuffer.add("gbuffer_normal", RenderGraph::ResourceAccess::ColorAttachmentWrite);
 
@@ -437,7 +437,8 @@ namespace Salamander::Renderer::Targets {
 
 
         m_renderGraph.buildEdges();
-
+        m_renderGraph.setOutput("hdr");
+        m_renderGraph.cullDeadPasses();
         // verify counts
         assert(m_renderGraph.resourceCount() == 5);
         assert(m_renderGraph.passCount() == 3);

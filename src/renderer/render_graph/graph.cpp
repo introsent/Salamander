@@ -80,6 +80,29 @@ namespace Salamander::Renderer::RenderGraph {
         }
     }
 
+    void Graph::cullDeadPasses() {
+        int defaultNonCulledPassIndex = -1;
+        std::visit([&](auto& resource) {
+            if (resource.writtenByPasses.size() > 1) {
+                std::cerr << "GRAPH ERROR: Multiple passes are writing to the set Output" << std::endl;
+            }
+            defaultNonCulledPassIndex = resource.writtenByPasses[0];
+        }, m_resources[m_resourceIndex.at(m_output)]);
+
+        if (defaultNonCulledPassIndex == -1) {
+            std::cerr << "GRAPH ERROR: Output is not used by any pass" << std::endl;
+        }
+        m_passes[defaultNonCulledPassIndex].culled = false;
+
+        traversePass(defaultNonCulledPassIndex);
+
+        // every pass by default is set to culled=true
+    }
+
+    void Graph::setOutput(const std::string &name) {
+        m_output = name;
+    }
+
     bool Graph::isWrite(const ResourceAccess access) {
         if (access == ResourceAccess::ColorAttachmentWrite ||
             access == ResourceAccess::DepthAttachmentWrite ||
@@ -88,6 +111,23 @@ namespace Salamander::Renderer::RenderGraph {
             return true;
         }
         return false;
+    }
+
+    void Graph::traversePass(int passIndex) {
+        for (const auto& [resourceIndex, access] : m_passes[passIndex].resourceReferences) {
+            if (isWrite(access)) {
+                continue;
+            }
+            std::visit([&](auto& resource) {
+                if (resource.writtenByPasses.empty()) {
+                    return;
+                }
+                for (const int writtenByPassInx : resource.writtenByPasses) {
+                    m_passes[writtenByPassInx].culled = false;
+                    traversePass(writtenByPassInx);
+                }
+            }, m_resources[resourceIndex]);
+        }
     }
 };
 
