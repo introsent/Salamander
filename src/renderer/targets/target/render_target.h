@@ -18,10 +18,9 @@ namespace Salamander::Renderer::Targets {
         virtual ~RenderTarget() = default;
 
         virtual void initialize(const Frame::RenderContext &ctx) = 0;
-        virtual void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) = 0;
+        virtual void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex, uint32_t frameIndex) = 0;
         virtual void recreateSwapChain() = 0;
         virtual void cleanup() = 0;
-        virtual void updateUniformBuffers() const = 0;
 
     protected:
         const Frame::RenderContext *m_ctx = nullptr;

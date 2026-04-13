@@ -75,7 +75,7 @@ namespace Salamander::Renderer::Targets {
         m_toneMappingPass.recreateSwapChain();
     }
 
-    void MainSceneController::render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) {
+    void MainSceneController::render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex, uint32_t frameIndex) {
         // Light toggle (L key)
         static bool wasPressed = false;
         if (glfwGetKey(m_ctx->window().handle(), GLFW_KEY_L) == GLFW_PRESS) {
@@ -89,11 +89,7 @@ namespace Salamander::Renderer::Targets {
         }
 
         m_globalData.deltaTime = deltaTime;
-        updateUniformBuffers();
-
-        // Determine current frame index from the frames vector
-        // (assumes caller passes the correct imageIndex matching current frame)
-        const uint32_t frameIndex = imageIndex % MAX_FRAMES_IN_FLIGHT;
+        updateUniformBuffers(frameIndex);
 
         Graphics::ImageTransitionManager::transitionColorAttachment(
             cmd,
@@ -117,7 +113,7 @@ namespace Salamander::Renderer::Targets {
         );
     }
 
-    void MainSceneController::updateUniformBuffers() const {
+    void MainSceneController::updateUniformBuffers(uint32_t frameIndex) const {
         Scene::UniformBufferObject ubo{};
         ubo.model = glm::mat4(1.0f);
         ubo.view = m_ctx->camera().GetViewMatrix();
@@ -127,9 +123,7 @@ namespace Salamander::Renderer::Targets {
         );
         ubo.cameraPosition = m_ctx->camera().Position;
 
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            m_uniformBuffers[i].update(ubo);
-        }
+        m_uniformBuffers[frameIndex].update(ubo);
     }
 
     void MainSceneController::loadModel(const std::string &path) {

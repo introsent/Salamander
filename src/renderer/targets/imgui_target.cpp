@@ -13,16 +13,15 @@ namespace Salamander::Renderer::Targets {
         createRenderingResources();
     }
 
-    void ImGuiTarget::render(float /*deltaTime*/, VkCommandBuffer cmd, uint32_t imageIndex) {
-        m_currentFrame = imageIndex % Frame::MAX_FRAMES_IN_FLIGHT;
+    void ImGuiTarget::render(float /*deltaTime*/, VkCommandBuffer cmd, uint32_t imageIndex, uint32_t frameIndex) {
         m_executor->begin(cmd, imageIndex);
         m_executor->execute(cmd);
         m_executor->end(cmd);
     }
 
     void ImGuiTarget::recreateSwapChain() {
-        auto &frames = m_ctx->frames();
-        std::array<VkImageView, Frame::MAX_FRAMES_IN_FLIGHT> depthViews;
+        const auto &frames = m_ctx->frames();
+        std::array<VkImageView, Frame::MAX_FRAMES_IN_FLIGHT> depthViews{};
         for (size_t i = 0; i < Frame::MAX_FRAMES_IN_FLIGHT; ++i)
             depthViews[i] = frames[i].depthTexture->getDescriptorInfo().imageView;
 
@@ -78,9 +77,9 @@ namespace Salamander::Renderer::Targets {
 
         ImGui_ImplGlfw_InitForVulkan(m_ctx->window().handle(), true);
 
-        const auto    &ctx      = m_ctx->context();
-        const auto    &sc       = m_ctx->swapChain();
-        const uint32_t imgCount = static_cast<uint32_t>(sc.images().size());
+        const auto &ctx = m_ctx->context();
+        const auto &sc = m_ctx->swapChain();
+        const auto imgCount = static_cast<uint32_t>(sc.images().size());
 
         ImGui_ImplVulkan_InitInfo init_info{};
         init_info.Instance        = ctx.instance();
