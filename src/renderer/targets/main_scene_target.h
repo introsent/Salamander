@@ -14,10 +14,9 @@ namespace Salamander::Renderer::Targets {
     public:
         explicit MainSceneTarget(Passes::PassDependencies& dependencies);
         void initialize(const Frame::RenderContext &ctx) override;
-        void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex) override;
+        void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex, uint32_t frameIndex) override;
         void recreateSwapChain() override;
         void cleanup() override;
-        void updateUniformBuffers() const override;
 
     private:
         MainSceneController m_controller;

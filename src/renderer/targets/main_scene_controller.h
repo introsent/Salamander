@@ -28,8 +28,8 @@ namespace Salamander::Renderer::Targets {
         void initialize(const Frame::RenderContext &ctx);
         void cleanup();
         void recreateSwapChain();
-        void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex);
-        void updateUniformBuffers() const;
+        void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex, uint32_t frameIndex);
+        void updateUniformBuffers(uint32_t frameIndex) const;
 
     private:
         void loadModel(const std::string &path);
