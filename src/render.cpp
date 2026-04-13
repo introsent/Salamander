@@ -144,16 +144,12 @@ namespace Salamander {
             return;
         }
 
-        for (auto &target: m_renderTargets) {
-            target->updateUniformBuffers();
-        }
-
         // reset and record command buffer
         currentFrame.commandBuffer->reset();
         currentFrame.commandBuffer->begin();
 
         for (auto &target: m_renderTargets) {
-            target->render(deltaTime, currentFrame.commandBuffer->handle(), imageIndex);
+            target->render(deltaTime, currentFrame.commandBuffer->handle(), imageIndex, m_currentFrame);
         }
 
         currentFrame.commandBuffer->end();
