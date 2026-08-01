@@ -29,7 +29,13 @@ namespace Salamander::Renderer::RenderGraph {
         void buildEdges();
         void cullDeadPasses();
 
+        void configureExecutionSequence(); // returns pass indices in the correct order
+
+        [[nodiscard]] const std::vector<int>& getExecutionOrder() const { return m_orderedPassIndices;}
         void setOutput(const std::string& name);
+
+        // logging
+        void logExecutionOrder() const;
 
     private:
         static bool isWrite(ResourceAccess access);
@@ -40,6 +46,7 @@ namespace Salamander::Renderer::RenderGraph {
 
         std::vector<Internal::PassNode> m_passes;
         std::unordered_map<std::string, uint32_t> m_passIndex;
+        std::vector<int> m_orderedPassIndices;
 
         std::vector<Internal::ResourceNode> m_resources;
         std::unordered_map<std::string, uint32_t> m_resourceIndex;

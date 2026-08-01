@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include "helpers.h"
+
 namespace Salamander::Renderer::RenderGraph {
     Graph::Graph() {
         m_passes.reserve(16); // prevent reallocation
@@ -86,7 +88,9 @@ namespace Salamander::Renderer::RenderGraph {
             if (resource.writtenByPasses.size() > 1) {
                 std::cerr << "GRAPH ERROR: Multiple passes are writing to the set Output" << std::endl;
             }
-            defaultNonCulledPassIndex = resource.writtenByPasses[0];
+            if (!resource.writtenByPasses.empty()) {
+                defaultNonCulledPassIndex = resource.writtenByPasses[0];
+            }
         }, m_resources[m_resourceIndex.at(m_output)]);
 
         if (defaultNonCulledPassIndex == -1) {
@@ -99,8 +103,50 @@ namespace Salamander::Renderer::RenderGraph {
         // every pass by default is set to culled=true
     }
 
+    void Graph::configureExecutionSequence() {
+        const int amountOfPasses = static_cast<int>(m_passes.size());
+        std::vector<std::vector<uint32_t>> orderedPassForKhan(amountOfPasses);
+
+        // Setup orderedPassForKhan
+        for (const auto &pass : m_passes) {
+            for (const auto& [resourceIndex, access] : pass.resourceReferences) {
+                std::visit([&](auto& resource) {
+                    if (isWrite(access)) {
+                        if (resource.writtenByPasses.size() > 1) {
+                            std::cerr << "[Render Graph]: Multiple passes are writing to the " << resource.name << std::endl;
+                        }
+                        if (const int writtenByPassIndex = resource.writtenByPasses[0];
+                            m_passes[writtenByPassIndex].culled == false)
+                        {
+                            std::vector<uint32_t> readByPasses = resource.readByPasses;
+                            std::erase_if(readByPasses,
+                                [this](const uint32_t readByPassIndex)
+                                {
+                                    return m_passes[readByPassIndex].culled;
+                                });
+                            orderedPassForKhan[writtenByPassIndex].insert(
+                                orderedPassForKhan[writtenByPassIndex].end(),
+                                readByPasses.begin(), readByPasses.end());
+                        }
+                    }
+                }, m_resources[resourceIndex]);
+            }
+        }
+
+        m_orderedPassIndices = Helpers::topologicalSort( orderedPassForKhan, amountOfPasses);
+        std::erase_if(m_orderedPassIndices, [this](int index) { return m_passes[index].culled; });
+    }
+
     void Graph::setOutput(const std::string &name) {
         m_output = name;
+    }
+
+    void Graph::logExecutionOrder() const {
+        std::cout << "[Render Graph] Execution order: ";
+        for (const int passIndex : m_orderedPassIndices) {
+            std::cout << m_passes[passIndex].name << "(" << passIndex << ") ";
+        }
+        std::cout << std::endl;
     }
 
     bool Graph::isWrite(const ResourceAccess access) {
@@ -123,6 +169,9 @@ namespace Salamander::Renderer::RenderGraph {
                     return;
                 }
                 for (const int writtenByPassInx : resource.writtenByPasses) {
+                    if (!m_passes[writtenByPassInx].culled) {
+                        continue; // already visited
+                    }
                     m_passes[writtenByPassInx].culled = false;
                     traversePass(writtenByPassInx);
                 }

@@ -222,6 +222,8 @@ set(${PROJECT_NAME}_SOURCES
         src/renderer/render_graph/pass_builder.h
         src/renderer/render_graph/internal/pass_node.h
         src/renderer/render_graph/internal/resource_nodes.h
+        src/helpers.cpp
+        src/helpers.h
 )
 
 
