@@ -7,6 +7,8 @@
 #include <functional>
 #include <string>
 #include <vulkan/vulkan.h>
+
+#include "barrier_descriptor.h"
 #include "render_graph/resource_access.h"
 
 namespace Salamander::Renderer::RenderGraph::Internal {
@@ -14,15 +16,19 @@ namespace Salamander::Renderer::RenderGraph::Internal {
     struct ResourceReference {
         uint32_t resourceIndex;
         ResourceAccess access;
+        VkPipelineStageFlags2 stageHint = 0;
     };
 
     struct PassNode {
         std::string name{};
-        VkPipelineStageFlagBits stageFlags{};
+        VkPipelineStageFlags2 stageFlags{};
         std::vector<ResourceReference> resourceReferences{};
-        std::function<void(VkCommandBuffer)> executeCallback{};
+        std::function<void(VkCommandBuffer, uint32_t /*frameIndex*/, uint32_t /*imageIndex*/)> executeCallback{};
+        std::vector<BarrierDescriptor> barriers{}; // barriers to be executed
         bool culled = true;
     };
+
+
 }
 
 

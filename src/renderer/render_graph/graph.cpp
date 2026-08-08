@@ -31,15 +31,15 @@ namespace Salamander::Renderer::RenderGraph {
         const auto index = static_cast<uint32_t>(m_resources.size());
         m_resources.emplace_back(Internal::ImageResourceNode{
             {
-                name,
-                {},
-                {},
-                UINT32_MAX,
-                0
+                .name = name,
+                .writtenByPasses = {},
+                .readByPasses = {},
+                .physicalIndex = UINT32_MAX,
+                .version = 0
             },
             description,
             0,
-            VK_IMAGE_LAYOUT_UNDEFINED,
+            // currentAccess / currentStage / currentLayout use their defaults
         });
         m_resourceIndex[name] = index;
 
@@ -53,14 +53,14 @@ namespace Salamander::Renderer::RenderGraph {
         const auto index = static_cast<uint32_t>(m_resources.size());
         m_resources.emplace_back(Internal::BufferResourceNode{
             {
-                name,
-                {},
-                {},
-                UINT32_MAX,
-                0
+                .name = name,
+                .writtenByPasses = {},
+                .readByPasses = {},
+                .physicalIndex = UINT32_MAX,
+                .version = 0
             },
             description,
-            0,
+            0
         });
         m_resourceIndex[name] = index;
 
@@ -69,7 +69,7 @@ namespace Salamander::Renderer::RenderGraph {
 
     void Graph::buildEdges() {
         for (const auto &pass : m_passes) {
-            for (const auto& [resourceIndex, access] : pass.resourceReferences) {
+            for (const auto& [resourceIndex, access, stage] : pass.resourceReferences) {
                 std::visit([&](auto& resource){
                     if (isWrite(access)) {
                         resource.writtenByPasses.push_back(m_passIndex[pass.name]);
@@ -107,9 +107,9 @@ namespace Salamander::Renderer::RenderGraph {
         const int amountOfPasses = static_cast<int>(m_passes.size());
         std::vector<std::vector<uint32_t>> orderedPassForKhan(amountOfPasses);
 
-        // Setup orderedPassForKhan
+        // setup orderedPassForKhan
         for (const auto &pass : m_passes) {
-            for (const auto& [resourceIndex, access] : pass.resourceReferences) {
+            for (const auto& [resourceIndex, access, stage] : pass.resourceReferences) {
                 std::visit([&](auto& resource) {
                     if (isWrite(access)) {
                         if (resource.writtenByPasses.size() > 1) {
@@ -137,6 +137,44 @@ namespace Salamander::Renderer::RenderGraph {
         std::erase_if(m_orderedPassIndices, [this](int index) { return m_passes[index].culled; });
     }
 
+    void Graph::computeBarriers() {
+        for (const int passIndex : m_orderedPassIndices) {
+            for (const auto& [resourceIndex, access, stage] : m_passes[passIndex].resourceReferences) {
+                Internal::BarrierDescriptor barrier{};
+                barrier.resourceIndex = resourceIndex;
+
+                barrier.dst = getResourceState(access);
+                if (barrier.dst.stage == VK_PIPELINE_STAGE_2_NONE) {
+                    if (stage != VK_PIPELINE_STAGE_2_NONE) {
+                        barrier.dst.stage = stage;
+                    } else {
+                        std::cerr << "[Graph] " << m_passes[passIndex].name
+                                  << ": ResourceAccess requires an explicit stage." << std::endl;
+                        assert(false);
+                        continue; // skip this reference rather than aborting the whole compile
+                    }
+                }
+
+                std::visit([&]<typename ResourceNode>(ResourceNode& resource) {
+                    if constexpr (std::is_same_v<std::decay_t<ResourceNode>, Internal::ImageResourceNode>) {
+                        barrier.dst.layout = getImageLayout(access);
+                        barrier.src.layout = resource.currentLayout;
+                        resource.currentLayout = *barrier.dst.layout;
+                    }
+                    // src.layout stays nullopt for buffers => never assigned, never read
+
+                    barrier.src.access = resource.currentAccess;
+                    resource.currentAccess = barrier.dst.access;
+
+                    barrier.src.stage = resource.currentStage;
+                    resource.currentStage = barrier.dst.stage;
+                }, m_resources[resourceIndex]);
+
+                m_passes[passIndex].barriers.push_back(barrier);
+            }
+        }
+    }
+
     void Graph::setOutput(const std::string &name) {
         m_output = name;
     }
@@ -149,7 +187,7 @@ namespace Salamander::Renderer::RenderGraph {
         std::cout << std::endl;
     }
 
-    bool Graph::isWrite(const ResourceAccess access) {
+    bool constexpr Graph::isWrite(const ResourceAccess access) {
         if (access == ResourceAccess::ColorAttachmentWrite ||
             access == ResourceAccess::DepthAttachmentWrite ||
             access == ResourceAccess::StorageWrite ||
@@ -160,7 +198,7 @@ namespace Salamander::Renderer::RenderGraph {
     }
 
     void Graph::traversePass(int passIndex) {
-        for (const auto& [resourceIndex, access] : m_passes[passIndex].resourceReferences) {
+        for (const auto& [resourceIndex, access, stage] : m_passes[passIndex].resourceReferences) {
             if (isWrite(access)) {
                 continue;
             }
@@ -177,6 +215,47 @@ namespace Salamander::Renderer::RenderGraph {
                 }
             }, m_resources[resourceIndex]);
         }
+    }
+
+    constexpr Internal::ResourceState Graph::getResourceState(const ResourceAccess access) {
+        switch (access) {
+            case ResourceAccess::ColorAttachmentWrite:
+                return { VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT };
+            case ResourceAccess::DepthAttachmentWrite:
+                return {
+                    VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                };
+            case ResourceAccess::AttachmentInput:
+                return { VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT };
+            case ResourceAccess::TextureSampled:
+                return { VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_SHADER_READ_BIT }; // stage NONE => user must supply
+            case ResourceAccess::StorageRead:
+                return { VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_SHADER_STORAGE_READ_BIT };
+            case ResourceAccess::StorageWrite:
+                return { VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT };
+            case ResourceAccess::TransferSrc:
+                return { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT };
+            case ResourceAccess::TransferDst:
+                return { VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
+        }
+        assert(false);
+        return {};
+    }
+
+    constexpr VkImageLayout Graph::getImageLayout(ResourceAccess access) {
+        switch (access) {
+            case ResourceAccess::ColorAttachmentWrite: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            case ResourceAccess::DepthAttachmentWrite: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            case ResourceAccess::AttachmentInput: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            case ResourceAccess::TextureSampled: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            case ResourceAccess::StorageRead: return VK_IMAGE_LAYOUT_GENERAL;
+            case ResourceAccess::StorageWrite: return VK_IMAGE_LAYOUT_GENERAL;
+            case ResourceAccess::TransferSrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            case ResourceAccess::TransferDst: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        }
+        assert(false);
+        return VK_IMAGE_LAYOUT_UNDEFINED;
     }
 };
 

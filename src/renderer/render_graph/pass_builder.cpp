@@ -17,12 +17,18 @@ namespace Salamander::Renderer::RenderGraph {
     void PassBuilder::add(const std::string &name, const ResourceAccess access) const {
         assert(m_resourceIndex.contains(name) && "Resource must be pre-registered");
         const uint32_t index = m_resourceIndex.at(name);
-        m_node.resourceReferences.push_back({ index, access });
+        m_node.resourceReferences.push_back({ index, access, VK_PIPELINE_STAGE_2_NONE });
     }
 
-    void PassBuilder::addExecuteCallback(const std::function<void(VkCommandBuffer)> &callback) const {
-        m_node.executeCallback = callback;
+    void PassBuilder::add(const std::string &name, ResourceAccess access, VkPipelineStageFlags2 stage) const {
+        assert(m_resourceIndex.contains(name) && "Resource must be pre-registered");
+        const uint32_t index = m_resourceIndex.at(name);
+        m_node.resourceReferences.push_back({ index, access, stage });
+    }
 
+
+    void PassBuilder::addExecuteCallback(const std::function<void(VkCommandBuffer, uint32_t, uint32_t)> &callback) const {
+        m_node.executeCallback = callback;
     }
 }
 

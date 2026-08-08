@@ -5,6 +5,7 @@
 #ifndef SALAMANDER_RENDER_GRAPH_H
 #define SALAMANDER_RENDER_GRAPH_H
 #include <string>
+#include <utility>
 
 #include "pass_builder.h"
 #include "render_resource_handles.h"
@@ -30,6 +31,7 @@ namespace Salamander::Renderer::RenderGraph {
         void cullDeadPasses();
 
         void configureExecutionSequence(); // returns pass indices in the correct order
+        void computeBarriers();
 
         [[nodiscard]] const std::vector<int>& getExecutionOrder() const { return m_orderedPassIndices;}
         void setOutput(const std::string& name);
@@ -38,7 +40,9 @@ namespace Salamander::Renderer::RenderGraph {
         void logExecutionOrder() const;
 
     private:
-        static bool isWrite(ResourceAccess access);
+        static constexpr bool isWrite(ResourceAccess access);
+        static constexpr Internal::ResourceState getResourceState(ResourceAccess access);
+        static constexpr VkImageLayout getImageLayout(ResourceAccess access);
 
         void traversePass(int passIndex);
 

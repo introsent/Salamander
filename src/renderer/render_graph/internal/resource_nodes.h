@@ -24,12 +24,18 @@ namespace Salamander::Renderer::RenderGraph::Internal {
     struct ImageResourceNode : BaseResourceNode {
         ImageAttachmentDescription description;
         VkImageUsageFlags usageFlags;
-        VkImageLayout currentLayout;
+
+        VkAccessFlags2 currentAccess = VK_ACCESS_2_NONE;
+        VkPipelineStageFlags2 currentStage = VK_PIPELINE_STAGE_2_NONE;
+        VkImageLayout currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     };
 
     struct BufferResourceNode : BaseResourceNode {
         BufferAttachmentDescription description;
         VkBufferUsageFlags usageFlags;
+
+        VkAccessFlags2 currentAccess = VK_ACCESS_2_NONE;
+        VkPipelineStageFlags2 currentStage = VK_PIPELINE_STAGE_2_NONE;
     };
 
     using ResourceNode = std::variant<ImageResourceNode, BufferResourceNode>;
