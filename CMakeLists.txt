@@ -224,6 +224,7 @@ set(${PROJECT_NAME}_SOURCES
         src/renderer/render_graph/internal/resource_nodes.h
         src/helpers.cpp
         src/helpers.h
+        src/renderer/render_graph/internal/barrier_descriptor.h
 )
 
 
