@@ -219,22 +219,21 @@ namespace Salamander::Renderer::RenderGraph {
                         });
                     }
                 }, m_resources[barrier.resourceIndex]);
-
-                if (!imageBarriers.empty() || !bufferBarriers.empty()) {
-                    const VkDependencyInfo dependencyInfo{
-                        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                        .bufferMemoryBarrierCount = static_cast<uint32_t>(bufferBarriers.size()),
-                        .pBufferMemoryBarriers = bufferBarriers.data(),
-                        .imageMemoryBarrierCount = static_cast<uint32_t>(imageBarriers.size()),
-                        .pImageMemoryBarriers = imageBarriers.data()
-                    };
-                    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-                }
-
-                if (pass.executeCallback) {
-                    pass.executeCallback(cmd, frameIndex, imageIndex);
-                }
             };
+            if (!imageBarriers.empty() || !bufferBarriers.empty()) {
+                const VkDependencyInfo dependencyInfo{
+                    .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                    .bufferMemoryBarrierCount = static_cast<uint32_t>(bufferBarriers.size()),
+                    .pBufferMemoryBarriers = bufferBarriers.data(),
+                    .imageMemoryBarrierCount = static_cast<uint32_t>(imageBarriers.size()),
+                    .pImageMemoryBarriers = imageBarriers.data()
+                };
+                vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+            }
+
+            if (pass.executeCallback) {
+                pass.executeCallback(cmd, frameIndex, imageIndex);
+            }
         }
     }
 
