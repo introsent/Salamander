@@ -13,6 +13,7 @@
 #include "internal/pass_node.h"
 #include "internal/resource_nodes.h"
 #include "pipeline/compute_pipeline.h"
+#include "textures/texture.h"
 
 namespace Salamander::Renderer::RenderGraph {
     class Graph {
@@ -36,6 +37,8 @@ namespace Salamander::Renderer::RenderGraph {
         [[nodiscard]] const std::vector<int>& getExecutionOrder() const { return m_orderedPassIndices;}
         void setOutput(const std::string& name);
 
+        void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex);
+
         // logging
         void logExecutionOrder() const;
 
@@ -45,6 +48,10 @@ namespace Salamander::Renderer::RenderGraph {
         static constexpr VkImageLayout getImageLayout(ResourceAccess access);
 
         void traversePass(int passIndex);
+
+        void bindTexture(RenderTextureHandle handle, uint32_t frameIndex, Resources::Textures::Texture* texture);
+        void bindBuffer(RenderBufferHandle handle, uint32_t frameIndex, VkBuffer buffer);
+
 
         std::string m_output;
 

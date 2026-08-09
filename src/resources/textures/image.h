@@ -27,6 +27,19 @@ namespace Salamander::Resources::Textures
         // simple transition
         void transitionLayout(VkCommandBuffer cmd, VkImageLayout newLayout);
 
+        [[nodiscard]] VkImageMemoryBarrier2 buildBarrier(
+            VkImageLayout oldLayout,
+            VkImageLayout newLayout,
+            VkPipelineStageFlags2 srcStage,
+            VkPipelineStageFlags2 dstStage,
+            VkAccessFlags2 srcAccess,
+            VkAccessFlags2 dstAccess,
+            uint32_t baseMip = 0,
+            uint32_t mipCount = VK_REMAINING_MIP_LEVELS,
+            uint32_t baseLayer = 0,
+            uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS
+        ) const;
+
         // full-control transition
         void transitionLayoutEx(
             VkCommandBuffer cmd,
@@ -58,6 +71,7 @@ namespace Salamander::Resources::Textures
 
         [[nodiscard]] VkImageLayout currentLayout() const { return m_currentLayout; }
 
+        void updateTrackedLayout(VkImageLayout layout);
     private:
         VmaAllocator m_allocator;
 
