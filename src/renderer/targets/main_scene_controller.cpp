@@ -54,6 +54,8 @@ namespace Salamander::Renderer::Targets {
     }
 
     void MainSceneController::setupRenderGraph() {
+        m_shadowHandle = m_renderGraph.addTexture("shadow_map", RenderGraph::ImageAttachmentDescription{
+            .format = m_dependencies.shadowMap->getImage()->format(), .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
         m_depthHandle = m_renderGraph.addTexture("depth", RenderGraph::ImageAttachmentDescription{
             .format = m_ctx->depthFormat(), .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
         m_albedoHandle = m_renderGraph.addTexture("gbuffer_albedo", RenderGraph::ImageAttachmentDescription{
@@ -77,6 +79,10 @@ namespace Salamander::Renderer::Targets {
         depthPrepassNode.add("depth", RenderGraph::ResourceAccess::DepthAttachmentWrite);
         depthPrepassNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_depthPrepass.execute(cmd, f, i); });
 
+        auto shadowNode = m_renderGraph.addPass("shadow", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        shadowNode.add("shadow_map", RenderGraph::ResourceAccess::DepthAttachmentWrite);
+        shadowNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_shadowPass.execute(cmd, f, i); });
+
         auto gbufferNode = m_renderGraph.addPass("gbuffer", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
         gbufferNode.add("depth", RenderGraph::ResourceAccess::DepthAttachmentRead);
         gbufferNode.add("gbuffer_albedo", RenderGraph::ResourceAccess::ColorAttachmentWrite);
@@ -88,8 +94,9 @@ namespace Salamander::Renderer::Targets {
         lightingNode.add("gbuffer_albedo", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
         lightingNode.add("gbuffer_normal", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
         lightingNode.add("gbuffer_param", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
-        lightingNode.add("depth", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+        lightingNode.add("depth", RenderGraph::ResourceAccess::DepthAttachmentRead);
         lightingNode.add("hdr", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+        lightingNode.add("shadow_map", RenderGraph::ResourceAccess::DepthAttachmentRead);
         lightingNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_lightingPass.execute(cmd, f, i); });
 
         auto histogramNode = m_renderGraph.addPass("luminance_histogram", VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
@@ -352,7 +359,6 @@ namespace Salamander::Renderer::Targets {
         VkCommandBuffer cmd = m_ctx->commandManager().beginSingleTimeCommands();
         m_cubeMapRenderer.renderEquirectToCube(cmd, m_hdrEquirect, m_envCubeMap);
         m_irradianceMap = m_cubeMapRenderer.createDiffuseIrradianceMap(cmd, m_envCubeMap, 128);
-        m_shadowPass.execute(cmd, 0, 0);
         m_ctx->commandManager().endSingleTimeCommands(cmd);
 
         m_dependencies.equirectTexture = m_hdrEquirect;
@@ -426,6 +432,7 @@ namespace Salamander::Renderer::Targets {
             m_renderGraph.bindTexture(m_hdrHandle, i, m_dependencies.hdrTextures[i]);
             m_renderGraph.bindBuffer(m_histogramHandle, i, m_dependencies.histogramBuffers[i].buffer);
             m_renderGraph.bindTexture(m_averageLuminanceHandle, i, m_dependencies.averageLuminanceTextures[i]);
+            m_renderGraph.bindTexture(m_shadowHandle, i, m_dependencies.shadowMap);
             // "backbuffer" intentionally left unbound
         }
     }

@@ -41,7 +41,7 @@ namespace Salamander::Renderer::Targets {
         void updateDirectionalLightMatrices();
 
         RenderGraph::Graph m_renderGraph = {};
-        RenderGraph::RenderTextureHandle m_depthHandle, m_albedoHandle, m_normalHandle, m_paramHandle,
+        RenderGraph::RenderTextureHandle  m_shadowHandle, m_depthHandle, m_albedoHandle, m_normalHandle, m_paramHandle,
                                          m_hdrHandle, m_averageLuminanceHandle;
         RenderGraph::RenderBufferHandle m_histogramHandle;
         void bindRenderGraphResources();
