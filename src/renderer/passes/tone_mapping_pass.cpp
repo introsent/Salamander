@@ -95,7 +95,7 @@ namespace Salamander::Renderer::Passes {
             VkDescriptorImageInfo luminanceInfo{
                 .sampler = m_dependencies->averageLuminanceTextures[i]->getDescriptorInfo().sampler,
                 .imageView = m_dependencies->averageLuminanceTextures[i]->getDescriptorInfo().imageView,
-                .imageLayout = VK_IMAGE_LAYOUT_GENERAL
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             };
 
             UpdateInfo hdr{}; hdr.binding = 0; hdr.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

@@ -23,14 +23,6 @@ namespace Salamander::Renderer::Passes {
         auto *shadowImage = m_dependencies->shadowMap->getImage();
         const glm::ivec2 shadowSize = shadowImage->size();
 
-        shadowImage->transitionLayoutEx(
-            cmd,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-            0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-        );
-
         const VkRenderingAttachmentInfo depthAttachment{
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = m_dependencies->shadowMap->getDescriptorInfo().imageView,
@@ -71,13 +63,6 @@ namespace Salamander::Renderer::Passes {
         }
 
         vkCmdEndRendering(cmd);
-
-        shadowImage->transitionLayoutEx(
-            cmd,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT
-        );
     }
 
     void ShadowPass::createDescriptors() {

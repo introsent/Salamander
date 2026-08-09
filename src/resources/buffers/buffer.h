@@ -13,26 +13,20 @@
 
 namespace Salamander::Resources::Buffers
 {
-    class Buffer :
-    public
-    IBuffer {
-        public
-        :
+    class Buffer : public IBuffer {
+    public:
         ManagedBuffer managedBuffer = {};
         VmaAllocator allocator = VK_NULL_HANDLE;
 
         Buffer() = default;
-        explicit Buffer (VmaAllocator alloc) : allocator(alloc) {
-        }
-        Buffer(Buffer && other)noexcept {
+        explicit Buffer (VmaAllocator alloc) : allocator(alloc) { }
+        Buffer(Buffer && other) noexcept {
             managedBuffer = other.managedBuffer;
             allocator = other.allocator;
             other.managedBuffer = {VK_NULL_HANDLE, VK_NULL_HANDLE}; // Invalidate source
             other.allocator = VK_NULL_HANDLE;
         }
-        Buffer & operator=(Buffer && other)
-        noexcept
-        {
+        Buffer& operator=(Buffer && other) noexcept {
             if (this != &other) {
                 managedBuffer = other.managedBuffer;
                 allocator = other.allocator;

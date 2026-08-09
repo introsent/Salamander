@@ -33,18 +33,6 @@ namespace Salamander::Renderer::Passes {
     }
 
     void DepthPrepass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t /*imageIndex*/) {
-        auto *depthImage = m_ctx->frames()[frameIndex].depthTexture->getImage();
-
-        depthImage->transitionLayoutEx(
-            cmd,
-            depthImage->currentLayout(),
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
-            VK_ACCESS_2_SHADER_READ_BIT,
-            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-        );
-
         VkRenderingAttachmentInfo depthAttachment{
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = m_ctx->frames()[frameIndex].depthTexture->getDescriptorInfo().imageView,
@@ -103,16 +91,6 @@ namespace Salamander::Renderer::Passes {
         }
 
         vkCmdEndRendering(cmd);
-
-        depthImage->transitionLayoutEx(
-            cmd,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            VK_ACCESS_2_SHADER_READ_BIT
-        );
     }
 
     void DepthPrepass::createPipeline() {

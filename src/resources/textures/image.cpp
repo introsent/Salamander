@@ -95,23 +95,10 @@ namespace Salamander::Resources::Textures
         m_currentLayout = newLayout;
     }
 
-    void Image::transitionLayoutEx(
-        VkCommandBuffer cmd,
-        VkImageLayout oldLayout,
-        VkImageLayout newLayout,
-        VkPipelineStageFlags2 srcStage,
-        VkPipelineStageFlags2 dstStage,
-        VkAccessFlags2 srcAccess,
-        VkAccessFlags2 dstAccess,
-        uint32_t baseMip,
-        uint32_t mipCount,
-        uint32_t baseLayer,
-        uint32_t layerCount
-    )
-    {
-        VkImageMemoryBarrier2 barrier{
-            VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
-        };
+    VkImageMemoryBarrier2 Image::buildBarrier(VkImageLayout oldLayout, VkImageLayout newLayout,
+        VkPipelineStageFlags2 srcStage, VkPipelineStageFlags2 dstStage, VkAccessFlags2 srcAccess,
+        VkAccessFlags2 dstAccess, uint32_t baseMip, uint32_t mipCount, uint32_t baseLayer, uint32_t layerCount) const {
+        VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
         barrier.srcStageMask = srcStage;
         barrier.dstStageMask = dstStage;
         barrier.srcAccessMask = srcAccess;
@@ -121,21 +108,24 @@ namespace Salamander::Resources::Textures
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image = m_image;
+        barrier.subresourceRange = { m_aspect, baseMip, mipCount, baseLayer, layerCount };
+        return barrier;
+    }
 
-        barrier.subresourceRange = {
-            m_aspect,
-            baseMip,
-            mipCount,
-            baseLayer,
-            layerCount
+    void Image::transitionLayoutEx(
+    VkCommandBuffer cmd, VkImageLayout oldLayout, VkImageLayout newLayout,
+    VkPipelineStageFlags2 srcStage, VkPipelineStageFlags2 dstStage,
+    VkAccessFlags2 srcAccess, VkAccessFlags2 dstAccess,
+    uint32_t baseMip, uint32_t mipCount, uint32_t baseLayer, uint32_t layerCount) {
+        const VkImageMemoryBarrier2 barrier =
+            buildBarrier(oldLayout, newLayout, srcStage, dstStage, srcAccess, dstAccess,
+                         baseMip, mipCount, baseLayer, layerCount);
+
+        const VkDependencyInfo depInfo{
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers = &barrier
         };
-
-        VkDependencyInfo depInfo{
-            VK_STRUCTURE_TYPE_DEPENDENCY_INFO
-        };
-        depInfo.imageMemoryBarrierCount = 1;
-        depInfo.pImageMemoryBarriers = &barrier;
-
         vkCmdPipelineBarrier2(cmd, &depInfo);
 
         m_currentLayout = newLayout;
@@ -239,6 +229,10 @@ namespace Salamander::Resources::Textures
         vkCmdPipelineBarrier2(cmd, &depInfo);
 
         m_currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
+    void Image::updateTrackedLayout(VkImageLayout layout) {
+        m_currentLayout = layout;
     }
 }
 

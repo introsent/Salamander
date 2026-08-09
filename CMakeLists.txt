@@ -213,6 +213,18 @@ set(${PROJECT_NAME}_SOURCES
     # utilities
     "src/deletion_queue.h"
         src/renderer/passes/depth_prepass.cpp
+        src/renderer/render_graph/resource_description_types.h
+        src/renderer/render_graph/render_resource_handles.h
+        src/renderer/render_graph/graph.cpp
+        src/renderer/render_graph/graph.h
+        src/renderer/render_graph/resource_access.h
+        src/renderer/render_graph/pass_builder.cpp
+        src/renderer/render_graph/pass_builder.h
+        src/renderer/render_graph/internal/pass_node.h
+        src/renderer/render_graph/internal/resource_nodes.h
+        src/helpers.cpp
+        src/helpers.h
+        src/renderer/render_graph/internal/barrier_descriptor.h
 )
 
 

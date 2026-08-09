@@ -94,13 +94,6 @@ namespace Salamander::Renderer::Passes {
 
         const VkExtent2D extent = m_ctx->swapChain().extent();
         vkCmdDispatch(cmd, (extent.width + 15) / 16, (extent.height + 15) / 16, 1);
-
-        m_dependencies->hdrTextures[frameIndex]->getImage()->transitionLayoutEx(
-            cmd,
-            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_2_SHADER_READ_BIT, VK_ACCESS_2_SHADER_READ_BIT
-        );
     }
 
     void LuminanceHistogramPass::createAttachments() {

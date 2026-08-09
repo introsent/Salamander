@@ -35,26 +35,6 @@ namespace Salamander::Renderer::Passes {
     }
 
     void LightingPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t /*imageIndex*/) {
-        VkImageLayout currentLayout = m_hdrTextures[frameIndex]->getImage()->currentLayout();
-
-        if (currentLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
-            // First use after swapchain recreation
-            m_hdrTextures[frameIndex]->getImage()->transitionLayoutEx(
-                cmd,
-                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                0, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-            );
-        } else {
-            // Transition from GENERAL (normal case) or SHADER_READ_ONLY (if read by another pass)
-            m_hdrTextures[frameIndex]->getImage()->transitionLayoutEx(
-                cmd,
-                currentLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                VK_ACCESS_2_SHADER_WRITE_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-            );
-        }
-
         const VkRenderingAttachmentInfo colorAttachment{
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = m_hdrTextures[frameIndex]->getDescriptorInfo().imageView,
@@ -88,13 +68,6 @@ namespace Salamander::Renderer::Passes {
 
         vkCmdDraw(cmd, 3, 1, 0, 0);
         vkCmdEndRendering(cmd);
-
-        m_hdrTextures[frameIndex]->getImage()->transitionLayoutEx(
-            cmd,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_SHADER_WRITE_BIT
-        );
     }
 
     void LightingPass::createAttachments() {
