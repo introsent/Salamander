@@ -190,7 +190,11 @@ namespace Salamander::Renderer::RenderGraph {
                 std::visit([&]<typename ResourceNode>(ResourceNode& resource) {
                     if constexpr (std::is_same_v<std::decay_t<ResourceNode>, Internal::ImageResourceNode>) {
                         auto* physicalTexture = resource.physicalTexture[frameIndex];
-                        assert(physicalTexture && "Resource referenced by a pass has no physical texture bound for this frame index");
+                        if (!physicalTexture) {
+                            // imported/external resource (e.g. swapchain backbuffer) => caller already
+                            // handles its own transitions; nothing for the graph to issue here
+                            return;
+                        }
 
                         imageBarriers.push_back(physicalTexture->getImage()->buildBarrier(
                             *barrier.src.layout, *barrier.dst.layout,
@@ -201,7 +205,6 @@ namespace Salamander::Renderer::RenderGraph {
 
                     } else if constexpr (std::is_same_v<std::decay_t<ResourceNode>, Internal::BufferResourceNode>){
                         const auto& physicalBuffer = resource.physicalBuffer[frameIndex];
-                        assert(physicalBuffer != VK_NULL_HANDLE && "Resource referenced by a pass has no physical buffer bound for this frame index");
                         bufferBarriers.emplace_back(VkBufferMemoryBarrier2{
                             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
                             .srcStageMask = barrier.src.stage,
@@ -262,6 +265,11 @@ namespace Salamander::Renderer::RenderGraph {
                     VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                 };
+            case ResourceAccess::DepthAttachmentRead:
+                return {
+                    VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                };
             case ResourceAccess::AttachmentInput:
                 return { VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT };
             case ResourceAccess::TextureSampled:
@@ -283,6 +291,7 @@ namespace Salamander::Renderer::RenderGraph {
         switch (access) {
             case ResourceAccess::ColorAttachmentWrite: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             case ResourceAccess::DepthAttachmentWrite: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            case ResourceAccess::DepthAttachmentRead: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
             case ResourceAccess::AttachmentInput:
             case ResourceAccess::TextureSampled: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             case ResourceAccess::StorageRead:

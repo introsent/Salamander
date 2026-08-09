@@ -39,6 +39,10 @@ namespace Salamander::Renderer::RenderGraph {
 
         void execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t imageIndex);
 
+        // bind resources
+        void bindTexture(RenderTextureHandle handle, uint32_t frameIndex, Resources::Textures::Texture* texture);
+        void bindBuffer(RenderBufferHandle handle, uint32_t frameIndex, VkBuffer buffer);
+
         // logging
         void logExecutionOrder() const;
 
@@ -48,10 +52,6 @@ namespace Salamander::Renderer::RenderGraph {
         static constexpr VkImageLayout getImageLayout(ResourceAccess access);
 
         void traversePass(int passIndex);
-
-        void bindTexture(RenderTextureHandle handle, uint32_t frameIndex, Resources::Textures::Texture* texture);
-        void bindBuffer(RenderBufferHandle handle, uint32_t frameIndex, VkBuffer buffer);
-
 
         std::string m_output;
 

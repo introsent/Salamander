@@ -22,8 +22,6 @@ namespace Salamander::Renderer::Targets {
         loadModel(MODEL_PATH);
         createBuffers();
 
-        testRenderGraph();
-
         // Initialize directional light
         m_globalData.directionalLight.directionalLightDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
         m_globalData.directionalLight.directionalLightColor = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -51,6 +49,73 @@ namespace Salamander::Renderer::Targets {
         m_luminanceHistogramPass.initialize(ctx, m_globalData, m_dependencies);
         m_luminanceAveragePass.initialize(ctx, m_globalData, m_dependencies);
         m_toneMappingPass.initialize(ctx, m_globalData, m_dependencies);
+
+        setupRenderGraph();
+    }
+
+    void MainSceneController::setupRenderGraph() {
+        m_depthHandle = m_renderGraph.addTexture("depth", RenderGraph::ImageAttachmentDescription{
+            .format = m_ctx->depthFormat(), .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        m_albedoHandle = m_renderGraph.addTexture("gbuffer_albedo", RenderGraph::ImageAttachmentDescription{
+            .format = VK_FORMAT_R8G8B8A8_SRGB, .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        m_normalHandle = m_renderGraph.addTexture("gbuffer_normal", RenderGraph::ImageAttachmentDescription{
+            .format = VK_FORMAT_R8G8B8A8_SRGB, .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        m_paramHandle = m_renderGraph.addTexture("gbuffer_param", RenderGraph::ImageAttachmentDescription{
+            .format = VK_FORMAT_R8G8_UNORM, .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        m_hdrHandle = m_renderGraph.addTexture("hdr", RenderGraph::ImageAttachmentDescription{
+            .format = VK_FORMAT_R32G32B32A32_SFLOAT, .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        m_histogramHandle = m_renderGraph.addBuffer("histogram_buffer", RenderGraph::BufferAttachmentDescription{
+            .size = Frame::HISTOGRAM_BINS * sizeof(uint32_t),
+            .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        m_averageLuminanceHandle = m_renderGraph.addTexture("average_luminance", RenderGraph::ImageAttachmentDescription{
+            .format = VK_FORMAT_R32_SFLOAT, .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        m_renderGraph.addTexture("backbuffer", RenderGraph::ImageAttachmentDescription{
+            .format = m_ctx->swapChain().format(), .lifetimeInfo = RenderGraph::LifetimeInfo::Transient });
+        // "backbuffer" is never bound, see execute()'s skip-if-unbound handling
+
+        auto depthPrepassNode = m_renderGraph.addPass("depth_prepass", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        depthPrepassNode.add("depth", RenderGraph::ResourceAccess::DepthAttachmentWrite);
+        depthPrepassNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_depthPrepass.execute(cmd, f, i); });
+
+        auto gbufferNode = m_renderGraph.addPass("gbuffer", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        gbufferNode.add("depth", RenderGraph::ResourceAccess::DepthAttachmentRead);
+        gbufferNode.add("gbuffer_albedo", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+        gbufferNode.add("gbuffer_normal", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+        gbufferNode.add("gbuffer_param", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+        gbufferNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_gBufferPass.execute(cmd, f, i); });
+
+        auto lightingNode = m_renderGraph.addPass("lighting", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        lightingNode.add("gbuffer_albedo", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+        lightingNode.add("gbuffer_normal", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+        lightingNode.add("gbuffer_param", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+        lightingNode.add("depth", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+        lightingNode.add("hdr", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+        lightingNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_lightingPass.execute(cmd, f, i); });
+
+        auto histogramNode = m_renderGraph.addPass("luminance_histogram", VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+        histogramNode.add("hdr", RenderGraph::ResourceAccess::StorageRead, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+        histogramNode.add("histogram_buffer", RenderGraph::ResourceAccess::StorageWrite, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+        histogramNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_luminanceHistogramPass.execute(cmd, f, i); });
+
+        auto averageNode = m_renderGraph.addPass("luminance_average", VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+        averageNode.add("histogram_buffer", RenderGraph::ResourceAccess::StorageRead, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+        averageNode.add("average_luminance", RenderGraph::ResourceAccess::StorageWrite, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+        averageNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_luminanceAveragePass.execute(cmd, f, i); });
+
+        auto toneMappingNode = m_renderGraph.addPass("tone_mapping", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        toneMappingNode.add("hdr", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+        toneMappingNode.add("average_luminance", RenderGraph::ResourceAccess::TextureSampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+        toneMappingNode.add("backbuffer", RenderGraph::ResourceAccess::ColorAttachmentWrite);
+        toneMappingNode.addExecuteCallback([this](VkCommandBuffer cmd, uint32_t f, uint32_t i) { m_toneMappingPass.execute(cmd, f, i); });
+
+        m_renderGraph.buildEdges();
+        m_renderGraph.setOutput("backbuffer");
+        m_renderGraph.cullDeadPasses();
+        m_renderGraph.configureExecutionSequence();
+        m_renderGraph.logExecutionOrder();
+        m_renderGraph.computeBarriers();
+
+        bindRenderGraphResources();
     }
 
     void MainSceneController::cleanup() {
@@ -75,6 +140,8 @@ namespace Salamander::Renderer::Targets {
         m_luminanceHistogramPass.recreateSwapChain();
         m_luminanceAveragePass.recreateSwapChain();
         m_toneMappingPass.recreateSwapChain();
+
+        bindRenderGraphResources();
     }
 
     void MainSceneController::render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex, uint32_t frameIndex) {
@@ -100,12 +167,7 @@ namespace Salamander::Renderer::Targets {
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         );
 
-        m_depthPrepass.execute(cmd, frameIndex, imageIndex);
-        m_gBufferPass.execute(cmd, frameIndex, imageIndex);
-        m_lightingPass.execute(cmd, frameIndex, imageIndex);
-        m_luminanceHistogramPass.execute(cmd, frameIndex, imageIndex);
-        m_luminanceAveragePass.execute(cmd, frameIndex, imageIndex);
-        m_toneMappingPass.execute(cmd, frameIndex, imageIndex);
+        m_renderGraph.execute(cmd, frameIndex, imageIndex);
 
         Graphics::ImageTransitionManager::transitionToPresent(
             cmd,
@@ -355,93 +417,17 @@ namespace Salamander::Renderer::Targets {
         }
     }
 
-    void MainSceneController::testRenderGraph() {
-#ifndef NDEBUG
-        RenderGraph::ImageAttachmentDescription depthDesc{
-            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
-            .width = 1.0f,
-            .height = 1.0f,
-            .format = VK_FORMAT_D32_SFLOAT,
-            .samples = 1,
-            .levels = 1,
-            .layers = 1,
-            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
-        };
-
-        RenderGraph::ImageAttachmentDescription albedoDesc{
-            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
-            .width = 1.0f,
-            .height = 1.0f,
-            .format = VK_FORMAT_R8G8B8A8_UNORM,
-            .samples = 1,
-            .levels = 1,
-            .layers = 1,
-            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
-        };
-
-        RenderGraph::ImageAttachmentDescription normalDesc{
-            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
-            .width = 1.0f,
-            .height = 1.0f,
-            .format = VK_FORMAT_A2B10G10R10_UNORM_PACK32, // same as your gbuffer pass
-            .samples = 1,
-            .levels = 1,
-            .layers = 1,
-            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
-        };
-
-        RenderGraph::ImageAttachmentDescription hdrDesc{
-            .sizePolicy = RenderGraph::SizePolicy::SwapchainRelative,
-            .width = 1.0f,
-            .height = 1.0f,
-            .format = VK_FORMAT_B10G11R11_UFLOAT_PACK32, // same as your emissive/hdr output
-            .samples = 1,
-            .levels = 1,
-            .layers = 1,
-            .lifetimeInfo = RenderGraph::LifetimeInfo::Transient
-        };
-
-        RenderGraph::BufferAttachmentDescription bufDesc{
-            .size = sizeof(Scene::PointLightData), // matches your existing light buffer
-            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .lifetimeInfo = RenderGraph::LifetimeInfo::Persistent // light data survives across frames
-        };
-
-        // resources
-        auto depth = m_renderGraph.addTexture("depth", depthDesc);
-        auto albedo = m_renderGraph.addTexture("gbuffer_albedo", albedoDesc);
-        auto normal = m_renderGraph.addTexture("gbuffer_normal", normalDesc);
-        auto hdr = m_renderGraph.addTexture("hdr", hdrDesc);
-        auto lights = m_renderGraph.addBuffer("light_buffer", bufDesc);
-
-        // passes
-        auto depthPrepass = m_renderGraph.addPass("depth_prepass", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
-        depthPrepass.add("depth", RenderGraph::ResourceAccess::DepthAttachmentWrite);
-
-        auto gbuffer = m_renderGraph.addPass("gbuffer", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
-        gbuffer.add("depth", RenderGraph::ResourceAccess::AttachmentInput);
-        gbuffer.add("gbuffer_albedo", RenderGraph::ResourceAccess::ColorAttachmentWrite);
-        gbuffer.add("gbuffer_normal", RenderGraph::ResourceAccess::ColorAttachmentWrite);
-
-        auto lighting = m_renderGraph.addPass("lighting", VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
-        lighting.add("gbuffer_albedo", RenderGraph::ResourceAccess::TextureSampled);
-        lighting.add("gbuffer_normal", RenderGraph::ResourceAccess::TextureSampled);
-        lighting.add("light_buffer", RenderGraph::ResourceAccess::StorageRead);
-        lighting.add("hdr", RenderGraph::ResourceAccess::ColorAttachmentWrite);
-
-
-        m_renderGraph.buildEdges();
-        m_renderGraph.setOutput("hdr");
-        m_renderGraph.cullDeadPasses();
-        // verify counts
-        assert(m_renderGraph.resourceCount() == 5);
-        assert(m_renderGraph.passCount() == 3);
-
-        // verify pass references
-        assert(m_renderGraph.getPass(0).resourceReferences.size() == 1);
-        assert(m_renderGraph.getPass(1).resourceReferences.size() == 3);
-        assert(m_renderGraph.getPass(2).resourceReferences.size() == 4);
-#endif
+    void MainSceneController::bindRenderGraphResources() {
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+            m_renderGraph.bindTexture(m_depthHandle, i, m_ctx->frames()[i].depthTexture);
+            m_renderGraph.bindTexture(m_albedoHandle, i, m_dependencies.albedoTextures[i]);
+            m_renderGraph.bindTexture(m_normalHandle, i, m_dependencies.normalTextures[i]);
+            m_renderGraph.bindTexture(m_paramHandle, i, m_dependencies.paramTextures[i]);
+            m_renderGraph.bindTexture(m_hdrHandle, i, m_dependencies.hdrTextures[i]);
+            m_renderGraph.bindBuffer(m_histogramHandle, i, m_dependencies.histogramBuffers[i].buffer);
+            m_renderGraph.bindTexture(m_averageLuminanceHandle, i, m_dependencies.averageLuminanceTextures[i]);
+            // "backbuffer" intentionally left unbound
+        }
     }
 
     void MainSceneController::createBuffers() {

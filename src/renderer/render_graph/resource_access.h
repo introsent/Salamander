@@ -11,6 +11,7 @@ namespace Salamander::Renderer::RenderGraph {
     enum class ResourceAccess {
         ColorAttachmentWrite,
         DepthAttachmentWrite,
+        DepthAttachmentRead,
         AttachmentInput,
         TextureSampled,
         StorageRead,

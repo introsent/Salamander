@@ -26,30 +26,6 @@ namespace Salamander::Renderer::Passes {
     void LuminanceAveragePass::recreateSwapChain() {}
 
     void LuminanceAveragePass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t /*imageIndex*/) {
-        m_dependencies->averageLuminanceTextures[frameIndex]->getImage()->transitionLayoutEx(
-            cmd,
-             m_dependencies->averageLuminanceTextures[frameIndex]->getImage()->currentLayout(), VK_IMAGE_LAYOUT_GENERAL,
-            VK_PIPELINE_STAGE_2_NONE, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            VK_ACCESS_2_NONE, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT
-        );
-
-        const VkBufferMemoryBarrier2 bufferBarrier{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-            .buffer = m_dependencies->histogramBuffers[frameIndex].buffer,
-            .offset = 0,
-            .size = Frame::HISTOGRAM_BINS * sizeof(uint32_t)
-        };
-        const VkDependencyInfo depInfo{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .bufferMemoryBarrierCount = 1,
-            .pBufferMemoryBarriers = &bufferBarrier
-        };
-        vkCmdPipelineBarrier2(cmd, &depInfo);
-
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline->handle());
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline->layout(),
             0, 1, &m_descriptorManager->getDescriptorSets()[frameIndex], 0, nullptr);
@@ -64,24 +40,6 @@ namespace Salamander::Renderer::Passes {
         };
         vkCmdPushConstants(cmd, m_pipeline->layout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), &pc);
         vkCmdDispatch(cmd, 1, 1, 1);
-
-        const VkImageMemoryBarrier2 imageBarrier{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .image =m_dependencies->averageLuminanceTextures[frameIndex]->getImage()->handle(),
-            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
-        };
-        const VkDependencyInfo depInfo2{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = 1,
-            .pImageMemoryBarriers = &imageBarrier
-        };
-        vkCmdPipelineBarrier2(cmd, &depInfo2);
     }
 
     void LuminanceAveragePass::createAttachments() {

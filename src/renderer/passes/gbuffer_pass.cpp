@@ -45,15 +45,6 @@ namespace Salamander::Renderer::Passes {
     }
 
     void GBufferPass::execute(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t /*imageIndex*/) {
-        for (auto *tex : {m_albedoTextures[frameIndex], m_normalTextures[frameIndex], m_paramTextures[frameIndex]}) {
-            tex->getImage()->transitionLayoutEx(
-                cmd,
-                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                0, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-            );
-        }
-
         const std::array<VkRenderingAttachmentInfo, 3> colorAttachments = {{
             {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -129,15 +120,6 @@ namespace Salamander::Renderer::Passes {
         }
 
         vkCmdEndRendering(cmd);
-
-        for (auto *tex : {m_albedoTextures[frameIndex], m_normalTextures[frameIndex], m_paramTextures[frameIndex]}) {
-            tex->getImage()->transitionLayoutEx(
-                cmd,
-                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_2_SHADER_READ_BIT
-            );
-        }
     }
 
     void GBufferPass::createAttachments() {

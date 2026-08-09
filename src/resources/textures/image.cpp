@@ -116,8 +116,7 @@ namespace Salamander::Resources::Textures
     VkCommandBuffer cmd, VkImageLayout oldLayout, VkImageLayout newLayout,
     VkPipelineStageFlags2 srcStage, VkPipelineStageFlags2 dstStage,
     VkAccessFlags2 srcAccess, VkAccessFlags2 dstAccess,
-    uint32_t baseMip, uint32_t mipCount, uint32_t baseLayer, uint32_t layerCount
-    ) {
+    uint32_t baseMip, uint32_t mipCount, uint32_t baseLayer, uint32_t layerCount) {
         const VkImageMemoryBarrier2 barrier =
             buildBarrier(oldLayout, newLayout, srcStage, dstStage, srcAccess, dstAccess,
                          baseMip, mipCount, baseLayer, layerCount);
