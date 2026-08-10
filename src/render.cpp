@@ -36,6 +36,7 @@ namespace Salamander {
         m_renderGraphDebugPanel = std::make_unique<Renderer::Debug::RenderGraphDebugPanel>(m_context->device());
 
         m_imguiTarget->setExtraUiCallback([this](const uint32_t frameIndex) {
+            m_mainSceneTarget->drawDebugUI(frameIndex);
             m_renderGraphDebugPanel->draw(m_mainSceneTarget->getRenderGraph(), frameIndex);
         });
     }

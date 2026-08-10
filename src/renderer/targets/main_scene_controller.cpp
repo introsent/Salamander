@@ -1,6 +1,8 @@
 ﻿#include "main_scene_controller.h"
 #include <iostream>
 #include <vk_mem_alloc.h>
+
+#include "imgui.h"
 #include "camera/camera_exposure.h"
 #include "graphics/image_transition_manager.h"
 #include "passes/pass_dependencies.h"
@@ -26,7 +28,9 @@ namespace Salamander::Renderer::Targets {
         m_globalData.directionalLight.directionalLightDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
         m_globalData.directionalLight.directionalLightColor = glm::vec3(1.0f, 1.0f, 1.0f);
         m_globalData.directionalLight.directionalLightIntensity = 10.0f;
-        updateDirectionalLightMatrices();
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+            updateDirectionalLightMatrices(i);
+        }
 
         constexpr uint32_t SHADOW_MAP_SIZE = 4096;
         m_dependencies.shadowMap = &ctx.textureManager().createTexture(
@@ -125,6 +129,25 @@ namespace Salamander::Renderer::Targets {
         bindRenderGraphResources();
     }
 
+    void MainSceneController::drawDebugUI(uint32_t /*frameIndex*/) {
+        if (ImGui::Begin("Sun")) {
+            bool changed = false;
+            changed |= ImGui::SliderFloat("Azimuth", &m_sunAzimuthDeg, 0.0f, 360.0f, "%.1f deg");
+            changed |= ImGui::SliderFloat("Elevation", &m_sunElevationDeg, 1.0f, 89.0f, "%.1f deg");
+
+            if (changed) {
+                const float azimRad = glm::radians(m_sunAzimuthDeg);
+                const float elevRad = glm::radians(m_sunElevationDeg);
+                m_globalData.directionalLight.directionalLightDirection = glm::normalize(glm::vec3(
+                    std::cos(elevRad) * std::cos(azimRad),
+                    -std::sin(elevRad),
+                    std::cos(elevRad) * std::sin(azimRad)
+                ));
+            }
+        }
+        ImGui::End();
+    }
+
     void MainSceneController::cleanup() {
         vkDeviceWaitIdle(m_ctx->context().device());
         m_toneMappingPass.cleanup();
@@ -166,6 +189,7 @@ namespace Salamander::Renderer::Targets {
 
         m_globalData.deltaTime = deltaTime;
         updateUniformBuffers(frameIndex);
+        updateDirectionalLightMatrices(frameIndex);
 
         Graphics::ImageTransitionManager::transitionColorAttachment(
             cmd,
@@ -373,7 +397,7 @@ namespace Salamander::Renderer::Targets {
         }
     }
 
-    void MainSceneController::updateDirectionalLightMatrices() {
+    void MainSceneController::updateDirectionalLightMatrices(uint32_t frameIndex) {
         const glm::vec3 sceneCenter = (m_globalData.sceneAABB.min + m_globalData.sceneAABB.max) / 2.0f;
         const glm::vec3 lightDirection = m_globalData.directionalLight.directionalLightDirection;
 
@@ -418,9 +442,7 @@ namespace Salamander::Renderer::Targets {
 
         m_globalData.directionalLight.projection[1][1] *= -1;
 
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            m_directionalLightBuffer[i].update(m_globalData.directionalLight);
-        }
+        m_directionalLightBuffer[frameIndex].update(m_globalData.directionalLight);
     }
 
     void MainSceneController::bindRenderGraphResources() {

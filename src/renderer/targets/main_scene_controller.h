@@ -33,6 +33,8 @@ namespace Salamander::Renderer::Targets {
 
         RenderGraph::Graph& getRenderGraph() { return m_renderGraph; }
 
+        void drawDebugUI(uint32_t frameIndex);
+
     private:
         void loadModel(const std::string &path);
         void createBuffers();
@@ -40,7 +42,7 @@ namespace Salamander::Renderer::Targets {
         void createIBLResources();
         void setPointLightEnabled(bool enabled);
 
-        void updateDirectionalLightMatrices();
+        void updateDirectionalLightMatrices(uint32_t frameIndex);
 
         RenderGraph::Graph m_renderGraph = {};
         RenderGraph::RenderTextureHandle  m_shadowHandle, m_depthHandle, m_albedoHandle, m_normalHandle, m_paramHandle,
@@ -83,6 +85,11 @@ namespace Salamander::Renderer::Targets {
 
         const std::string MODEL_PATH =
             std::string(SOURCE_RESOURCE_DIR) + "/models/sponza/Sponza.gltf";
+
+        float m_sunAzimuthDeg = 45.0f;
+        float m_sunElevationDeg = 45.0f;
+
+
     };
 }
 

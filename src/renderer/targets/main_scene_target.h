@@ -22,6 +22,8 @@ namespace Salamander::Renderer::Targets {
             return m_controller.getRenderGraph();
         }
 
+        void drawDebugUI(uint32_t frameIndex) { m_controller.drawDebugUI(frameIndex); }
+
     private:
         MainSceneController m_controller;
     };
