@@ -32,8 +32,12 @@ namespace Salamander::Renderer::Targets {
             .currentFrame = &m_currentFrame
         };
         m_executor = std::make_unique<Executors::ImGuiPassExecutor>(std::move(resources));
+        if (m_extraUiCallback) {
+            m_executor->setExtraUiCallback(m_extraUiCallback);
+        }
 
-        ImGuiIO &io   = ImGui::GetIO();
+        ImGuiIO &io = ImGui::GetIO();
+
         io.DisplaySize = ImVec2(
             static_cast<float>(resources.extent.width),
             static_cast<float>(resources.extent.height)
@@ -46,6 +50,7 @@ namespace Salamander::Renderer::Targets {
     void ImGuiTarget::cleanup() {}
 
     void ImGuiTarget::createRenderingResources() {
+
         initializeImGui();
 
         const auto &frames = m_ctx->frames();
@@ -60,6 +65,9 @@ namespace Salamander::Renderer::Targets {
             .currentFrame = &m_currentFrame
         };
         m_executor = std::make_unique<Executors::ImGuiPassExecutor>(std::move(resources));
+        if (m_extraUiCallback) {
+            m_executor->setExtraUiCallback(m_extraUiCallback);
+        }
     }
 
     void ImGuiTarget::createDescriptors() {
@@ -73,6 +81,7 @@ namespace Salamander::Renderer::Targets {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
+        io.IniFilename = nullptr;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
         ImGui_ImplGlfw_InitForVulkan(m_ctx->window().handle(), true);

@@ -1,6 +1,8 @@
 ﻿#include "camera.h"
 #include <algorithm>
 
+#include "imgui.h"
+
 namespace Salamander::Scene {
     // Сonstructor using look-at target
     Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 worldUp, float roll)
@@ -32,6 +34,9 @@ namespace Salamander::Scene {
     void Camera::ProcessKeyboard(GLFWwindow *window, float deltaTime) {
         float velocity = MovementSpeed * deltaTime;
 
+        if (ImGui::GetIO().WantCaptureKeyboard) {
+            return;
+        }
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
             velocity *= 3.0f;
 

@@ -22,7 +22,6 @@ namespace Salamander::Executors {
             uint32_t *currentFrame;
         };
 
-
         explicit ImGuiPassExecutor (Resources resources);
         ~ImGuiPassExecutor()
         override = default;
@@ -34,7 +33,12 @@ namespace Salamander::Executors {
         void execute(VkCommandBuffer cmd) override;
         void end(VkCommandBuffer cmd) override;
 
+        void setExtraUiCallback(const std::function<void(uint32_t)> &callback) override {
+            m_extraUiCallback = callback;
+        }
+
     private:
+        std::function<void(uint32_t)> m_extraUiCallback;
         Resources m_resources;
     };
 }

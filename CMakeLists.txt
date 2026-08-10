@@ -85,6 +85,23 @@ FetchContent_Declare(
 # Fetch all dependencies
 FetchContent_MakeAvailable(glfw glm vma)
 
+FetchContent_Declare(
+        imgui_node_editor
+        GIT_REPOSITORY https://github.com/thedmd/imgui-node-editor.git
+        GIT_TAG master
+        GIT_SHALLOW ON
+)
+FetchContent_MakeAvailable(imgui_node_editor)
+
+add_library(ImGuiNodeEditor STATIC
+        "${imgui_node_editor_SOURCE_DIR}/crude_json.cpp"
+        "${imgui_node_editor_SOURCE_DIR}/imgui_canvas.cpp"
+        "${imgui_node_editor_SOURCE_DIR}/imgui_node_editor.cpp"
+        "${imgui_node_editor_SOURCE_DIR}/imgui_node_editor_api.cpp"
+)
+target_include_directories(ImGuiNodeEditor PUBLIC ${imgui_node_editor_SOURCE_DIR})
+target_link_libraries(ImGuiNodeEditor PUBLIC ImGui)
+
 
 # Define the path to your stb headers
 set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb" CACHE PATH "Path to stb headers")
@@ -225,6 +242,8 @@ set(${PROJECT_NAME}_SOURCES
         src/helpers.cpp
         src/helpers.h
         src/renderer/render_graph/internal/barrier_descriptor.h
+        src/renderer/debug/render_graph_debug_panel.cpp
+        src/renderer/debug/render_graph_debug_panel.h
 )
 
 
@@ -277,7 +296,8 @@ endif()
 
 # Link libraries and include directories
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-    ImGui 
+    ImGui
+    ImGuiNodeEditor
     Vulkan::Vulkan 
     glfw 
     glm

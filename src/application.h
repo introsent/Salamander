@@ -12,8 +12,8 @@
 #include "passes/depth_prepass.h"
 
 
-constexpr uint32_t WIDTH = 1100;
-constexpr uint32_t HEIGHT = 900;
+constexpr uint32_t WIDTH = 1920;
+constexpr uint32_t HEIGHT = 1080;
 
 class VulkanApplication {
 public:

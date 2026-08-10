@@ -18,6 +18,10 @@ namespace Salamander::Renderer::Targets {
         void recreateSwapChain() override;
         void cleanup() override;
 
+        [[nodiscard]] RenderGraph::Graph& getRenderGraph() {
+            return m_controller.getRenderGraph();
+        }
+
     private:
         MainSceneController m_controller;
     };

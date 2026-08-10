@@ -16,7 +16,7 @@ namespace Salamander::Renderer::RenderGraph::Internal {
     };
 
     struct BarrierDescriptor {
-        uint32_t resourceIndex;
+        uint32_t resourceIndex{};
         ResourceState src;
         ResourceState dst;
     };

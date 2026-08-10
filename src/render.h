@@ -19,11 +19,17 @@
 
 
 namespace Salamander {
+    namespace Renderer::Debug {
+        class RenderGraphDebugPanel;
+    }
+
     namespace Renderer::Frame {
         struct Frame;
     }
 
     namespace Renderer::Targets {
+        class ImGuiTarget;
+        class MainSceneTarget;
         class RenderTarget;
     }
 
@@ -85,6 +91,10 @@ namespace Salamander {
 
         // pass dependencies
         Renderer::Passes::PassDependencies m_dependencies;
+
+        std::unique_ptr<Renderer::Debug::RenderGraphDebugPanel> m_renderGraphDebugPanel;
+        Renderer::Targets::MainSceneTarget* m_mainSceneTarget = nullptr;
+        Renderer::Targets::ImGuiTarget* m_imguiTarget = nullptr;
     };
 }
 

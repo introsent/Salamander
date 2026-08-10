@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "deletion_queue.h"
+#include "imgui.h"
 #include "camera/camera.h"
 
 namespace Salamander::Core {
@@ -39,6 +40,11 @@ namespace Salamander::Core {
 
     void Window::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods) {
         auto *self = static_cast<Window *>(glfwGetWindowUserPointer(window));
+
+        if (action == GLFW_PRESS && (ImGui::GetIO().WantCaptureMouse)) {
+            return;
+        }
+
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             self->m_leftMousePressed = (action == GLFW_PRESS);
         }

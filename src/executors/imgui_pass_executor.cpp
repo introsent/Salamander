@@ -44,17 +44,9 @@ namespace Salamander::Executors {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // replace ImGui::ShowDemoWindow(); with:
-        ImGui::Begin("Stats");
-
-        // show FPS
-        ImGuiIO &io = ImGui::GetIO();
-        ImGui::Text("FPS: %.1f", io.Framerate);
-
-        // optionally show frame time
-        ImGui::Text("Frame Time: %.3f ms/frame", 1000.0f / io.Framerate);
-
-        ImGui::End();
+        if (m_extraUiCallback) {
+            m_extraUiCallback(*m_resources.currentFrame);
+        }
 
         // render ImGui
         ImGui::Render();
