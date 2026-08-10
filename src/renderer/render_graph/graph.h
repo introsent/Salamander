@@ -18,6 +18,18 @@
 namespace Salamander::Renderer::RenderGraph {
     class Graph {
     public:
+        struct PassDebugInfo {
+            std::string name;
+            bool culled;
+            std::vector<uint32_t> writtenResourceIndices;
+            std::vector<uint32_t> readResourceIndices;
+        };
+
+        struct ResourceDebugInfo {
+            std::string name;
+            bool isBuffer;
+        };
+
         Graph();
 
         PassBuilder addPass(const std::string& name, VkPipelineStageFlagBits stageFlag);
@@ -46,6 +58,10 @@ namespace Salamander::Renderer::RenderGraph {
         // logging
         void logExecutionOrder() const;
 
+        // debugging
+        [[nodiscard]] std::vector<PassDebugInfo> getDebugPasses() const;
+        [[nodiscard]] std::vector<ResourceDebugInfo> getDebugResources() const;
+        [[nodiscard]] Resources::Textures::Texture* getPhysicalTexture(uint32_t resourceIndex, uint32_t frameIndex) const;
     private:
         static constexpr bool isWrite(ResourceAccess access);
         static constexpr Internal::ResourceState getResourceState(ResourceAccess access);

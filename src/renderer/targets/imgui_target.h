@@ -18,7 +18,16 @@ namespace Salamander::Renderer::Targets {
         void recreateSwapChain() override;
         void cleanup() override;
 
+        void setExtraUiCallback(const std::function<void(uint32_t)>& callback) {
+            m_extraUiCallback = callback;
+            if (m_executor) {
+                m_executor->setExtraUiCallback(m_extraUiCallback);
+            }
+        }
+
     private:
+        std::function<void(uint32_t)> m_extraUiCallback;
+
         void createRenderingResources();
         void createDescriptors();
         void initializeImGui() const;

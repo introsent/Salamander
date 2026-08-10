@@ -31,6 +31,8 @@ namespace Salamander::Renderer::Targets {
         void render(float deltaTime, VkCommandBuffer cmd, uint32_t imageIndex, uint32_t frameIndex);
         void updateUniformBuffers(uint32_t frameIndex) const;
 
+        RenderGraph::Graph& getRenderGraph() { return m_renderGraph; }
+
     private:
         void loadModel(const std::string &path);
         void createBuffers();

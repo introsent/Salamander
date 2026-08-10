@@ -245,6 +245,54 @@ namespace Salamander::Renderer::RenderGraph {
         std::cout << std::endl;
     }
 
+    std::vector<Graph::PassDebugInfo> Graph::getDebugPasses() const {
+        std::vector<PassDebugInfo> result;
+        result.reserve(m_passes.size());
+        for (const auto& pass : m_passes) {
+            PassDebugInfo info{
+                .name = pass.name,
+                .culled = pass.culled,
+                .writtenResourceIndices = {},
+                .readResourceIndices = {}
+            };
+            for (const auto& [resourceIndex, access, stage] : pass.resourceReferences) {
+                if (isWrite(access)) {
+                    info.writtenResourceIndices.push_back(resourceIndex);
+                }
+                else {
+                    info.readResourceIndices.push_back(resourceIndex);
+                }
+            }
+            result.push_back(std::move(info));
+        }
+        return result;
+    }
+
+    std::vector<Graph::ResourceDebugInfo> Graph::getDebugResources() const {
+        std::vector<ResourceDebugInfo> result;
+        result.reserve(m_resources.size());
+        for (const auto& resourceVariant : m_resources) {
+            std::visit([&]<typename ResourceNode>(const ResourceNode& resource) {
+                result.push_back({
+                    .name = resource.name,
+                    .isBuffer = std::is_same_v<std::decay_t<ResourceNode>,
+                    Internal::BufferResourceNode>
+                });
+            }, resourceVariant);
+        }
+        return result;
+    }
+
+    Resources::Textures::Texture* Graph::getPhysicalTexture(const uint32_t resourceIndex, const uint32_t frameIndex) const {
+        if (resourceIndex >= m_resources.size()) {
+            return nullptr;
+        }
+        if (auto* img = std::get_if<Internal::ImageResourceNode>(&m_resources[resourceIndex])) {
+            return img->physicalTexture[frameIndex];
+        }
+        return nullptr;
+    }
+
     bool constexpr Graph::isWrite(const ResourceAccess access) {
         if (access == ResourceAccess::ColorAttachmentWrite ||
             access == ResourceAccess::DepthAttachmentWrite ||

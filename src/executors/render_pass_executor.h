@@ -6,6 +6,7 @@
 #define SALAMANDER_RENDER_PASS_EXECUTOR_H
 
 
+#include <functional>
 #include <vulkan/vulkan.h>
 
 namespace Salamander::Executors {
@@ -15,6 +16,8 @@ namespace Salamander::Executors {
         virtual void execute(VkCommandBuffer cmd) = 0;
         virtual void end(VkCommandBuffer cmd) = 0;
         virtual ~RenderPassExecutor() = default;
+
+        virtual void setExtraUiCallback(const std::function<void(unsigned int)> & function) {};
     };
 }
 

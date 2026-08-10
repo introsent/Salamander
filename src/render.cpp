@@ -6,7 +6,9 @@
 #include <chrono>
 #include <fstream>
 #include <stdexcept>
+#include <memory>
 
+#include "debug/render_graph_debug_panel.h"
 #include "frame/frame_data.h"
 #include "renderer/targets/main_scene_target.h"
 #include "renderer/targets/imgui_target.h"
@@ -19,14 +21,23 @@ namespace Salamander {
         createCommandBuffers();
         createSyncObjects();
 
-        // create targets
-        m_renderTargets.push_back(std::make_unique<Renderer::Targets::MainSceneTarget>(m_dependencies));
-        m_renderTargets.push_back(std::make_unique<Renderer::Targets::ImGuiTarget>());
+        auto mainSceneTarget = std::make_unique<Renderer::Targets::MainSceneTarget>(m_dependencies);
+        m_mainSceneTarget = mainSceneTarget.get();
+        m_renderTargets.push_back(std::move(mainSceneTarget));
 
-        // initialize targets
+        auto imguiTarget = std::make_unique<Renderer::Targets::ImGuiTarget>();
+        m_imguiTarget = imguiTarget.get();
+        m_renderTargets.push_back(std::move(imguiTarget));
+
         for (auto &target: m_renderTargets) {
             target->initialize(*m_renderContext);
         }
+
+        m_renderGraphDebugPanel = std::make_unique<Renderer::Debug::RenderGraphDebugPanel>(m_context->device());
+
+        m_imguiTarget->setExtraUiCallback([this](const uint32_t frameIndex) {
+            m_renderGraphDebugPanel->draw(m_mainSceneTarget->getRenderGraph(), frameIndex);
+        });
     }
 
     void Render::createSyncObjects() {
@@ -243,6 +254,8 @@ namespace Salamander {
         for (auto &target: m_renderTargets) {
             target->recreateSwapChain();
         }
+
+        m_renderGraphDebugPanel->invalidateCache();
     }
 
     void Render::markFramebufferResized() {
