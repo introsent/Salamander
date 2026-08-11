@@ -45,9 +45,9 @@ namespace Salamander::Resources::Textures
 
         Texture& createTexture(uint32_t width, uint32_t height, VkFormat format,
             VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
-            VkImageAspectFlags aspect, bool generateMipMaps = false, bool createSampler = false, const std::string& debugName = "");
+            VkImageAspectFlags aspect, bool generateMipMaps = false, bool createSampler = false, const std::string& debugName = "", int arrayLayers = 1);
         Texture& createTexture(const unsigned char* data, uint32_t width, uint32_t height,
-                                        uint32_t channels, bool generateMipMaps = false, const std::string& debugName = "");
+                                        uint32_t channels, bool generateMipMaps = false, const std::string& debugName = "", int arrayLayers = 1);
 
         Texture& createCubeTexture(uint32_t size, VkFormat format,
                                          VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, bool generateMipMaps = false);

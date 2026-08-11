@@ -141,7 +141,8 @@ namespace Salamander::Resources::Textures
         VkImageAspectFlags aspect,
         bool generateMipMap,
         bool createSampler,
-        const std::string& debugName)
+        const std::string& debugName,
+        int arrayLayers)
     {
 
         const uint32_t mipLevels = generateMipMap
@@ -151,7 +152,7 @@ namespace Salamander::Resources::Textures
         image->create(width, height, format,
                       VK_IMAGE_TILING_OPTIMAL,
                       usage, memoryUsage,
-                      1, 0,  mipLevels);
+                      arrayLayers, 0,  mipLevels);
 
         auto texture = std::make_unique<Texture>(m_device);
         texture->create(std::move(image));
@@ -177,7 +178,7 @@ namespace Salamander::Resources::Textures
     }
 
     Texture& TextureManager::createTexture(const unsigned char* data, uint32_t width, uint32_t height,
-                    uint32_t channels, bool generateMipMaps, const std::string&  debugName)
+                    uint32_t channels, bool generateMipMaps, const std::string&  debugName, int arrayLayers)
     {
 
         VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
@@ -206,7 +207,7 @@ namespace Salamander::Resources::Textures
         image->create(width, height, format,
                       VK_IMAGE_TILING_OPTIMAL,
                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                      VMA_MEMORY_USAGE_GPU_ONLY, 1, 0, mipLevels);
+                      VMA_MEMORY_USAGE_GPU_ONLY, arrayLayers, 0, mipLevels);
 
         VkCommandBuffer cmd = m_commandManager->beginSingleTimeCommands();
         image->transitionLayout(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
