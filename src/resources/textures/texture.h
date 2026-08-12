@@ -15,7 +15,10 @@ namespace Salamander::Resources::Textures
         ~Texture() = default;
 
         void create(std::unique_ptr<Image> img);
+
         void createImageView();
+        [[nodiscard]] VkImageViewCreateInfo setupImageViewInfo(uint32_t baseArrayLayer, uint32_t layerCount) const;
+        void setupImageViewsOnArray();
 
         void setSampler(VkSampler sampler) {
             m_sampler = sampler;
@@ -35,6 +38,10 @@ namespace Salamander::Resources::Textures
         void setDebugName(const Core::DebugMessenger* debug, const std::string& name);
 
         [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const;
+
+        [[nodiscard]] VkImageView getLayerView(const uint32_t layer) const {
+            return m_layerViews.at(layer);
+        }
     private:
         VkDevice m_device;
 
@@ -44,11 +51,12 @@ namespace Salamander::Resources::Textures
         VkSampler m_sampler = VK_NULL_HANDLE;
         bool m_ownsSampler = false;
 
-
         uint32_t m_width  = 0;
         uint32_t m_height = 0;
         VkFormat m_format = VK_FORMAT_UNDEFINED;
         uint32_t m_mipLevels = 1;
+
+        std::vector<VkImageView> m_layerViews;
     };
 }
 

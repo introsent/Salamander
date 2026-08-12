@@ -45,12 +45,17 @@ namespace Salamander::Resources::Textures
 
         Texture& createTexture(uint32_t width, uint32_t height, VkFormat format,
             VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
-            VkImageAspectFlags aspect, bool generateMipMaps = false, bool createSampler = false, const std::string& debugName = "", int arrayLayers = 1);
+            VkImageAspectFlags aspect, bool generateMipMaps = false, bool createSampler = false, const std::string& debugName = "");
         Texture& createTexture(const unsigned char* data, uint32_t width, uint32_t height,
-                                        uint32_t channels, bool generateMipMaps = false, const std::string& debugName = "", int arrayLayers = 1);
+                                        uint32_t channels, bool generateMipMaps = false, const std::string& debugName = "");
 
         Texture& createCubeTexture(uint32_t size, VkFormat format,
                                          VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, bool generateMipMaps = false);
+
+        Texture& createTextureArray(uint32_t width, uint32_t height, int layerCount, VkFormat format,
+           VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
+           VkImageAspectFlags aspect, bool generateMipMaps = false, bool createSampler = false, const std::string& debugName = "");
+
 
 
         [[nodiscard]] const std::unordered_map<std::string, std::unique_ptr<Texture>>& getTextures() const { return m_textures; }

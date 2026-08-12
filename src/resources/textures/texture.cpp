@@ -28,16 +28,8 @@ namespace Salamander::Resources::Textures
 
     void Texture::createImageView()
     {
-        VkImageViewCreateInfo viewInfo{};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = m_image->handle();
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = m_format;
-        viewInfo.subresourceRange.aspectMask = m_image->aspect();
-        viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = m_mipLevels;
-        viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
+        const VkImageViewCreateInfo viewInfo = setupImageViewInfo(0, m_image->layers());
+
         vkCreateImageView(m_device, &viewInfo, nullptr, &m_imageView);
 
         VkDevice deviceCopy = m_device;
@@ -46,6 +38,41 @@ namespace Salamander::Resources::Textures
             [deviceCopy, imageViewCopy]() {
             vkDestroyImageView(deviceCopy, imageViewCopy, nullptr);
             });
+    }
+
+    VkImageViewCreateInfo Texture::setupImageViewInfo(const uint32_t baseArrayLayer, const uint32_t layerCount) const {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = m_image->handle();
+        viewInfo.viewType = (layerCount > 1) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.subresourceRange.baseArrayLayer = baseArrayLayer;
+        viewInfo.subresourceRange.layerCount = layerCount;
+        viewInfo.format = m_format;
+        viewInfo.subresourceRange.aspectMask = m_image->aspect();
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = m_mipLevels;
+
+        return viewInfo;
+    }
+
+    void Texture::setupImageViewsOnArray()  {
+        m_layerViews.resize(m_image->layers());
+
+        for (int arrayLayerInx = 0; arrayLayerInx < m_layerViews.size(); ++arrayLayerInx) {
+            VkImageView imageView;
+            const VkImageViewCreateInfo viewInfo = setupImageViewInfo(arrayLayerInx, 1);
+
+            vkCreateImageView(m_device, &viewInfo, nullptr, &imageView);
+
+            m_layerViews[arrayLayerInx] = imageView;
+
+            VkDevice deviceCopy = m_device;
+            VkImageView imageViewCopy = m_layerViews[arrayLayerInx];
+            DeletionQueue::get().pushFunction("ImageViewTexture_" + std::to_string(imageViewInx++),
+                [deviceCopy, imageViewCopy]() {
+                vkDestroyImageView(deviceCopy, imageViewCopy, nullptr);
+                });
+        }
     }
 
     void Texture::createSampler()
