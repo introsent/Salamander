@@ -244,6 +244,10 @@ set(${PROJECT_NAME}_SOURCES
         src/renderer/render_graph/internal/barrier_descriptor.h
         src/renderer/debug/render_graph_debug_panel.cpp
         src/renderer/debug/render_graph_debug_panel.h
+        src/renderer/debug/debug_panel.h
+        src/renderer/debug/debug_panel_registry.h
+        src/renderer/debug/debug_panel_registry.cpp
+        src/renderer/debug/scene_debug_panel.h
 )
 
 

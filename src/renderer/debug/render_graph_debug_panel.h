@@ -7,22 +7,25 @@
 #include <unordered_set>
 #include <vulkan/vulkan_core.h>
 #include <imgui_node_editor.h>
-#include "render_graph/graph.h"
 
+#include "debug_panel.h"
+#include "render_graph/graph.h"
+#include <functional>
 
 
 namespace Salamander::Renderer::Debug {
-    class RenderGraphDebugPanel {
+    class RenderGraphDebugPanel final : public IDebugPanel {
     public:
-        explicit RenderGraphDebugPanel(VkDevice device);
-        ~RenderGraphDebugPanel();
+        explicit RenderGraphDebugPanel(VkDevice device, std::function<RenderGraph::Graph&()> graphProvider);
+        ~RenderGraphDebugPanel() override;
 
         RenderGraphDebugPanel(const RenderGraphDebugPanel&) = delete;
         RenderGraphDebugPanel& operator=(const RenderGraphDebugPanel&) = delete;
 
-        // call once per frame, between ImGui::NewFrame() and ImGui::Render()
-        void draw(const RenderGraph::Graph& graph, uint32_t frameIndex);
+        void draw(uint32_t frameIndex) override;
+        void onSwapchainRecreate() override;
 
+        [[nodiscard]] const char * name() const override { return "Render Graph Debug Panel"; }
         // call after any swapchain/extent-relative texture recreation, before draw()
         void invalidateCache();
     private:
@@ -31,6 +34,7 @@ namespace Salamander::Renderer::Debug {
         VkDescriptorSet getOrCreateDebugDescriptor(uint32_t resourceIndex, uint32_t frameIndex,
                                                     VkImageView view, VkImageLayout layout);
 
+    private:
         VkDevice m_device;
         ax::NodeEditor::EditorContext* m_editorContext = nullptr;
         VkSampler m_debugSampler = VK_NULL_HANDLE;
@@ -39,7 +43,7 @@ namespace Salamander::Renderer::Debug {
         std::unordered_set<int> m_positionedNodes;
         std::optional<int> m_selectedPassIndex;
 
-        float m_lastHeight = 700.0f;
+        std::function<RenderGraph::Graph&()> m_graphProvider;
     };
 }
 #endif //SALAMANDER_RENDER_GRAPH_DEBUG_PANEL_H

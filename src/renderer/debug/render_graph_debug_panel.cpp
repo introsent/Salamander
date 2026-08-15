@@ -7,6 +7,7 @@
 #include <imgui_impl_vulkan.h>
 #include <algorithm>
 #include <ranges>
+#include <utility>
 
 #include "textures/texture.h"
 
@@ -24,7 +25,9 @@ namespace Salamander::Renderer::Debug {
         constexpr float kResourceY = 160.0f;
     }
 
-    RenderGraphDebugPanel::RenderGraphDebugPanel(VkDevice device) : m_device(device) {
+    RenderGraphDebugPanel::RenderGraphDebugPanel(VkDevice device, std::function<RenderGraph::Graph&()> graphProvider)
+        : m_device(device), m_graphProvider(std::move(graphProvider)) {
+
         ax::NodeEditor::Config config;
         config.SettingsFile = "render_graph_debug.json"; // persists node layout across runs
         m_editorContext = ax::NodeEditor::CreateEditor(&config);
@@ -63,22 +66,16 @@ namespace Salamander::Renderer::Debug {
         m_descriptorCache.clear();
     }
 
-    void RenderGraphDebugPanel::draw(const RenderGraph::Graph& graph, const uint32_t frameIndex) {
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_FirstUseEver);
+    void RenderGraphDebugPanel::draw(const uint32_t frameIndex) {
+        const RenderGraph::Graph& graph = m_graphProvider();
+        drawTree(graph);
+        ImGui::Separator();
+        drawInspector(graph, frameIndex);
+    }
 
-        const float fullWidth = ImGui::GetIO().DisplaySize.x;
-        ImGui::SetNextWindowSize(ImVec2(fullWidth, m_lastHeight), ImGuiCond_Always);
-        ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-
-        constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove;
-
-        if (ImGui::Begin("Render Graph", nullptr, flags)) {
-            drawTree(graph);
-            ImGui::Separator();
-            drawInspector(graph, frameIndex);
-            m_lastHeight = ImGui::GetWindowSize().y; // remember height for next frame
-        }
-        ImGui::End();
+    void RenderGraphDebugPanel::onSwapchainRecreate() {
+        IDebugPanel::onSwapchainRecreate();
+        invalidateCache();
     }
 
     void RenderGraphDebugPanel::drawTree(const RenderGraph::Graph& graph) {

@@ -13,6 +13,7 @@
 #include <vk_mem_alloc.h>
 
 #include "depth_format.h"
+#include "debug/debug_panel_registry.h"
 #include "renderer/frame/render_context.h"
 
 #include "passes/pass_dependencies.h"
@@ -59,7 +60,7 @@ namespace Salamander {
     private:
         void createSyncObjects();
         void createCommandBuffers();
-        void cleanup();
+        void cleanup() const;
         void initializeResources(Scene::Camera* camera);
 
         Core::Context *m_context;
@@ -92,7 +93,7 @@ namespace Salamander {
         // pass dependencies
         Renderer::Passes::PassDependencies m_dependencies;
 
-        std::unique_ptr<Renderer::Debug::RenderGraphDebugPanel> m_renderGraphDebugPanel;
+        Renderer::Debug::DebugPanelRegistry m_debugUI;
         Renderer::Targets::MainSceneTarget* m_mainSceneTarget = nullptr;
         Renderer::Targets::ImGuiTarget* m_imguiTarget = nullptr;
     };

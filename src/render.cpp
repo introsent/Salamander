@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "debug/render_graph_debug_panel.h"
+#include "debug/scene_debug_panel.h"
 #include "frame/frame_data.h"
 #include "renderer/targets/main_scene_target.h"
 #include "renderer/targets/imgui_target.h"
@@ -33,11 +34,19 @@ namespace Salamander {
             target->initialize(*m_renderContext);
         }
 
-        m_renderGraphDebugPanel = std::make_unique<Renderer::Debug::RenderGraphDebugPanel>(m_context->device());
+        m_debugUI.addPanel<Renderer::Debug::RenderGraphDebugPanel>(
+         m_context->device(),
+         [this]() -> Renderer::RenderGraph::Graph& {
+             return m_mainSceneTarget->getRenderGraph();
+         });
+
+        m_debugUI.addPanel<Renderer::Debug::SceneDebugPanel>(
+            [this](const uint32_t frameIndex) {
+                m_mainSceneTarget->drawDebugUI(frameIndex);
+            });
 
         m_imguiTarget->setExtraUiCallback([this](const uint32_t frameIndex) {
-            m_mainSceneTarget->drawDebugUI(frameIndex);
-            m_renderGraphDebugPanel->draw(m_mainSceneTarget->getRenderGraph(), frameIndex);
+            m_debugUI.draw(frameIndex);
         });
     }
 
@@ -256,7 +265,7 @@ namespace Salamander {
             target->recreateSwapChain();
         }
 
-        m_renderGraphDebugPanel->invalidateCache();
+        m_debugUI.notifySwapchainRecreate();
     }
 
     void Render::markFramebufferResized() {
@@ -264,7 +273,7 @@ namespace Salamander {
     }
 
 
-    void Render::cleanup() {
+    void Render::cleanup() const {
         /* Debugging VMA */
         char *StatsString = nullptr;
         vmaBuildStatsString(m_allocator, &StatsString, true);
