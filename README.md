@@ -10,7 +10,7 @@
   
   <h2>2026 Overview</h2>
   <ul>
-    <li><strong>Render graph WIP</strong></li>
+    <li><strong>Render graph</strong></li>
     <li><strong>Massive refactoring</strong></li>
     <li><strong>Automatic camera exposure</strong></li>
     <li><strong>Assimp loading option</strong></li>
