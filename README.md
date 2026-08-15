@@ -4,8 +4,6 @@
   <hr>
   <p>
     Salamander is a 3D rendering engine built with Vulkan using C++ 20.
-    The software in question functions as a standalone graphics engine, with the purpose of demonstrating the capabilities of the Vulkan framework.
-    The emphasis is placed on the maintenance of the system and the adherence to the established design practices.
   </p>
   
   <h2>2026 Overview</h2>
